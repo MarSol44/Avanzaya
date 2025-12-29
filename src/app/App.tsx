@@ -1,13 +1,19 @@
 import { useState } from 'react';
 import { BottomNav } from './components/BottomNav';
-import { CalendarView } from './components/CalendarView';
-import { RoutineTracker } from './components/RoutineTracker';
-import { ShortTermGoals, ShortTermGoal } from './components/ShortTermGoals';
-import { LongTermGoals, LongTermGoal } from './components/LongTermGoals';
+import { GoalsView } from './components/GoalsView';
+import { ShortTermGoal } from './components/ShortTermGoals';
+import { LongTermGoal } from './components/LongTermGoals';
 import { VisionBoard, VisionCard } from './components/VisionBoard';
 import { VisionStatement, Vision } from './components/VisionStatement';
 import { ProgressView } from './components/ProgressView';
 import { SettingsView } from './components/SettingsView';
+import { WelcomeScreen } from './components/WelcomeScreen';
+import { LoginScreen } from './components/LoginScreen';
+import { RegisterScreen } from './components/RegisterScreen';
+import { RealityCheck } from './components/RealityCheck';
+import { RealityCheckSummary } from './components/RealityCheckSummary';
+import { FutureMe } from './components/FutureMe';
+import { ComparisonView } from './components/ComparisonView';
 import { Eye, LayoutGrid } from 'lucide-react';
 
 interface Habit {
@@ -16,12 +22,42 @@ interface Habit {
   completed: boolean;
 }
 
+interface AreaData {
+  id: string;
+  satisfaction?: number;
+  friendsSatisfaction?: number;
+  familySatisfaction?: number;
+  romanticSatisfaction?: number;
+  financialComfort?: 'bad' | 'neutral' | 'good';
+  physicalHealth?: number;
+  mentalHealth?: number;
+  adjectives?: string[];
+  reflections: { [key: string]: string };
+}
+
+interface FutureGoal {
+  areaId: string;
+  goal: string;
+  why: string;
+}
+
+type AuthScreen = 'welcome' | 'login' | 'register';
+type OnboardingStep = 'reality-check' | 'reality-summary' | 'future-me' | 'comparison' | null;
+
 export default function App() {
-  const [activeView, setActiveView] = useState<'calendar' | 'goals' | 'vision' | 'progress' | 'settings'>('calendar');
+  // Authentication & Onboarding
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authScreen, setAuthScreen] = useState<AuthScreen>('welcome');
+  const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>(null);
+  const [realityCheckData, setRealityCheckData] = useState<{ [key: string]: AreaData } | null>(null);
+  const [futureGoals, setFutureGoals] = useState<FutureGoal[]>([]);
+
+  const [activeView, setActiveView] = useState<'goals' | 'vision' | 'progress' | 'settings'>('goals');
   const [visionSubView, setVisionSubView] = useState<'board' | 'statement'>('board');
 
   // User profile
   const [userName, setUserName] = useState('Usuario');
+  const [userEmail, setUserEmail] = useState('usuario@ejemplo.com');
   const [userPhoto, setUserPhoto] = useState<string | undefined>(undefined);
 
   // Day routine habits
@@ -173,6 +209,59 @@ export default function App() {
   // Consecutive days tracker
   const [consecutiveDays, setConsecutiveDays] = useState(7);
 
+  // Auth handlers
+  const handleLogin = (email: string, password: string, rememberMe: boolean) => {
+    setUserEmail(email);
+    setIsLoggedIn(true);
+    // Skip onboarding for login
+  };
+
+  const handleRegister = (name: string, email: string, password: string) => {
+    setUserName(name);
+    setUserEmail(email);
+    setIsLoggedIn(true);
+    // Start onboarding for new users
+    setOnboardingStep('reality-check');
+  };
+
+  const handleSkipAuth = () => {
+    setIsLoggedIn(true);
+    // Skip onboarding for guest users
+  };
+
+  const handleRealityCheckComplete = (data: { [key: string]: AreaData }) => {
+    setRealityCheckData(data);
+    setOnboardingStep('reality-summary');
+  };
+
+  const handleRealitySummaryComplete = () => {
+    setOnboardingStep('future-me');
+  };
+
+  const handleFutureMeComplete = (goals: FutureGoal[]) => {
+    setFutureGoals(goals);
+    
+    // Add goals to vision statements
+    const visionText = goals
+      .map((g) => `${g.goal}${g.why ? ` - ${g.why}` : ''}`)
+      .join('\n\n');
+    
+    if (visionText) {
+      addVision(visionText);
+    }
+    
+    setOnboardingStep('comparison');
+  };
+
+  const handleComparisonComplete = () => {
+    setOnboardingStep(null);
+  };
+
+  const handleCloseOnboarding = () => {
+    setOnboardingStep(null);
+  };
+
+  // Habit handlers
   const toggleDayHabit = (id: string) => {
     setDayHabits(habits =>
       habits.map(h => (h.id === id ? { ...h, completed: !h.completed } : h))
@@ -193,6 +282,7 @@ export default function App() {
     setNightHabits(updatedHabits);
   };
 
+  // Goal handlers
   const toggleShortTermGoal = (id: string) => {
     setShortTermGoals(goals =>
       goals.map(g => (g.id === id ? { ...g, completed: !g.completed } : g))
@@ -240,6 +330,7 @@ export default function App() {
     setLongTermGoals([...longTermGoals, newGoal]);
   };
 
+  // Vision handlers
   const addVisionCard = (card: Omit<VisionCard, 'id'>) => {
     setVisionCards([...visionCards, { ...card, id: `card-${Date.now()}` }]);
   };
@@ -264,76 +355,121 @@ export default function App() {
     setVisions(visions.filter(v => v.id !== id));
   };
 
-  const handleUpdateProfile = (name: string, photo?: string) => {
+  const handleUpdateProfile = (name: string, email?: string, photo?: string) => {
     setUserName(name);
+    if (email) setUserEmail(email);
     setUserPhoto(photo);
   };
 
   const handleLogout = () => {
     if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
-      alert('Sesión cerrada');
+      setIsLoggedIn(false);
+      setAuthScreen('welcome');
+      setOnboardingStep(null);
     }
   };
 
+  // Render authentication screens
+  if (!isLoggedIn) {
+    if (authScreen === 'welcome') {
+      return (
+        <WelcomeScreen
+          onLogin={() => setAuthScreen('login')}
+          onRegister={() => setAuthScreen('register')}
+          onSkip={handleSkipAuth}
+        />
+      );
+    }
+
+    if (authScreen === 'login') {
+      return (
+        <LoginScreen
+          onBack={() => setAuthScreen('welcome')}
+          onLogin={handleLogin}
+        />
+      );
+    }
+
+    if (authScreen === 'register') {
+      return (
+        <RegisterScreen
+          onBack={() => setAuthScreen('welcome')}
+          onRegister={handleRegister}
+        />
+      );
+    }
+  }
+
+  // Render onboarding screens
+  if (onboardingStep === 'reality-check') {
+    return (
+      <RealityCheck
+        onComplete={handleRealityCheckComplete}
+        onClose={handleCloseOnboarding}
+      />
+    );
+  }
+
+  if (onboardingStep === 'reality-summary' && realityCheckData) {
+    return (
+      <RealityCheckSummary
+        data={realityCheckData}
+        onContinue={handleRealitySummaryComplete}
+      />
+    );
+  }
+
+  if (onboardingStep === 'future-me') {
+    return (
+      <FutureMe
+        onComplete={handleFutureMeComplete}
+        onClose={handleCloseOnboarding}
+      />
+    );
+  }
+
+  if (onboardingStep === 'comparison' && realityCheckData) {
+    return (
+      <ComparisonView
+        realityCheckData={realityCheckData}
+        futureGoals={futureGoals}
+        onComplete={handleComparisonComplete}
+      />
+    );
+  }
+
+  // Main app
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="max-w-6xl mx-auto p-6">
-        {activeView === 'calendar' && (
-          <div className="space-y-6">
-            <h1 className="text-2xl text-gray-900">Calendario y Rutinas</h1>
-            
-            {/* Calendar */}
-            <CalendarView />
-
-            {/* Routines */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <RoutineTracker
-                type="day"
-                habits={dayHabits}
-                onToggleHabit={toggleDayHabit}
-                onUpdateHabits={updateDayHabits}
-              />
-              <RoutineTracker
-                type="night"
-                habits={nightHabits}
-                onToggleHabit={toggleNightHabit}
-                onUpdateHabits={updateNightHabits}
-              />
-            </div>
-          </div>
-        )}
-
         {activeView === 'goals' && (
-          <div className="space-y-6">
-            <h1 className="text-2xl text-gray-900">Mis Metas</h1>
-            
-            {/* Short-term goals */}
-            <ShortTermGoals
-              goals={shortTermGoals}
-              onAddGoal={addShortTermGoal}
-              onToggleGoal={toggleShortTermGoal}
-              onUpdateGoal={updateShortTermGoal}
-            />
-
-            {/* Long-term goals */}
-            <LongTermGoals
-              goals={longTermGoals}
-              onAddGoal={addLongTermGoal}
-              onToggleGoal={toggleLongTermGoal}
-              onUpdateGoal={updateLongTermGoal}
-            />
-          </div>
+          <GoalsView
+            dayHabits={dayHabits}
+            nightHabits={nightHabits}
+            shortTermGoals={shortTermGoals}
+            longTermGoals={longTermGoals}
+            onToggleDayHabit={toggleDayHabit}
+            onToggleNightHabit={toggleNightHabit}
+            onUpdateDayHabits={updateDayHabits}
+            onUpdateNightHabits={updateNightHabits}
+            onAddShortTermGoal={addShortTermGoal}
+            onToggleShortTermGoal={toggleShortTermGoal}
+            onUpdateShortTermGoal={updateShortTermGoal}
+            onAddLongTermGoal={addLongTermGoal}
+            onToggleLongTermGoal={toggleLongTermGoal}
+            onUpdateLongTermGoal={updateLongTermGoal}
+          />
         )}
 
         {activeView === 'vision' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl text-gray-900">Mi Visión</h1>
-              
-              <div className="flex gap-2 bg-white rounded-lg p-1 shadow-sm">
+            <h1 className="text-2xl text-gray-900 mb-6">Mi Visión</h1>
+            
+            <div className="flex justify-center">
+              <div className="inline-flex gap-2 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
                 <button
                   onClick={() => setVisionSubView('board')}
-                  className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${
+                  className={`px-6 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${
                     visionSubView === 'board'
                       ? 'bg-blue-600 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
@@ -344,7 +480,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => setVisionSubView('statement')}
-                  className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${
+                  className={`px-6 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${
                     visionSubView === 'statement'
                       ? 'bg-blue-600 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
@@ -391,6 +527,7 @@ export default function App() {
             <h1 className="text-2xl text-gray-900 mb-6">Configuración</h1>
             <SettingsView
               userName={userName}
+              userEmail={userEmail}
               userPhoto={userPhoto}
               onUpdateProfile={handleUpdateProfile}
               onLogout={handleLogout}

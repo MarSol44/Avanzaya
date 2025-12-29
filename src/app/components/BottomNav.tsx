@@ -1,13 +1,12 @@
-import { Calendar, Target, Eye, TrendingUp, Settings } from 'lucide-react';
+import { Target, Eye, TrendingUp, Settings } from 'lucide-react';
 
 interface BottomNavProps {
-  activeView: 'calendar' | 'goals' | 'vision' | 'progress' | 'settings';
-  onViewChange: (view: 'calendar' | 'goals' | 'vision' | 'progress' | 'settings') => void;
+  activeView: 'goals' | 'vision' | 'progress' | 'settings';
+  onViewChange: (view: 'goals' | 'vision' | 'progress' | 'settings') => void;
 }
 
 export function BottomNav({ activeView, onViewChange }: BottomNavProps) {
   const navItems = [
-    { id: 'calendar' as const, icon: Calendar, label: 'Calendario' },
     { id: 'goals' as const, icon: Target, label: 'Metas' },
     { id: 'vision' as const, icon: Eye, label: 'Visión' },
     { id: 'progress' as const, icon: TrendingUp, label: 'Progreso' },

@@ -1,25 +1,28 @@
 import { useState } from 'react';
-import { User, Lock, Bell, Moon, Sun, Globe, Cloud, LogOut, Camera } from 'lucide-react';
+import { User, Lock, Bell, Moon, Sun, Globe, Cloud, LogOut, Camera, HelpCircle, MessageSquare, FileText, Shield } from 'lucide-react';
 
 interface SettingsViewProps {
   userName: string;
+  userEmail?: string;
   userPhoto?: string;
-  onUpdateProfile: (name: string, photo?: string) => void;
+  onUpdateProfile: (name: string, email?: string, photo?: string) => void;
   onLogout: () => void;
 }
 
-export function SettingsView({ userName, userPhoto, onUpdateProfile, onLogout }: SettingsViewProps) {
+export function SettingsView({ userName, userEmail, userPhoto, onUpdateProfile }: SettingsViewProps) {
   const [name, setName] = useState(userName);
+  const [email, setEmail] = useState(userEmail || 'usuario@ejemplo.com');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [language, setLanguage] = useState('es');
+  const [firstDayOfWeek, setFirstDayOfWeek] = useState('Lunes');
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleSaveProfile = () => {
-    onUpdateProfile(name, userPhoto);
+    onUpdateProfile(name, email, userPhoto);
     alert('Perfil actualizado correctamente');
   };
 
@@ -38,6 +41,12 @@ export function SettingsView({ userName, userPhoto, onUpdateProfile, onLogout }:
     setNewPassword('');
     setConfirmPassword('');
     setShowPasswordChange(false);
+  };
+
+  const handleLogout = () => {
+    if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+      alert('Sesión cerrada');
+    }
   };
 
   return (
@@ -59,14 +68,25 @@ export function SettingsView({ userName, userPhoto, onUpdateProfile, onLogout }:
               <Camera className="w-4 h-4" />
             </button>
           </div>
-          <div className="flex-1">
-            <label className="block text-sm text-gray-600 mb-2">Nombre de usuario</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          <div className="flex-1 space-y-3">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Nombre de usuario</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Correo</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
         </div>
 
@@ -157,51 +177,73 @@ export function SettingsView({ userName, userPhoto, onUpdateProfile, onLogout }:
         </div>
       </div>
 
-      {/* Appearance */}
+      {/* Preferences */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {isDarkMode ? (
-              <Moon className="w-5 h-5 text-gray-600" />
-            ) : (
-              <Sun className="w-5 h-5 text-gray-600" />
-            )}
-            <div>
-              <h3 className="text-gray-900">Modo oscuro</h3>
-              <p className="text-sm text-gray-500">Apariencia de la aplicación</p>
+        <h3 className="text-gray-900 mb-4">Preferencias</h3>
+        
+        <div className="space-y-4">
+          {/* Dark mode */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {isDarkMode ? (
+                <Moon className="w-5 h-5 text-gray-600" />
+              ) : (
+                <Sun className="w-5 h-5 text-gray-600" />
+              )}
+              <span className="text-gray-700">Modo oscuro</span>
             </div>
-          </div>
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className={`relative w-14 h-7 rounded-full transition-colors ${
-              isDarkMode ? 'bg-blue-600' : 'bg-gray-300'
-            }`}
-          >
-            <div
-              className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform ${
-                isDarkMode ? 'translate-x-7' : ''
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className={`relative w-14 h-7 rounded-full transition-colors ${
+                isDarkMode ? 'bg-blue-600' : 'bg-gray-300'
               }`}
-            ></div>
-          </button>
+            >
+              <div
+                className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform ${
+                  isDarkMode ? 'translate-x-7' : ''
+                }`}
+              ></div>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Language */}
+      {/* Usage */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center gap-3 mb-4">
-          <Globe className="w-5 h-5 text-gray-600" />
-          <h3 className="text-gray-900">Idioma</h3>
+        <h3 className="text-gray-900 mb-4">Uso</h3>
+        
+        <div className="space-y-4">
+          {/* Language */}
+          <div>
+            <label className="flex items-center gap-3 text-gray-700 mb-2">
+              <Globe className="w-5 h-5 text-gray-600" />
+              <span>Idioma</span>
+            </label>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="es">Español</option>
+              <option value="en">English</option>
+              <option value="pt">Português</option>
+              <option value="fr">Français</option>
+            </select>
+          </div>
+
+          {/* First day of week */}
+          <div>
+            <label className="block text-gray-700 mb-2">Primer día de la semana</label>
+            <select
+              value={firstDayOfWeek}
+              onChange={(e) => setFirstDayOfWeek(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Domingo">Domingo</option>
+              <option value="Lunes">Lunes</option>
+            </select>
+          </div>
         </div>
-        <select
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="es">Español</option>
-          <option value="en">English</option>
-          <option value="pt">Português</option>
-          <option value="fr">Français</option>
-        </select>
       </div>
 
       {/* Sync */}
@@ -229,10 +271,42 @@ export function SettingsView({ userName, userPhoto, onUpdateProfile, onLogout }:
         </div>
       </div>
 
+      {/* Support */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <h3 className="text-gray-900 mb-4">Soporte</h3>
+        
+        <div className="space-y-2">
+          <button className="w-full px-4 py-3 text-left bg-white border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors">
+            <HelpCircle className="w-5 h-5 text-gray-600" />
+            <span className="text-gray-700">Ayuda</span>
+          </button>
+          <button className="w-full px-4 py-3 text-left bg-white border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors">
+            <MessageSquare className="w-5 h-5 text-gray-600" />
+            <span className="text-gray-700">Enviar feedback</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Legal */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <h3 className="text-gray-900 mb-4">Legal</h3>
+        
+        <div className="space-y-2">
+          <button className="w-full px-4 py-3 text-left bg-white border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors">
+            <FileText className="w-5 h-5 text-gray-600" />
+            <span className="text-gray-700">Términos y condiciones</span>
+          </button>
+          <button className="w-full px-4 py-3 text-left bg-white border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors">
+            <Shield className="w-5 h-5 text-gray-600" />
+            <span className="text-gray-700">Política de privacidad</span>
+          </button>
+        </div>
+      </div>
+
       {/* Logout */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
         <button
-          onClick={onLogout}
+          onClick={handleLogout}
           className="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center gap-2"
         >
           <LogOut className="w-5 h-5" />

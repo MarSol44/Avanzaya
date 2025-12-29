@@ -1,8 +1,9 @@
 import { CircularProgress } from './CircularProgress';
 import { ProgressChart } from './ProgressChart';
-import { ArrowRight, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowRight, Calendar as CalendarIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { ShortTermGoal } from './ShortTermGoals';
 import { LongTermGoal } from './LongTermGoals';
+import { useState } from 'react';
 
 interface ProgressViewProps {
   shortTermGoals: ShortTermGoal[];
@@ -59,6 +60,9 @@ export function ProgressView({ shortTermGoals, longTermGoals, consecutiveDays, o
     return { name: goal.name, status: 'in-progress' };
   });
 
+  const [showShortTermChart, setShowShortTermChart] = useState(false);
+  const [showLongTermChart, setShowLongTermChart] = useState(false);
+
   return (
     <div className="space-y-6">
       {/* Motivational question */}
@@ -108,11 +112,21 @@ export function ProgressView({ shortTermGoals, longTermGoals, consecutiveDays, o
           </div>
         </div>
 
-        {/* Progress chart */}
+        {/* Progress chart with toggle */}
         {shortTermChartData.length > 0 && (
           <div className="mb-4">
-            <h3 className="text-sm text-gray-600 mb-3">Progreso por meta</h3>
-            <ProgressChart goals={shortTermChartData} />
+            <button
+              onClick={() => setShowShortTermChart(!showShortTermChart)}
+              className="w-full flex items-center justify-between text-sm text-gray-700 mb-3 hover:text-gray-900"
+            >
+              <span>Progreso por meta</span>
+              {showShortTermChart ? (
+                <ChevronUp className="w-5 h-5" />
+              ) : (
+                <ChevronDown className="w-5 h-5" />
+              )}
+            </button>
+            {showShortTermChart && <ProgressChart goals={shortTermChartData} />}
           </div>
         )}
 
@@ -158,8 +172,18 @@ export function ProgressView({ shortTermGoals, longTermGoals, consecutiveDays, o
         {/* Progress chart */}
         {longTermChartData.length > 0 && (
           <div className="mb-4">
-            <h3 className="text-sm text-gray-600 mb-3">Progreso por meta</h3>
-            <ProgressChart goals={longTermChartData} />
+            <button
+              onClick={() => setShowLongTermChart(!showLongTermChart)}
+              className="w-full flex items-center justify-between text-sm text-gray-700 mb-3 hover:text-gray-900"
+            >
+              <span>Progreso por meta</span>
+              {showLongTermChart ? (
+                <ChevronUp className="w-5 h-5" />
+              ) : (
+                <ChevronDown className="w-5 h-5" />
+              )}
+            </button>
+            {showLongTermChart && <ProgressChart goals={longTermChartData} />}
           </div>
         )}
 
