@@ -1,7 +1,7 @@
 
-  # Organización Personal App
+  # Avanxa Ya
 
-  This is a code bundle for Organización Personal App. The original project is available at https://www.figma.com/design/58DdzYbVMICUxKeuNl3ItF/Organizaci%C3%B3n-Personal-App.
+  This is a code bundle for Avanxa Ya. The original project is available at https://www.figma.com/design/58DdzYbVMICUxKeuNl3ItF/Avanxa-Ya.
 
   ## Running the code
 
