@@ -343,12 +343,12 @@ export default function App() {
     setVisionCards(visionCards.map(c => (c.id === id ? { ...c, ...updates } : c)));
   };
 
-  const addVision = (text: string) => {
-    setVisions([...visions, { id: `v${Date.now()}`, text, createdAt: new Date() }]);
+  const addVision = (text: string, title?: string) => {
+    setVisions([...visions, { id: `v${Date.now()}`, title, text, createdAt: new Date() }]);
   };
 
-  const updateVision = (id: string, text: string) => {
-    setVisions(visions.map(v => (v.id === id ? { ...v, text } : v)));
+  const updateVision = (id: string, text: string, title?: string) => {
+    setVisions(visions.map(v => (v.id === id ? { ...v, title, text } : v)));
   };
 
   const deleteVision = (id: string) => {
