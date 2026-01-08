@@ -1,7 +1,7 @@
 
-  # Avanxa Ya
+  # Avanza Ya
 
-  This is a code bundle for Avanxa Ya. The original project is available at https://www.figma.com/design/58DdzYbVMICUxKeuNl3ItF/Avanxa-Ya.
+  This is a code bundle for Avanza Ya. The original project is available at https://www.figma.com/design/58DdzYbVMICUxKeuNl3ItF/Avanza-Ya.
 
   ## Running the code
 
