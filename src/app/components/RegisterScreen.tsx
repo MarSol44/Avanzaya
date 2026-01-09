@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
-import { supabase } from "@/app/utils/supabase";
 
 interface RegisterScreenProps {
   onBack: () => void;
+  onRegister: (name: string, email: string, password: string) => void;
 }
 
-export function RegisterScreen({ onBack }: RegisterScreenProps) {
+export function RegisterScreen({ onBack, onRegister }: RegisterScreenProps) {
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -29,8 +29,8 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
       return;
     }
 
-    if (password.length < 6) {
-      alert('La contraseña debe tener al menos 6 caracteres');
+    if (password.length < 8) {
+      alert('La contraseña debe tener al menos 8 caracteres');
       return;
     }
 
@@ -46,42 +46,11 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
 
     setStep(2);
   };
-  
-//Registrar con Supabase
-const handleStep2Submit = async (e: React.FormEvent) => {
-  e.preventDefault();
 
-  try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
-          language,
-          timezone,
-          firstDayOfWeek,
-        },
-      },
-    });
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    console.log("Usuario creado:", data.user);
-
-    // 👉 aquí luego rediriges
-    // navigate("/welcome");
-
-  } catch (err: any) {
-    alert("Error al crear cuenta");
-    console.error(err);
-  }
-};
-
-  
+  const handleStep2Submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onRegister(name, email, password);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -142,10 +111,10 @@ const handleStep2Submit = async (e: React.FormEvent) => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 8 caracteres"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
                   required
-                  minLength={6}
+                  minLength={8}
                 />
                 <button
                   type="button"
@@ -159,7 +128,7 @@ const handleStep2Submit = async (e: React.FormEvent) => {
                   )}
                 </button>
               </div>
-              <p className="text-sm text-gray-500 mt-1">Mínimo 6 caracteres</p>
+              <p className="text-sm text-gray-500 mt-1">Mínimo 8 caracteres</p>
             </div>
 
             {/* Confirm Password */}

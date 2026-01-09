@@ -109,7 +109,9 @@ export function LongTermGoalModal({ goal, onClose, onUpdate }: LongTermGoalModal
               <label className="block text-sm text-gray-600 mb-2">Fecha límite</label>
               <input
                 type="date"
-                value={editedGoal.deadline.toISOString().split('T')[0]}
+                value={editedGoal.deadline instanceof Date && !isNaN(editedGoal.deadline.getTime()) 
+                  ? editedGoal.deadline.toISOString().split('T')[0] 
+                  : ''}
                 onChange={(e) => setEditedGoal({ ...editedGoal, deadline: new Date(e.target.value) })}
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />

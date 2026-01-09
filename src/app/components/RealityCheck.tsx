@@ -167,42 +167,30 @@ export function RealityCheck({ onComplete, onClose }: RealityCheckProps) {
                 </div>
               </div>
 
-              <button
-                onClick={() => setShowReflection(!showReflection)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
-              >
-                <span>✍️ ¿Quieres reflexionar un poco más?</span>
-                {showReflection ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-              </button>
-
-              {showReflection && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-gray-700 mb-2">
-                      ¿Qué obstáculos enfrentas?
-                    </label>
-                    <textarea
-                      value={currentData.reflections.obstacles || ''}
-                      onChange={(e) => updateReflection('obstacles', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={3}
-                      placeholder="Escribe tus pensamientos..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 mb-2">
-                      ¿Te sientes estancado o avanzando?
-                    </label>
-                    <textarea
-                      value={currentData.reflections.progress || ''}
-                      onChange={(e) => updateReflection('progress', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={3}
-                      placeholder="Escribe tus pensamientos..."
-                    />
-                  </div>
-                </div>
-              )}
+              <div>
+                <label className="block text-gray-700 mb-2">
+                  ¿Qué obstáculos enfrentas?
+                </label>
+                <textarea
+                  value={currentData.reflections.obstacles || ''}
+                  onChange={(e) => updateReflection('obstacles', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Escribe tus pensamientos..."
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-2">
+                  ¿Te sientes estancado o avanzando?
+                </label>
+                <textarea
+                  value={currentData.reflections.progress || ''}
+                  onChange={(e) => updateReflection('progress', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Escribe tus pensamientos..."
+                />
+              </div>
             </>
           )}
 

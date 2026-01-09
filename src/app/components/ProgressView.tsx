@@ -1,6 +1,6 @@
 import { CircularProgress } from './CircularProgress';
 import { ProgressChart } from './ProgressChart';
-import { ArrowRight, Calendar as CalendarIcon, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowRight, Calendar as CalendarIcon, ChevronDown, ChevronUp, History } from 'lucide-react';
 import { ShortTermGoal } from './ShortTermGoals';
 import { LongTermGoal } from './LongTermGoals';
 import { useState } from 'react';
@@ -10,6 +10,7 @@ interface ProgressViewProps {
   longTermGoals: LongTermGoal[];
   consecutiveDays: number;
   onNavigateToGoals: () => void;
+  onShowHistory?: () => void;
 }
 
 const categories = [
@@ -23,7 +24,7 @@ const categories = [
   'Personalidad y Crecimiento Personal',
 ];
 
-export function ProgressView({ shortTermGoals, longTermGoals, consecutiveDays, onNavigateToGoals }: ProgressViewProps) {
+export function ProgressView({ shortTermGoals, longTermGoals, consecutiveDays, onNavigateToGoals, onShowHistory }: ProgressViewProps) {
   // Short-term goals stats
   const completedShortTerm = shortTermGoals.filter(g => g.completed).length;
   const pendingShortTerm = shortTermGoals.filter(g => !g.completed && new Date(g.deadline) >= new Date()).length;
@@ -194,6 +195,17 @@ export function ProgressView({ shortTermGoals, longTermGoals, consecutiveDays, o
           Visualizar metas de largo plazo
           <ArrowRight className="w-5 h-5" />
         </button>
+
+        {/* History button */}
+        {onShowHistory && (
+          <button
+            onClick={onShowHistory}
+            className="w-full px-4 py-3 mt-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-2"
+          >
+            <History className="w-5 h-5" />
+            Historial
+          </button>
+        )}
       </div>
     </div>
   );

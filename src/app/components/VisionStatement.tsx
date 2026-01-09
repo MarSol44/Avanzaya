@@ -47,11 +47,10 @@ export function VisionStatement({ visions, onAddVision, onUpdateVision, onDelete
     setEditTitle(vision.title || '');
   };
 
-  // Helper function to get preview text (first ~10 words)
+  // Helper function to get preview text (first 30 characters)
   const getPreviewText = (text: string) => {
-    const words = text.split(' ');
-    if (words.length <= 10) return text;
-    return words.slice(0, 10).join(' ') + '...';
+    if (text.length <= 30) return text;
+    return text.substring(0, 30).trim() + '...';
   };
 
   return (

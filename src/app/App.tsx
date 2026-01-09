@@ -12,6 +12,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { RegisterScreen } from './components/RegisterScreen';
 import { RealityCheck } from './components/RealityCheck';
 import { RealityCheckSummary } from './components/RealityCheckSummary';
+import { RealityCheckHistory, RealityCheckEntry } from './components/RealityCheckHistory';
 import { FutureMe } from './components/FutureMe';
 import { ComparisonView } from './components/ComparisonView';
 import { Eye, LayoutGrid } from 'lucide-react';
@@ -50,6 +51,8 @@ export default function App() {
   const [authScreen, setAuthScreen] = useState<AuthScreen>('welcome');
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>(null);
   const [realityCheckData, setRealityCheckData] = useState<{ [key: string]: AreaData } | null>(null);
+  const [realityCheckHistory, setRealityCheckHistory] = useState<RealityCheckEntry[]>([]);
+  const [showRealityHistory, setShowRealityHistory] = useState(false);
   const [futureGoals, setFutureGoals] = useState<FutureGoal[]>([]);
 
   const [activeView, setActiveView] = useState<'goals' | 'vision' | 'progress' | 'settings'>('goals');
@@ -231,6 +234,15 @@ export default function App() {
 
   const handleRealityCheckComplete = (data: { [key: string]: AreaData }) => {
     setRealityCheckData(data);
+    
+    // Save to history
+    const newEntry: RealityCheckEntry = {
+      id: `rc${Date.now()}`,
+      date: new Date(),
+      data: data,
+    };
+    setRealityCheckHistory([...realityCheckHistory, newEntry]);
+    
     setOnboardingStep('reality-summary');
   };
 
@@ -518,6 +530,7 @@ export default function App() {
               longTermGoals={longTermGoals}
               consecutiveDays={consecutiveDays}
               onNavigateToGoals={() => setActiveView('goals')}
+              onShowHistory={() => setShowRealityHistory(true)}
             />
           </div>
         )}
@@ -537,6 +550,14 @@ export default function App() {
       </div>
 
       <BottomNav activeView={activeView} onViewChange={setActiveView} />
+
+      {/* Reality Check History Modal */}
+      {showRealityHistory && (
+        <RealityCheckHistory
+          entries={realityCheckHistory}
+          onClose={() => setShowRealityHistory(false)}
+        />
+      )}
     </div>
   );
 }
