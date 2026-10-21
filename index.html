@@ -1,15 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 
-  <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Avanza Ya</title>
-    </head>
+<!-- ══════════════════════════════════════════════════════════════════════
+     CAMBIA ESTAS DOS COSAS ANTES DE SUBIR
+     1. TUDOMINIO.com  →  tu dominio real (aparece 4 veces más abajo)
+     2. PON_AQUI_TU_TOKEN  →  el token de Cloudflare Web Analytics
+        (está en la última línea de este archivo)
+     ══════════════════════════════════════════════════════════════════ -->
 
-    <body>
-      <div id="root"></div>
-      <script type="module" src="/src/main.tsx"></script>
-    </body>
-  </html>
-  
+<title>Brújula de Vida</title>
+<meta name="description" content="La rueda de la vida en siete áreas, tu visión a cinco años, metas con pasos y rutinas de día y de noche. Gratis, sin registro y funciona sin conexión: todo se guarda en tu teléfono.">
+
+<link rel="canonical" href="https://TUDOMINIO.com/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brújula de Vida">
+<meta property="og:title" content="Brújula de Vida">
+<meta property="og:description" content="Organiza tus sueños y metas. Sin registro, sin correo: todo se guarda en tu teléfono.">
+<meta property="og:url" content="https://TUDOMINIO.com/">
+<meta property="og:image" content="https://TUDOMINIO.com/icons/og-mark.png">
+<meta property="og:locale" content="es_ES">
+<meta name="twitter:card" content="summary">
+
+<!-- Instalable: icono propio en la pantalla de inicio -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Brújula">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f2cfae" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#161311" media="(prefers-color-scheme: dark)">
+
+<!-- Nada se carga desde sitios que no estén en esta lista.
+     Sin 'unsafe-inline' en los scripts: no se puede inyectar código en la página. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://cloudflareinsights.com https://fgpwhdfvqtlvfmmzhxsy.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=Instrument+Sans:ital,wght@0,400..700;1,400..600&display=swap">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<div class="app" id="app">
+  <div id="root"></div>
+</div>
+<div class="sheetwrap" id="sheetWrap"><div class="sheet" role="dialog" aria-modal="true" id="sheet"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+
+<!-- barra de instalación: aparece sola cuando el navegador lo permite -->
+<div class="installbar" id="installbar" hidden>
+  <div class="installbar-txt">
+    <strong id="installbar-title">Ténla a un toque</strong>
+    <span id="installbar-sub">Añádela a tu pantalla de inicio y ábrela como una app.</span>
+  </div>
+  <div class="installbar-btns">
+    <button type="button" class="btn accent" id="installbar-ok">Instalar</button>
+    <button type="button" class="btn ghost" id="installbar-no" aria-label="Ahora no">Ahora no</button>
+  </div>
+</div>
+
+<!-- aviso de versión nueva -->
+<div class="updatebar" id="updatebar" hidden>
+  <span>Hay una versión nueva.</span>
+  <button type="button" class="btn accent" id="updatebar-ok">Actualizar</button>
+</div>
+
+<!-- recordatorio diario: aparece tras entrar con cuenta, si el navegador lo permite -->
+<div class="installbar" id="remindbar" hidden>
+  <div class="installbar-txt">
+    <strong>Recuérdamelo cada día</strong>
+    <span>Elige una hora y te avisamos aunque tengas la app cerrada.</span>
+  </div>
+  <div class="installbar-btns">
+    <input type="time" id="remindbar-time" value="20:00" style="min-height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:0 10px;font:inherit">
+    <button type="button" class="btn accent" id="remindbar-ok">Activar</button>
+    <button type="button" class="btn ghost" id="remindbar-no" aria-label="Ahora no">Ahora no</button>
+  </div>
+</div>
+
+<script src="/vendor/supabase.js"></script>
+<script src="/app.js"></script>
+<script src="/pwa.js"></script>
+<script src="/sync.js"></script>
+
+<!-- Analítica sin cookies. Cambia PON_AQUI_TU_TOKEN por el token que te da Cloudflare. -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "PON_AQUI_TU_TOKEN"}'></script>
+</body>
+</html>

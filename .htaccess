@@ -1,0 +1,61 @@
+# Brújula de Vida — configuración del servidor (Hostinger)
+# Sube este archivo tal cual a public_html. Empieza por punto: en el
+# Administrador de archivos activa «Mostrar archivos ocultos» para verlo.
+
+# ─────────────────────────────────────────────── todo por HTTPS
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+# sin www (si prefieres con www, borra este bloque)
+RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
+
+# ─────────────────────────────────────────────── tipos de archivo
+AddType application/manifest+json .webmanifest
+AddType image/svg+xml .svg
+AddType text/javascript .js
+
+# ─────────────────────────────────────────────── cabeceras de seguridad
+<IfModule mod_headers.c>
+  # nadie puede meter la app dentro de un iframe suyo
+  Header always set Content-Security-Policy "frame-ancestors 'none'"
+  Header always set X-Frame-Options "DENY"
+  # el navegador no adivina tipos de archivo
+  Header always set X-Content-Type-Options "nosniff"
+  # no se filtra la ruta completa a sitios ajenos
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  # la app no pide cámara, micrófono ni ubicación: se apagan
+  Header always set Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=(), usb=(), interest-cohort=()"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  # HTTPS obligatorio durante 6 meses. Actívalo SOLO cuando el candado
+  # ya funcione: si el certificado se cae, el sitio deja de abrir.
+  # Header always set Strict-Transport-Security "max-age=15552000"
+
+  # ── caché
+  # el service worker y la página nunca se guardan en frío:
+  # así una actualización llega el mismo día
+  <FilesMatch "^(sw\.js|index\.html|manifest\.webmanifest)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+  # el código: se revalida, pero se reutiliza si no cambió
+  <FilesMatch "^(app\.js|app\.css|pwa\.js|sync\.js)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  # los iconos y la librería vendorizada no cambian salvo que se suba a mano
+  <FilesMatch "\.(png|svg|ico|webp|woff2)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
+
+# ─────────────────────────────────────────────── compresión
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json application/manifest+json image/svg+xml
+</IfModule>
+
+# ─────────────────────────────────────────────── nada de listar carpetas
+Options -Indexes
+
+# una dirección que no existe muestra la app, no una página de error del servidor
+ErrorDocument 404 /index.html
