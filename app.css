@@ -622,3 +622,20 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 
 /* `hidden` debe ganarle siempre a las clases que fijan display */
 [hidden]{ display:none !important; }
+
+/* ---- Hoy: preparar el día y plan semanal ---- */
+.wstrip{ display:flex; align-items:center; gap:4px; }
+.wday{
+  flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding:7px 0 6px; border-radius:12px; border:1px solid transparent;
+  background:transparent; color:var(--ink-2); font:inherit; cursor:pointer;
+}
+.wday:hover{ background:var(--accent-sf); }
+.wday .wd{ font-size:10px; font-weight:700; letter-spacing:.08em; }
+.wday .wn{ font-size:15px; font-weight:650; color:var(--ink); }
+.wday .wdot{ min-height:12px; font-size:10px; font-weight:700; color:var(--accent); }
+.wday[data-today="1"] .wn{ color:var(--accent); }
+.wday[aria-pressed="true"]{ background:var(--accent-sf); border-color:var(--accent); }
+.plan-group{ font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2); padding:10px 14px 4px; }
+.plan-move{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 14px 12px; background:var(--accent-sf); }
+.plan-add{ display:flex; flex-direction:column; gap:8px; }

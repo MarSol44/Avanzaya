@@ -22,8 +22,10 @@
     }
   } catch (e) { sb = null; }
 
-  function clock() { return +(localStorage.getItem(CLOCK_KEY) || 0); }
-  function setClock(v) { try { localStorage.setItem(CLOCK_KEY, String(v)); } catch (e) { } }
+  // Cada cuenta del dispositivo lleva su propio reloj; la primera conserva el nombre de siempre.
+  function clockKey() { return App.curKey() === App.KEY ? CLOCK_KEY : CLOCK_KEY + '.' + App.curKey(); }
+  function clock() { return +(localStorage.getItem(clockKey()) || 0); }
+  function setClock(v) { try { localStorage.setItem(clockKey(), String(v)); } catch (e) { } }
   function repaint() { if (window.appRender) try { window.appRender(); } catch (e) { } }
 
   /* ------------------------------------------------------- alta y entrada */
@@ -47,6 +49,21 @@
     });
   }
 
+  function google() {
+    if (!sb) { App.toast('El acceso con Google no está disponible ahora mismo.'); return; }
+    sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: location.origin + location.pathname }
+    }).then(function (res) {
+      if (res.error) App.toast('No se pudo abrir Google. Revisa que esté activado en Supabase.');
+    });
+  }
+
+  function signOut() {
+    clearTimeout(pushTimer); pushAgain = false;
+    if (sb) sb.auth.signOut();
+  }
+
   function updatePassword(newPassword) {
     if (!sb || !newPassword) return;
     sb.auth.getSession().then(function (r) {
@@ -57,6 +74,11 @@
   var currentUser = null;
   function onAuthChange(session) {
     currentUser = session ? session.user : null;
+    // Entrada con Google: primero se abre la cuenta local de ese correo y
+    // solo después se sincroniza, para no mezclar datos de dos cuentas.
+    if (currentUser && currentUser.app_metadata && currentUser.app_metadata.provider === 'google' && window.appGoogleLogin) {
+      try { window.appGoogleLogin(currentUser); } catch (e) { }
+    }
     refreshReminderState();
     if (currentUser) { pullThenMaybePush(); maybeOfferReminder(); }
     repaint();
@@ -186,7 +208,7 @@
 
   /* -------------------------------------------------------------- arranque */
   window.Sync = {
-    signUp: signUp, signIn: signIn, updatePassword: updatePassword,
+    signUp: signUp, signIn: signIn, signOut: signOut, google: google, updatePassword: updatePassword,
     markDirty: schedulePush, pullNow: pullThenMaybePush,
     reminderState: function () { return reminderState; },
     enableReminder: enableReminder, disableReminder: disableReminder

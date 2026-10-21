@@ -276,8 +276,17 @@ var Sec = (function () {
       if (!dateOf(k)) return;
       out.events[k] = arrOf(ev[k], 60, function (x) {
         x = objOf(x);
-        return { id: idOf(x.id), title: s(x.title, 400), goalId: idOf(x.goalId), sid: s(x.sid, 40) };
+        return {
+          id: idOf(x.id), title: s(x.title, 400), goalId: idOf(x.goalId), sid: s(x.sid, 40),
+          time: /^([01]\d|2[0-3]):[0-5]\d$/.test(x.time) ? x.time : '',
+          done: !!x.done, kind: x.kind === 'appt' ? 'appt' : 'task'
+        };
       });
+    });
+    // Pendientes que todavía no tienen día.
+    out.todo = arrOf(d.todo, 200, function (x) {
+      x = objOf(x);
+      return { id: idOf(x.id), title: s(x.title, 400), kind: x.kind === 'appt' ? 'appt' : 'task' };
     });
 
     var ch = objOf(d.challenge);
@@ -413,6 +422,31 @@ var App = (function () {
 
   var KEY = 'brujula.v2';
 
+  // Varias cuentas en el mismo navegador: cada una guarda su estado en su
+  // propia clave y un índice correo → clave permite encontrarla al entrar.
+  var USERS_KEY = KEY + '.users', ACTIVE_KEY = KEY + '.active';
+  var curKey = KEY;
+  try { curKey = localStorage.getItem(ACTIVE_KEY) || KEY; } catch (e) { curKey = KEY; }
+  function lc(m) { return String(m || '').trim().toLowerCase(); }
+  function users() {
+    try { var u = JSON.parse(localStorage.getItem(USERS_KEY) || '{}'); return u && typeof u === 'object' ? u : {}; }
+    catch (e) { return {}; }
+  }
+  function indexUser() {
+    if (!S.account || !S.account.email) return;
+    var u = users(), m = lc(S.account.email), k;
+    for (k in u) if (Object.prototype.hasOwnProperty.call(u, k) && u[k] === curKey && k !== m) delete u[k];
+    u[m] = curKey;
+    try { localStorage.setItem(USERS_KEY, JSON.stringify(u)); } catch (e) { }
+  }
+  function newUserKey(m) { return KEY + '.u.' + encodeURIComponent(lc(m)); }
+  function findKey(m) {
+    var u = users(), k = lc(m);
+    if (Object.prototype.hasOwnProperty.call(u, k) && typeof u[k] === 'string' && u[k].indexOf(KEY) === 0) return u[k];
+    if (S.account && lc(S.account.email) === k) return curKey;
+    return null;
+  }
+
   /* ------------------------------------------------------------ utilidades */
   // Identificadores aleatorios de crypto, nunca Math.random ni contadores.
   function uid() { return Sec.uid(); }
@@ -495,7 +529,8 @@ var App = (function () {
       },
       rlog: {},                      // { fecha: { day:[ids], night:[ids] } }
       notes: {},                     // { fecha: 'texto' }
-      events: {},                    // { fecha: [{ id, title, goalId, kind }] }
+      events: {},                    // { fecha: [{ id, title, goalId, sid, time:'HH:MM'|'', done, kind:'task'|'appt' }] }
+      todo: [],                      // pendientes sin día: [{ id, title, kind }]
 
       challenge: null,               // { name, days, start, done:{} }
       reviews: {},                   // { lunesDeLaSemana: { won, adjust, focus } }
@@ -511,7 +546,7 @@ var App = (function () {
   // desde fuera de la app, nada llega al estado sin pasar por el esquema.
   function load() {
     var raw = null;
-    try { raw = localStorage.getItem(KEY); } catch (e) { return; }
+    try { raw = localStorage.getItem(curKey); } catch (e) { return; }
     if (!raw) return;
     var d = null;
     try { d = JSON.parse(raw); } catch (e) { return; }
@@ -526,19 +561,40 @@ var App = (function () {
     if (window.SyncBadge) window.SyncBadge();
   }
 
-  var t1 = null;
+  var t1 = null, dirty = false;
   function save() {
     clearTimeout(t1);
+    dirty = true;
     t1 = setTimeout(function () {
-      try { localStorage.setItem(KEY, JSON.stringify(S)); }
+      dirty = false;
+      try { localStorage.setItem(curKey, JSON.stringify(S)); indexUser(); }
       catch (e) { toast('No se pudo guardar: el navegador está lleno. Borra alguna imagen del tablero.'); }
       afterSave();
     }, 200);
   }
   function saveNow() {
-    clearTimeout(t1);
-    try { localStorage.setItem(KEY, JSON.stringify(S)); afterSave(); return true; }
+    clearTimeout(t1); dirty = false;
+    try { localStorage.setItem(curKey, JSON.stringify(S)); indexUser(); afterSave(); return true; }
     catch (e) { toast('No se pudo guardar: el navegador está lleno.'); return false; }
+  }
+
+  // Si se cierra o se oculta la pestaña antes de que salte el guardado
+  // diferido, lo último que se escribió se guarda en ese momento.
+  function flush() { if (dirty) saveNow(); }
+  window.addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flush(); });
+
+  // Cambia a la cuenta guardada en `key` (o a una vacía si no existe todavía).
+  function switchUser(key) {
+    saveNow();
+    var f = defaults(), k;
+    for (k in f) if (Object.prototype.hasOwnProperty.call(f, k)) S[k] = f[k];
+    curKey = key;
+    try { localStorage.setItem(ACTIVE_KEY, key); } catch (e) { }
+    load();
+    if (!S.start) S.start = today();
+    // La sesión de la nube es de la cuenta anterior: se cierra para que sus datos no pisen los de ésta.
+    if (window.Sync && window.Sync.signOut) window.Sync.signOut();
   }
 
   /* ------------------------------------------------------ estado de interfaz */
@@ -831,6 +887,7 @@ var App = (function () {
 
   return {
     KEY: KEY, S: S, ui: ui, RC_AREAS: RC_AREAS,
+    curKey: function () { return curKey; }, findKey: findKey, newUserKey: newUserKey, switchUser: switchUser,
     uid: uid, esc: esc, clamp: clamp, byId: byId, plural: plural,
     dkey: dkey, parseK: parseK, today: today, shift: shift, diff: diff,
     fmt: fmt, fmtLong: fmtLong, cap: cap, inDays: inDays,
@@ -929,6 +986,7 @@ var V = {};
       '<label class="checkrow"><input type="checkbox" id="liKeep" checked>Mantener la sesión iniciada</label>' +
       '<p id="liErr" class="tiny" style="color:var(--bad);min-height:16px"></p>' +
       '<button class="btn block" type="submit" data-a="dologin">Iniciar sesión</button>' +
+      '<button class="btn soft block" type="button" data-a="google">Continuar con Google</button>' +
       '<button class="btn ghost block" type="button" data-a="forgot">¿Olvidaste tu contraseña?</button>' +
       '<button class="btn soft block" type="button" data-a="go" data-s="register">Crear una cuenta nueva</button>' +
       '<p class="notice">La cuenta vive solo en este navegador: no hay servidor que verifique nada ni correo de recuperación. Guarda tu respaldo desde Perfil.</p>' +
@@ -958,6 +1016,7 @@ var V = {};
       '<span>Acepto los <a href="#" data-a="legal" data-doc="terminos">Términos y Condiciones</a> y la <a href="#" data-a="legal" data-doc="privacidad">Política de Privacidad</a>.</span></label>' +
       '<p id="rgErr" class="tiny" style="color:var(--bad);min-height:16px"></p>' +
       '<button class="btn block" type="submit" data-a="doregister">Crear cuenta</button>' +
+      '<button class="btn soft block" type="button" data-a="google">Continuar con Google</button>' +
       '</form></div>';
   };
 
@@ -1528,12 +1587,127 @@ var V = {};
     return h + '</div>';
   }
 
+  /* ------------------------------------------------- tareas de hoy y plan */
+  var WD = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+
+  // Con hora primero y por orden; el resto va aparte, en «Cuando puedas».
+  function planRow(e, day) {
+    var open = ui.moveId === e.id, appt = e.kind === 'appt';
+    var h = '<div class="listrow plan' + (e.done ? ' is-done' : '') + '" style="padding:10px 6px 10px 12px">' +
+      '<button class="chk" role="checkbox" aria-checked="' + !!e.done + '" data-a="evdone" data-day="' + day + '" data-id="' + esc(e.id) + '" aria-label="Marcar «' + esc(e.title) + '» como hecha">' + I('check', 15) + '</button>' +
+      '<span class="grow" style="font-size:14px' + (e.done ? ';color:var(--ink-2);text-decoration:line-through' : '') + '">' + esc(e.title) + '</span>' +
+      (appt ? '<span class="pill accent">' + I('calendar', 13) + 'Cita</span>' : '') +
+      (e.time ? '<span class="pill num">' + esc(e.time) + '</span>' : '') +
+      '<button class="iconbtn" data-a="evmove" data-id="' + esc(e.id) + '" aria-expanded="' + open + '" aria-label="Cambiar día u hora">' + I('pencil', 16) + '</button>' +
+      '<button class="delbtn" data-a="evdel" data-day="' + day + '" data-id="' + esc(e.id) + '" aria-label="Quitar tarea">' + I('trash', 17) + '</button></div>';
+    if (open) {
+      h += '<div class="plan-move">' +
+        '<span class="tiny">Pasar a</span>' +
+        '<button class="btn soft xs" data-a="evto" data-day="' + day + '" data-id="' + esc(e.id) + '" data-to="' + App.shift(day, 1) + '">Mañana</button>' +
+        '<button class="btn soft xs" data-a="evto" data-day="' + day + '" data-id="' + esc(e.id) + '" data-to="' + App.shift(day, 7) + '">En 7 días</button>' +
+        '<button class="btn soft xs" data-a="evto" data-day="' + day + '" data-id="' + esc(e.id) + '" data-to="">Sin fecha</button>' +
+        '<input class="inp" type="date" style="padding:5px 9px;font-size:12.5px;width:auto" data-f="evdate" data-day="' + day + '" data-id="' + esc(e.id) + '" value="' + day + '" aria-label="Otro día">' +
+        '<span class="tiny">Hora</span>' +
+        '<input class="inp" type="time" style="padding:5px 9px;font-size:12.5px;width:auto" data-f="evtime" data-day="' + day + '" data-id="' + esc(e.id) + '" value="' + esc(e.time || '') + '" aria-label="Hora (opcional)">' +
+        '</div>';
+    }
+    return h;
+  }
+
+  function taskList(day, empty) {
+    var list = S.events[day] || [];
+    if (!list.length) return '<p class="muted">' + empty + '</p>';
+    var timed = list.filter(function (e) { return e.time; }).sort(function (x, y) { return x.time < y.time ? -1 : x.time > y.time ? 1 : 0; });
+    var loose = list.filter(function (e) { return !e.time; });
+    var h = '<div class="list">';
+    timed.forEach(function (e) { h += planRow(e, day); });
+    if (loose.length) h += '<div class="plan-group">Cuando puedas</div>';
+    loose.forEach(function (e) { h += planRow(e, day); });
+    return h + '</div>';
+  }
+
+  /* «Plan de hoy»: tareas con horario, pendientes flexibles, y añadir o quitar */
+  function planSection(t) {
+    var evs = S.events[t] || [];
+    var withTime = evs.filter(function (e) { return e.time; }).length;
+    var doneN = evs.filter(function (e) { return e.done; }).length;
+    var kind = ui.ntKind === 'appt' ? 'appt' : 'task';
+    var h = '<div class="sect">' +
+      '<div class="sect-head"><span class="sect-title" style="font-size:1.05rem">' + I('list') + 'Plan de hoy</span>' +
+      '<span class="pill num' + (evs.length && doneN === evs.length ? ' good' : '') + '">' + doneN + ' de ' + evs.length + '</span></div>' +
+      (evs.length ? '<p class="tiny">' + App.plural(evs.length, 'tarea', 'tareas') + ' · ' + (withTime ? withTime + ' con horario' : 'sin horario') + '</p>' : '') +
+      taskList(t, 'Nada planeado para hoy. Añade algo o trae un pendiente.');
+
+    h += '<div class="plan-add">' +
+      '<div class="row" style="gap:8px"><input class="inp grow" data-f="ntTitle" data-add="task" value="' + esc(ui.ntTitle || '') + '" placeholder="Añadir una tarea o cita" aria-label="Nueva tarea">' +
+      '<button class="fab sm" data-a="ntAdd" aria-label="Añadir al plan">' + I('plus') + '</button></div>' +
+      '<div class="row" style="gap:8px;flex-wrap:wrap">' +
+      '<input class="inp" type="time" style="width:auto" data-f="ntTime" value="' + esc(ui.ntTime || '') + '" aria-label="Hora (opcional)">' +
+      '<input class="inp" type="date" style="width:auto" data-f="ntDate" value="' + esc(ui.ntDate || t) + '" aria-label="Día">' +
+      '<span class="seg" role="group" aria-label="Tipo">' +
+      '<button type="button" data-a="ntKind" data-v="task" aria-pressed="' + (kind === 'task') + '">Tarea</button>' +
+      '<button type="button" data-a="ntKind" data-v="appt" aria-pressed="' + (kind === 'appt') + '">Cita</button></span>' +
+      '<button class="btn ghost sm" data-a="ntAddTodo">Guardar sin fecha</button></div></div>';
+
+    if (S.todo.length) {
+      h += '<div class="plan-group">Pendientes sin fecha</div><div class="list">';
+      S.todo.forEach(function (x) {
+        h += '<div class="listrow" style="padding:10px 6px 10px 14px">' +
+          '<span class="grow" style="font-size:14px">' + esc(x.title) + '</span>' +
+          (x.kind === 'appt' ? '<span class="pill accent">' + I('calendar', 13) + 'Cita</span>' : '') +
+          '<button class="btn soft xs" data-a="todoPull" data-id="' + esc(x.id) + '">' + I('plus', 13) + 'Traer a hoy</button>' +
+          '<button class="delbtn" data-a="tododel" data-id="' + esc(x.id) + '" aria-label="Quitar pendiente">' + I('trash', 17) + '</button></div>';
+      });
+      h += '</div>';
+    }
+    return h + '</div>';
+  }
+
+  /* metas que vencen pronto */
+  function soonSection() {
+    var soon = App.upcoming(3);
+    if (!soon.length) return '';
+    var h = '<div class="sect">' +
+      '<div class="sect-head"><span class="sect-title" style="font-size:1.05rem">' + I('target') + 'Vence pronto</span>' +
+      '<button class="btn ghost xs" data-a="tab" data-t="metas">Ver todas</button></div>' +
+      '<div class="list">';
+    soon.forEach(function (x) {
+      var d = App.due(x.g.due, false), c = App.cat(x.g.cat);
+      h += '<button class="listrow" data-a="openGoal" data-k="' + x.kind + '" data-id="' + esc(x.g.id) + '">' +
+        '<span class="thumb" style="width:34px;height:34px;border-radius:10px;font-size:16px;background:' +
+        (c ? esc(c.color) + '1f' : 'color-mix(in srgb,var(--ink) 6%,transparent)') + '">' + (c ? esc(c.emoji) : I('target', 17)) + '</span>' +
+        '<span class="grow" style="font-size:14px">' + esc(x.g.name || 'Meta sin nombre') + '</span>' +
+        '<span class="pill ' + d.cls + '">' + (d.cls === 'bad' ? I('flame', 13) : '') + esc(d.txt) + '</span></button>';
+    });
+    return h + '</div></div>';
+  }
+
+  /* lo que viene después: la semana en una tira y el día elegido (mañana por defecto) */
+  function upcomingSection(t) {
+    var d = ui.planDay;
+    if (!d || !/^\d{4}-\d\d-\d\d$/.test(d)) d = ui.planDay = App.shift(t, 1);
+    var days = App.weekDays(App.weekStart(d));
+    var h = '<div class="sect">' +
+      '<div class="sect-head"><span class="sect-title" style="font-size:1.05rem">' + I('calendar') + 'Lo que viene</span></div>' +
+      '<div class="wstrip" role="group" aria-label="Días de la semana">' +
+      '<button class="iconbtn" data-a="planWeek" data-v="-7" aria-label="Semana anterior">' + I('left', 17) + '</button>';
+    days.forEach(function (k) {
+      var pend = (S.events[k] || []).filter(function (e) { return !e.done; }).length;
+      h += '<button class="wday" data-a="planDay" data-day="' + k + '" aria-pressed="' + (k === d) + '"' + (k === t ? ' data-today="1"' : '') +
+        ' aria-label="' + esc(App.cap(App.fmtLong(k))) + (pend ? ', ' + pend + ' pendientes' : '') + '">' +
+        '<span class="wd">' + WD[App.parseK(k).getDay()] + '</span><span class="wn">' + +k.slice(8) + '</span>' +
+        '<span class="wdot">' + (pend ? pend : '') + '</span></button>';
+    });
+    h += '<button class="iconbtn" data-a="planWeek" data-v="7" aria-label="Semana siguiente">' + I('right', 17) + '</button></div>';
+    if (d === t) h += '<p class="muted">Es hoy: tus tareas están arriba.</p>';
+    else h += '<p class="tiny">' + esc(App.cap(App.fmtLong(d))) + '</p>' + taskList(d, 'Nada planeado para este día.');
+    return h + '</div>';
+  }
+
   /* --------------------------------------------------------------- la vista */
   V.hoy = function () {
     var t = App.today(), st = App.streak();
     var tot = App.dayTotals(t);
-    var evs = S.events[t] || [];
-    var soon = App.upcoming(3);
     var name = (S.account && S.account.name) ? S.account.name.split(' ')[0] : '';
     var hora = new Date().getHours();
     var saludo = hora < 6 ? 'Buenas noches' : hora < 13 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches';
@@ -1558,42 +1732,26 @@ var V = {};
     }
     h += '</div>';
 
-    h += nudgeCard();
+    h += soonSection();
 
-    /* rutinas de hoy */
+    /* plan de hoy: tareas con horario y pendientes flexibles */
+    h += planSection(t);
+
+    /* rutina de día como siguiente acción; la de noche plegada hasta que toca */
     h += routine('day', 'Rutina de día', 'sunrise');
-    h += routine('night', 'Rutina de noche', 'moon');
-
-    /* tareas del día que vienen de metas sincronizadas */
-    if (evs.length) {
-      h += '<div class="sect">' +
-        '<div class="sect-head"><span class="sect-title" style="font-size:1.05rem">' + I('list') + 'Tareas de hoy</span></div>' +
-        '<div class="list">';
-      evs.forEach(function (e) {
-        h += '<div class="listrow" style="padding:11px 10px 11px 14px">' +
-          '<span class="catdot" style="background:var(--accent)"></span>' +
-          '<span class="grow" style="font-size:13.5px">' + esc(e.title) + '</span>' +
-          '<button class="delbtn" data-a="evdel" data-day="' + t + '" data-id="' + esc(e.id) + '" aria-label="Quitar tarea">' + I('trash', 17) + '</button></div>';
-      });
-      h += '</div></div>';
+    var nightList = S.routines.night || [], nightMarks = (S.rlog[t] || { night: [] }).night || [];
+    if (hora >= 18 || ui.nightOpen) {
+      h += routine('night', 'Rutina de noche', 'moon');
+    } else {
+      h += '<div class="sect"><button class="btn ghost block" data-a="toggleNight" style="justify-content:space-between">' +
+        '<span class="row" style="gap:8px">' + I('moon', 17) + 'Rutina de noche</span>' +
+        '<span class="pill num">' + nightMarks.length + ' de ' + nightList.length + '</span></button></div>';
     }
 
-    /* metas que vencen pronto */
-    if (soon.length) {
-      h += '<div class="sect">' +
-        '<div class="sect-head"><span class="sect-title" style="font-size:1.05rem">' + I('target') + 'Vence pronto</span>' +
-        '<button class="btn ghost xs" data-a="tab" data-t="metas">Ver todas</button></div>' +
-        '<div class="list">';
-      soon.forEach(function (x) {
-        var d = App.due(x.g.due, false), c = App.cat(x.g.cat);
-        h += '<button class="listrow" data-a="openGoal" data-k="' + x.kind + '" data-id="' + esc(x.g.id) + '">' +
-          '<span class="thumb" style="width:34px;height:34px;border-radius:10px;font-size:16px;background:' +
-          (c ? esc(c.color) + '1f' : 'color-mix(in srgb,var(--ink) 6%,transparent)') + '">' + (c ? esc(c.emoji) : I('target', 17)) + '</span>' +
-          '<span class="grow" style="font-size:14px">' + esc(x.g.name || 'Meta sin nombre') + '</span>' +
-          '<span class="pill ' + d.cls + '">' + (d.cls === 'bad' ? I('flame', 13) : '') + esc(d.txt) + '</span></button>';
-      });
-      h += '</div></div>';
-    }
+    h += upcomingSection(t);
+
+    /* sugerencias de la app, con menos protagonismo */
+    h += nudgeCard();
 
     /* la nota del día, plegada hasta que hace falta */
     var note = S.notes[t] || '';
@@ -2518,6 +2676,22 @@ var V = {};
     }, 60);
   }
 
+  // Pasa una tarea a otro día; con `to` vacío vuelve a los pendientes sin fecha.
+  function moveEvent(from, id, to) {
+    var list = S.events[from] || [], e = list.filter(function (x) { return x.id === id; })[0];
+    if (!e || to === from) return;
+    if (to && !/^\d{4}-\d\d-\d\d$/.test(to)) return;
+    if (to && (S.events[to] || []).length >= 60) { App.toast('Ese día ya está lleno.'); return; }
+    if (!to && S.todo.length >= 200) { App.toast('Ya tienes muchos pendientes sin fecha: quita alguno.'); return; }
+    S.events[from] = list.filter(function (x) { return x.id !== id; });
+    if (!S.events[from].length) delete S.events[from];
+    if (to) { (S.events[to] = S.events[to] || []).push(e); }
+    else S.todo.unshift({ id: e.id, title: e.title, kind: e.kind });
+    ui.moveId = null;
+    App.save(); render();
+    App.toast(to ? 'Pasada al ' + App.fmt(to) + '.' : 'Guardada en pendientes sin fecha.');
+  }
+
   function promote(goalId, stepId) {
     var g = App.byId(S.goalsL, goalId); if (!g) return;
     var st = App.byId(g.steps || [], stepId); if (!st || st.promoted) return;
@@ -2640,6 +2814,11 @@ var V = {};
       App.toast('«' + v + '» añadida. Ábrela para ponerle pasos.');
       return;
     }
+    if (a === 'google') {
+      if (window.Sync && window.Sync.google) window.Sync.google();
+      else App.toast('El acceso con Google no está disponible ahora mismo.');
+      return;
+    }
     if (a === 'dologin') { e.preventDefault(); doLogin(); return; }
     if (a === 'doregister') { e.preventDefault(); doRegister(); return; }
     if (a === 'skipProfile') { startRC(); return; }
@@ -2707,6 +2886,46 @@ var V = {};
       if (!S.events[day].length) delete S.events[day];
       App.save(); render(); return;
     }
+
+    /* --- Hoy: preparar el día, plan semanal, completar y reprogramar --- */
+    if (a === 'planDay') { ui.planDay = el.getAttribute('data-day'); ui.moveId = null; render(); return; }
+    if (a === 'planWeek') { ui.planDay = App.shift(ui.planDay || App.today(), +v); ui.moveId = null; render(); return; }
+    if (a === 'evdone') {
+      var ed = (S.events[el.getAttribute('data-day')] || []).filter(function (x) { return x.id === id; })[0];
+      if (ed) { ed.done = !ed.done; App.save(); render(); }
+      return;
+    }
+    if (a === 'toggleNight') { ui.nightOpen = true; render(); return; }
+    if (a === 'evmove') { ui.moveId = ui.moveId === id ? null : id; render(); return; }
+    if (a === 'evto') { moveEvent(el.getAttribute('data-day'), id, el.getAttribute('data-to')); return; }
+    if (a === 'ntKind') { ui.ntKind = v === 'appt' ? 'appt' : 'task'; render(); return; }
+    if (a === 'ntAdd' || a === 'ntAddTodo') {
+      var ntT = String(ui.ntTitle || '').trim();
+      if (!ntT) { App.toast('Escribe primero qué es.'); return; }
+      var ntK = ui.ntKind === 'appt' ? 'appt' : 'task';
+      if (a === 'ntAddTodo') {
+        if (S.todo.length >= 200) { App.toast('Ya tienes muchos pendientes sin fecha: quita alguno.'); return; }
+        S.todo.unshift({ id: App.uid(), title: ntT, kind: ntK });
+      } else {
+        var pd = /^\d{4}-\d\d-\d\d$/.test(ui.ntDate || '') ? ui.ntDate : App.today();
+        if (!S.events[pd]) S.events[pd] = [];
+        if (S.events[pd].length >= 60) { App.toast('Ese día ya está lleno.'); return; }
+        S.events[pd].push({ id: App.uid(), title: ntT, goalId: '', sid: '', time: /^([01]\d|2[0-3]):[0-5]\d$/.test(ui.ntTime || '') ? ui.ntTime : '', done: false, kind: ntK });
+      }
+      ui.ntTitle = ''; ui.ntTime = ''; ui.ntDate = '';
+      App.save(); render(); return;
+    }
+    if (a === 'todoPull') {
+      var tp = S.todo.filter(function (x) { return x.id === id; })[0];
+      if (!tp) return;
+      var pd2 = App.today();
+      if (!S.events[pd2]) S.events[pd2] = [];
+      if (S.events[pd2].length >= 60) { App.toast('Ese día ya está lleno.'); return; }
+      S.events[pd2].push({ id: App.uid(), title: tp.title, goalId: '', sid: '', time: '', done: false, kind: tp.kind });
+      S.todo = S.todo.filter(function (x) { return x.id !== id; });
+      App.save(); render(); return;
+    }
+    if (a === 'tododel') { S.todo = S.todo.filter(function (x) { return x.id !== id; }); App.save(); render(); return; }
 
     /* --- rutinas --- */
     if (a === 'rtoggle') {
@@ -2895,6 +3114,7 @@ var V = {};
     if (a === 'logout') {
       S.session = false; S.sessionAt = 0;
       try { sessionStorage.removeItem('brujula.live'); } catch (er0) { }
+      if (window.Sync && window.Sync.signOut) window.Sync.signOut();
       ui.screen = 'splash'; App.saveNow(); render(); window.scrollTo(0, 0);
       App.toast('Sesión cerrada. Tus datos siguen en este dispositivo.');
       return;
@@ -2943,7 +3163,7 @@ var V = {};
       }
       var fresh = App.defaults(), kk;
       for (kk in fresh) if (Object.prototype.hasOwnProperty.call(fresh, kk)) S[kk] = fresh[kk];
-      try { localStorage.removeItem(App.KEY); } catch (er2) { }
+      try { localStorage.removeItem(App.curKey()); } catch (er2) { }
       try { sessionStorage.removeItem('brujula.live'); } catch (er3) { }
       ui.screen = 'splash'; ui.tab = 'metas';
       App.applyTheme(); closeSheet(); render();
@@ -2995,6 +3215,9 @@ var V = {};
     var p = (document.getElementById('liPass') || {}).value || '';
     var keep = document.getElementById('liKeep');
     var err = document.getElementById('liErr');
+    var userKey = App.findKey(m);
+    if (!userKey) { err.textContent = 'No hay ninguna cuenta con ese correo en este dispositivo. Regístrate o entra sin cuenta.'; return; }
+    if (userKey !== App.curKey()) App.switchUser(userKey);
     if (!S.account) { err.textContent = 'No hay ninguna cuenta en este dispositivo. Regístrate o entra sin cuenta.'; return; }
     if (!S.account.pass) {
       err.textContent = 'Esta cuenta viene de un respaldo y no trae contraseña válida. Entra sin cuenta y créala desde Perfil › Seguridad.';
@@ -3031,6 +3254,28 @@ var V = {};
     });
   }
 
+  // Google ya verificó quién es: se abre la sesión de la cuenta local de ese
+  // correo (se crea sin contraseña propia si no existía) y se entra a la app.
+  window.appGoogleLogin = function (user) {
+    var mail = String(user && user.email || '').trim();
+    if (!mail) return;
+    if (S.session && S.account && String(S.account.email).toLowerCase() === mail.toLowerCase()) return;
+    var key = App.findKey(mail);
+    if (key && key !== App.curKey()) App.switchUser(key);
+    else if (!key) {
+      if (S.account && S.account.email) App.switchUser(App.newUserKey(mail));
+    }
+    if (!S.account) {
+      var meta = user.user_metadata || {};
+      S.account = { name: String(meta.full_name || meta.name || mail.split('@')[0]).slice(0, 80), email: mail, pass: '', created: App.today() };
+      if (!S.profile.tz) S.profile.tz = V.guessTz();
+    }
+    openSession('keep');
+    S.onboarded = true;
+    App.saveNow();
+    goApp('hoy');
+  };
+
   function doRegister() {
     var n = (document.getElementById('rgName') || {}).value || '';
     var m = (document.getElementById('rgMail') || {}).value || '';
@@ -3044,12 +3289,17 @@ var V = {};
     if (weak) { err.textContent = weak; return; }
     if (p !== p2) { err.textContent = 'Las dos contraseñas no coinciden.'; return; }
     if (!t || !t.checked) { err.textContent = 'Tienes que aceptar los Términos y la Política de Privacidad.'; return; }
+    if (App.findKey(m) && !(S.account && App.findKey(m) === App.curKey() && !S.account.pass)) {
+      err.textContent = 'Ya hay una cuenta con ese correo en este dispositivo. Inicia sesión.'; return;
+    }
     if (busy) return;
     busy = true; err.style.color = 'var(--ink-2)'; err.textContent = 'Protegiendo tu contraseña…';
     busyBtn('[data-a="doregister"]', true, 'Protegiendo…');
     // La contraseña nunca se guarda: se guarda su derivación PBKDF2 con sal.
     Sec.hashPass(p).then(function (rec) {
       busy = false; busyBtn('[data-a="doregister"]', false);
+      // Si ya hay otra cuenta en este navegador, la nueva empieza con datos propios.
+      if (S.account && S.account.email) App.switchUser(App.newUserKey(m));
       S.account = { name: n.trim(), email: m.trim(), pass: rec, created: App.today() };
       S.auth = { fails: 0, until: 0 };
       if (window.Sync) window.Sync.signUp(S.account.email, p);
@@ -3172,6 +3422,9 @@ var V = {};
     var id = el.getAttribute('data-id'), k = el.getAttribute('data-k'), sid = el.getAttribute('data-s');
     var g;
 
+    if (f === 'ntTitle') { ui.ntTitle = el.value; return; }
+    if (f === 'ntTime') { ui.ntTime = el.value; return; }
+    if (f === 'ntDate') { ui.ntDate = el.value; return; }
     if (f === 'note') { if (el.value.trim()) S.notes[ui.selDay] = el.value; else delete S.notes[ui.selDay]; grow(el); App.save(); return; }
     if (f === 'vision') { var vv = App.byId(S.visions, id); if (vv) vv.text = el.value; grow(el); App.save(); return; }
     if (f === 'goalQ') { ui.goalQ = el.value; ui.refocus = 'goalSearch'; App.save(); render(); return; }
@@ -3232,6 +3485,12 @@ var V = {};
     if (!f) return;
     var id = el.getAttribute('data-id'), k = el.getAttribute('data-k'), sid = el.getAttribute('data-s'), g;
 
+    if (f === 'evdate') { moveEvent(el.getAttribute('data-day'), id, el.value); return; }
+    if (f === 'evtime') {
+      var et = (S.events[el.getAttribute('data-day')] || []).filter(function (x) { return x.id === id; })[0];
+      if (et) { et.time = /^([01]\d|2[0-3]):[0-5]\d$/.test(el.value) ? el.value : ''; App.save(); render(); }
+      return;
+    }
     if (f === 'gdue') { g = App.findGoal(k, id); if (g) g.due = el.value; App.save(); renderSheet(); render(); return; }
     if (f === 'gcat') {
       if (el.value === '__new') { ui.newCatColor = '#5b6ee1'; ui.catBack = { k: k, id: id }; openSheet({ t: 'cat' }); return; }
@@ -3265,6 +3524,7 @@ var V = {};
     var btn = null;
     if (add === 'rday') btn = document.querySelector('[data-a="radd"][data-k="day"]');
     if (add === 'rnight') btn = document.querySelector('[data-a="radd"][data-k="night"]');
+    if (add === 'task') btn = document.querySelector('[data-a="ntAdd"]');
     if (add === 'step') btn = document.querySelector('#sheet [data-a="stepAdd"]');
     if (add === 'win') btn = document.querySelector('[data-a="addWin"]');
     if (add === 'challenge') btn = document.querySelector('[data-a="addChallenge"]');
