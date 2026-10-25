@@ -662,3 +662,30 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 }
 .fold-head:focus-visible{ outline:2px solid var(--accent); outline-offset:4px; border-radius:8px; }
 .fold-head > .row .ic{ color:var(--ink-2); }
+/* contador de tareas pendientes sobre la pestaña Hoy */
+.tabbar .ti{ position:relative; }
+.tbadge{
+  position:absolute; top:-3px; right:-7px; min-width:17px; height:17px; padding:0 4px;
+  border-radius:9px; background:var(--accent); color:#fff; font-size:10.5px; font-weight:700;
+  line-height:17px; text-align:center; box-shadow:0 0 0 2px var(--surface, #fff);
+}
+/* el título de cada sección plegable de Perfil */
+.fold-head .label{ pointer-events:none; }
+/* Hoy: el día de un vistazo, en tres tarjetas */
+.hstats{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.hstat{
+  display:flex; flex-direction:column; align-items:flex-start; gap:2px; min-width:0;
+  padding:11px 12px 10px; border-radius:14px; border:1px solid var(--line);
+  background:var(--surface); color:var(--ink); font:inherit; text-align:left;
+}
+button.hstat{ cursor:pointer; }
+button.hstat:hover{ border-color:var(--accent); }
+.hstat .hn{
+  display:flex; align-items:center; gap:3px;
+  font-family:var(--disp); font-weight:600; font-size:1.6rem; line-height:1.05; letter-spacing:-.02em;
+}
+.hstat .hn small{ font-size:.55em; color:var(--ink-2); font-weight:500; }
+.hstat .hn .ic{ color:var(--warn, #d9822b); }
+.hstat .hl{ font-size:11.5px; color:var(--ink-2); line-height:1.25; }
+.hstat.good{ background:var(--good-sf); border-color:transparent; }
+.hstat.good .hn{ color:var(--good); }

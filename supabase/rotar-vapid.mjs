@@ -9,7 +9,7 @@
 //   2. Las guarda directamente como secretos de las funciones de Supabase
 //      (VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY), mediante un archivo temporal
 //      privado que se sobrescribe y borra en cuanto el CLI termina.
-//   3. Solo si eso salió bien, escribe la clave PÚBLICA en sync.js (es
+//   3. Solo si eso salió bien, escribe la clave PÚBLICA en js/infraestructura/nube-supabase.js (es
 //      pública por diseño: el navegador la necesita para suscribirse).
 // La clave privada no se imprime ni se guarda en ningún archivo del proyecto.
 
@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 
 const PROJECT_REF = 'fgpwhdfvqtlvfmmzhxsy';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SYNC = join(ROOT, 'sync.js');
+const SYNC = join(ROOT, 'js', 'infraestructura', 'nube-supabase.js');
 
 // --- 1. claves nuevas
 const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
@@ -62,14 +62,14 @@ if (!ok) {
 const src = readFileSync(SYNC, 'utf8');
 const re = /(var VAPID_PUBLIC_KEY = ')[A-Za-z0-9_-]+(';)/;
 if (!re.test(src)) {
-  console.error('\nSecretos guardados, pero no encontré VAPID_PUBLIC_KEY en sync.js.');
-  console.error('Pon a mano esta clave PÚBLICA en sync.js: ' + VAPID_PUBLIC);
+  console.error('\nSecretos guardados, pero no encontré VAPID_PUBLIC_KEY en js/infraestructura/nube-supabase.js.');
+  console.error('Pon a mano esta clave PÚBLICA en js/infraestructura/nube-supabase.js: ' + VAPID_PUBLIC);
   process.exit(1);
 }
 writeFileSync(SYNC, src.replace(re, '$1' + VAPID_PUBLIC + '$2'));
 
 console.log('\nListo:');
 console.log('  - VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY nuevas guardadas en Supabase.');
-console.log('  - sync.js actualizado con la clave pública nueva.');
-console.log('Siguiente: sube sync.js y sw.js al hosting. Los móviles con el');
+console.log('  - js/infraestructura/nube-supabase.js actualizado con la clave pública nueva.');
+console.log('Siguiente: sube los cambios (js/infraestructura/nube-supabase.js y sw.js) al hosting. Los móviles con el');
 console.log('recordatorio activo se volverán a suscribir solos al abrir la app.');

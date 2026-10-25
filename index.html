@@ -88,10 +88,53 @@
 </div>
 
 <script src="/vendor/supabase.js"></script>
-<script src="/frases.js"></script>
-<script src="/app.js"></script>
-<script src="/pwa.js"></script>
-<script src="/sync.js"></script>
+<!-- Monolito en N capas. Cada capa solo usa las de abajo:
+     compartido → dominio → infraestructura → aplicación → presentación.
+     El adaptador de la nube va al final: se ofrece al puerto Nube cuando todo está listo. -->
+<script src="/js/compartido/util.js"></script>
+<script src="/js/compartido/fechas.js"></script>
+<script src="/js/compartido/eventos.js"></script>
+<script src="/js/dominio/tareas.js"></script>
+<script src="/js/dominio/metas.js"></script>
+<script src="/js/dominio/rutinas.js"></script>
+<script src="/js/dominio/areas.js"></script>
+<script src="/js/dominio/revision.js"></script>
+<script src="/js/infraestructura/seguridad.js"></script>
+<script src="/js/infraestructura/almacen.js"></script>
+<script src="/js/infraestructura/preferencias.js"></script>
+<script src="/js/infraestructura/nube.js"></script>
+<script src="/js/aplicacion/servicios.js"></script>
+<script src="/js/aplicacion/datos.js"></script>
+<script src="/js/aplicacion/cuentas.js"></script>
+<script src="/js/aplicacion/ajustes.js"></script>
+<script src="/js/aplicacion/objetivos.js"></script>
+<script src="/js/aplicacion/habitos.js"></script>
+<script src="/js/aplicacion/vision.js"></script>
+<script src="/js/aplicacion/progreso.js"></script>
+<script src="/js/aplicacion/chequeo.js"></script>
+<script src="/js/presentacion/frases.js"></script>
+<script src="/js/presentacion/iconos.js"></script>
+<script src="/js/presentacion/estado-ui.js"></script>
+<script src="/js/presentacion/formato.js"></script>
+<script src="/js/presentacion/pantalla.js"></script>
+<script src="/js/presentacion/pantallas.js"></script>
+<script src="/js/presentacion/vistas/entrada.js"></script>
+<script src="/js/presentacion/vistas/metas.js"></script>
+<script src="/js/presentacion/vistas/hoy.js"></script>
+<script src="/js/presentacion/vistas/vision.js"></script>
+<script src="/js/presentacion/vistas/perfil.js"></script>
+<script src="/js/presentacion/vistas/hojas.js"></script>
+<script src="/js/presentacion/interfaz.js"></script>
+<script src="/js/presentacion/controladores/navegacion.js"></script>
+<script src="/js/presentacion/controladores/hoy.js"></script>
+<script src="/js/presentacion/controladores/metas.js"></script>
+<script src="/js/presentacion/controladores/vision.js"></script>
+<script src="/js/presentacion/controladores/progreso.js"></script>
+<script src="/js/presentacion/controladores/entrada.js"></script>
+<script src="/js/presentacion/controladores/perfil.js"></script>
+<script src="/js/presentacion/pwa.js"></script>
+<script src="/js/arranque.js"></script>
+<script src="/js/infraestructura/nube-supabase.js"></script>
 
 <!-- Analítica sin cookies. Cambia PON_AQUI_TU_TOKEN por el token que te da Cloudflare. -->
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "PON_AQUI_TU_TOKEN"}'></script>

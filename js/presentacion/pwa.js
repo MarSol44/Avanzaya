@@ -1,13 +1,12 @@
-/* Brújula de Vida — instalación, modo sin conexión y aviso de versión nueva.
-   Va aparte de app.js a propósito: si algo de esto falla, la app sigue abriendo. */
+/* ==========================================================================
+   PRESENTACIÓN — instalación, modo sin conexión y aviso de versión nueva.
+   Va aparte a propósito: si algo de esto falla, la app sigue abriendo.
+   Lo que recuerda (cuándo se rechazó instalar) pasa por Preferencias.
+   ========================================================================== */
 (function () {
   'use strict';
 
   var $ = function (id) { return document.getElementById(id); };
-  var LS = {
-    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-  };
 
   /* ─────────────────────────────────────────────── service worker */
   var esperando = null;
@@ -57,7 +56,7 @@
 
   var instalada = window.matchMedia('(display-mode: standalone)').matches ||
                   window.navigator.standalone === true;
-  var rechazada = LS.get('bdv.instalar.no');
+  var rechazada = Preferencias.get('instalar.no', null);
   /* si dijo «ahora no», no se le vuelve a preguntar en 30 días */
   var callar = rechazada && (Date.now() - Number(rechazada)) < 30 * 864e5;
 
@@ -65,7 +64,7 @@
   function enseñar() { if (!instalada && !callar) bar.hidden = false; }
 
   $('installbar-no').addEventListener('click', function () {
-    LS.set('bdv.instalar.no', String(Date.now()));
+    Preferencias.set('instalar.no', Date.now());
     esconder();
   });
 

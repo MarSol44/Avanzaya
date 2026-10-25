@@ -9,9 +9,8 @@ set -euo pipefail
 
 rm -rf dist
 mkdir -p dist
-cp index.html app.css app.js frases.js pwa.js sync.js sw.js \
-   manifest.webmanifest robots.txt sitemap.xml _headers dist/
-cp -r icons vendor dist/
+cp index.html app.css sw.js manifest.webmanifest robots.txt sitemap.xml _headers dist/
+cp -r js icons vendor dist/
 
 echo "dist/ listo:"
 ls dist

@@ -1,8 +1,17 @@
-/* Brújula de Vida — sincronización en la nube (Supabase) y recordatorio push.
-   Todo esto es opcional y aditivo: si algo falla, o la persona usa la app
-   sin cuenta, el resto sigue funcionando enteramente en local como siempre. */
+/* ==========================================================================
+   INFRAESTRUCTURA — adaptador de Supabase para el puerto de la nube (nube.js):
+   sincronización del estado, cuentas y recordatorio push.
+
+   Todo es opcional y aditivo: si algo falla, o la persona usa la app sin
+   cuenta, el resto sigue funcionando en local como siempre. No entra en el
+   estado: usa Nube.state (interfaz estrecha), escucha el Bus («saved»,
+   «account:switched») y se ofrece como implementación con Nube.provide().
+   Los mensajes para la persona salen por el bus («aviso»): no pinta nada.
+   ========================================================================== */
 (function () {
   'use strict';
+
+  var state = Nube.state, bus = Bus;
 
   var SUPABASE_URL = 'https://fgpwhdfvqtlvfmmzhxsy.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZncHdoZGZ2cXRsdmZtbXpoeHN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNjI1MDgsImV4cCI6MjA4MjYzODUwOH0.KIIlA7_CC8i8OysF1zZGuH0xXFTVNyZDmpCBTt2ydcY';
@@ -23,17 +32,17 @@
   } catch (e) { sb = null; }
 
   // Cada cuenta del dispositivo lleva su propio reloj; la primera conserva el nombre de siempre.
-  function clockKey() { return App.curKey() === App.KEY ? CLOCK_KEY : CLOCK_KEY + '.' + App.curKey(); }
+  function clockKey() { var id = state.storeId(); return id ? CLOCK_KEY + '.' + id : CLOCK_KEY; }
   function clock() { return +(localStorage.getItem(clockKey()) || 0); }
   function setClock(v) { try { localStorage.setItem(clockKey(), String(v)); } catch (e) { } }
-  function repaint() { if (window.appRender) try { window.appRender(); } catch (e) { } }
+  function repaint() { bus.emit('sync:changed'); }
 
   /* ------------------------------------------------------- alta y entrada */
   function signUp(email, password) {
     if (!sb || !email || !password) return;
     sb.auth.signUp({ email: email, password: password }).then(function (res) {
       if (!res.error && (!res.data || !res.data.session)) {
-        App.toast('Cuenta creada. Confirma tu correo para sincronizar en otros dispositivos.');
+        bus.emit('aviso', 'Cuenta creada. Confirma tu correo para sincronizar en otros dispositivos.');
       }
     });
   }
@@ -50,12 +59,12 @@
   }
 
   function google() {
-    if (!sb) { App.toast('El acceso con Google no está disponible ahora mismo.'); return; }
+    if (!sb) { bus.emit('aviso', 'El acceso con Google no está disponible ahora mismo.'); return; }
     sb.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: location.origin + location.pathname }
     }).then(function (res) {
-      if (res.error) App.toast('No se pudo abrir Google. Revisa que esté activado en Supabase.');
+      if (res.error) bus.emit('aviso', 'No se pudo abrir Google. Revisa que esté activado en Supabase.');
     });
   }
 
@@ -76,8 +85,8 @@
     currentUser = session ? session.user : null;
     // Entrada con Google: primero se abre la cuenta local de ese correo y
     // solo después se sincroniza, para no mezclar datos de dos cuentas.
-    if (currentUser && currentUser.app_metadata && currentUser.app_metadata.provider === 'google' && window.appGoogleLogin) {
-      try { window.appGoogleLogin(currentUser); } catch (e) { }
+    if (currentUser && currentUser.app_metadata && currentUser.app_metadata.provider === 'google') {
+      bus.emit('auth:google', currentUser);
     }
     refreshReminderState();
     if (currentUser) { pullThenMaybePush(); maybeOfferReminder(); }
@@ -93,12 +102,10 @@
       if (remoteTime > clock()) {
         // Por si el dispositivo tenía datos locales propios sin sincronizar,
         // se guarda una copia aparte antes de sustituirlos por los de la nube.
-        try { sessionStorage.setItem('brujula.presync', localStorage.getItem(App.KEY) || ''); } catch (e) { }
-        Sec.sanitizeState(row.state, App.S);
+        try { sessionStorage.setItem('brujula.presync', state.rawLocal()); } catch (e) { }
         setClock(remoteTime);
-        App.saveNow(); App.applyTheme(); repaint();
-        if (window.SyncBadge) window.SyncBadge();
-        App.toast('Sincronizado con la nube.');
+        state.apply(row.state);
+        bus.emit('aviso', 'Sincronizado con la nube.');
       } else {
         pushNow();
       }
@@ -108,8 +115,7 @@
   var pushTimer = null, pushBusy = false, pushAgain = false;
   function schedulePush() {
     if (!sb) return;
-    var acc = App.S.account;
-    if (!acc || !acc.email) return;
+    if (!state.accountEmail()) return;
     clearTimeout(pushTimer);
     pushTimer = setTimeout(pushNow, 1500);
   }
@@ -117,7 +123,7 @@
     if (!sb || !currentUser) return;
     if (pushBusy) { pushAgain = true; return; }
     pushBusy = true;
-    sb.from('states').upsert({ user_id: currentUser.id, state: App.S, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+    sb.from('states').upsert({ user_id: currentUser.id, state: state.snapshot(), updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
       .select('updated_at').single().then(function (res) {
         pushBusy = false;
         if (!res.error && res.data) setClock(new Date(res.data.updated_at).getTime());
@@ -190,10 +196,10 @@
     setTimeout(function () { bar.hidden = false; }, 1500);
   }
   function enableReminder(hour) {
-    if (!sb || !currentUser) { App.toast('El recordatorio necesita cuenta y sincronización activas.'); return; }
-    if (!pushSupported()) { App.toast('Este navegador no admite notificaciones.'); return; }
+    if (!sb || !currentUser) { bus.emit('aviso', 'El recordatorio necesita cuenta y sincronización activas.'); return; }
+    if (!pushSupported()) { bus.emit('aviso', 'Este navegador no admite notificaciones.'); return; }
     Notification.requestPermission().then(function (perm) {
-      if (perm !== 'granted') { App.toast('No se activó: permiso denegado.'); return; }
+      if (perm !== 'granted') { bus.emit('aviso', 'No se activó: permiso denegado.'); return; }
       navigator.serviceWorker.ready.then(function (reg) {
         reg.pushManager.getSubscription().then(function (existing) {
           if (existing) return sameKey(existing) ? existing : renewSub(reg, existing);
@@ -202,7 +208,7 @@
             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
           });
         }).then(function (sub) { saveSubscription(sub, hour); })
-          .catch(function () { App.toast('No se pudo activar el recordatorio.'); });
+          .catch(function () { bus.emit('aviso', 'No se pudo activar el recordatorio.'); });
       });
     });
   }
@@ -213,10 +219,10 @@
       user_id: currentUser.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth,
       reminder_hour: hour, tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
     }, { onConflict: 'endpoint' }).then(function (res) {
-      if (res.error) { if (!silent) App.toast('No se pudo guardar el recordatorio.'); return; }
+      if (res.error) { if (!silent) bus.emit('aviso', 'No se pudo guardar el recordatorio.'); return; }
       try { localStorage.setItem(HOUR_KEY, String(hour)); } catch (e) { }
       reminderState.active = true; reminderState.hour = hour; repaint();
-      if (!silent) App.toast('Recordatorio diario activado a las ' + String(hour).padStart(2, '0') + ':00.');
+      if (!silent) bus.emit('aviso', 'Recordatorio diario activado a las ' + String(hour).padStart(2, '0') + ':00.');
     });
   }
   function disableReminder() {
@@ -229,19 +235,22 @@
         sub.unsubscribe().then(function () {
           reminderState.active = false; repaint();
           if (sb) sb.from('push_subscriptions').delete().eq('endpoint', endpoint).then(function () { });
-          App.toast('Recordatorio desactivado.');
+          bus.emit('aviso', 'Recordatorio desactivado.');
         });
       });
     });
   }
 
   /* -------------------------------------------------------------- arranque */
-  window.Sync = {
+  Nube.provide({
     signUp: signUp, signIn: signIn, signOut: signOut, google: google, updatePassword: updatePassword,
-    markDirty: schedulePush, pullNow: pullThenMaybePush,
+    pullNow: pullThenMaybePush,
     reminderState: function () { return reminderState; },
     enableReminder: enableReminder, disableReminder: disableReminder
-  };
+  });
+  // Lo que pasa en la app y le interesa a la sincronización.
+  bus.on('saved', schedulePush);
+  bus.on('account:switched', signOut);
 
   document.addEventListener('DOMContentLoaded', function () {
     var bar = $('remindbar');
@@ -272,15 +281,4 @@
     }, 120000);
   }
 
-  /* El icono de la app enseña la racha, a modo de "widget" mínimo. */
-  function updateBadge() {
-    try {
-      if (!navigator.setAppBadge) return;
-      var n = App.streak();
-      if (n > 0) navigator.setAppBadge(n).catch(function () { });
-      else if (navigator.clearAppBadge) navigator.clearAppBadge().catch(function () { });
-    } catch (e) { }
-  }
-  window.SyncBadge = updateBadge;
-  setTimeout(updateBadge, 800);
 })();

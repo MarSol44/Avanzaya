@@ -27,15 +27,9 @@
   Cache-Control: no-cache, must-revalidate
 
 # el código: se revalida, pero se reutiliza si no cambió
-/app.js
-  Cache-Control: no-cache
 /app.css
   Cache-Control: no-cache
-/pwa.js
-  Cache-Control: no-cache
-/sync.js
-  Cache-Control: no-cache
-/frases.js
+/js/*
   Cache-Control: no-cache
 
 # los iconos no cambian salvo que se sustituyan a mano

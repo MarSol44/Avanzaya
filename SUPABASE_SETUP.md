@@ -55,7 +55,7 @@ node supabase/rotar-vapid.mjs
 
 El script genera un par de claves nuevo y lo guarda directamente como
 secretos de las funciones (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`). Después
-escribe la clave **pública** en `sync.js`, que es pública por diseño. La
+escribe la clave **pública** en `js/infraestructura/nube-supabase.js`, que es pública por diseño. La
 privada no se muestra ni se guarda en ningún archivo del proyecto: solo vive
 en el gestor de secretos de Supabase.
 
@@ -171,7 +171,7 @@ Entre el paso 1 y el 2 puede fallar algún recordatorio; son un par de minutos.
 1. **Secreto de cron:** SQL Editor → pega `supabase/rotar-cron-secret.sql` → Run.
    Genera uno nuevo en Vault y el cambio es inmediato para pg_cron y para las
    funciones; no hay que copiar nada.
-2. **Claves VAPID:** `node supabase/rotar-vapid.mjs`, después sube `sync.js` y
+2. **Claves VAPID:** `node supabase/rotar-vapid.mjs`, después sube `js/infraestructura/nube-supabase.js` y
    `sw.js` al hosting. Los móviles con el recordatorio activo se vuelven a
    suscribir solos con la clave nueva al abrir la app, y conservan su hora.
 3. Nunca escribas valores de secretos en este documento ni en el repositorio:
