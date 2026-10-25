@@ -1733,20 +1733,24 @@ var V = {};
 
     h += taskList(t, 'Nada planeado para hoy. Añade lo primero que quieras hacer.', gt);
 
-    /* añadir: lo justo a la vista; día y tipo, si se piden */
+    /* añadir: título, y junto al «+» el botón con el día y la hora de la nueva tarea */
+    var ntDay = /^\d{4}-\d\d-\d\d$/.test(ui.ntDate || '') ? ui.ntDate : t;
+    var ntWhen = (ntDay === t ? 'Hoy' : ntDay === App.shift(t, 1) ? 'Mañana' : App.fmt(ntDay)) + (ui.ntTime ? ' · ' + ui.ntTime : '');
     h += '<div class="plan-add">' +
       '<div class="row" style="gap:8px"><input class="inp grow" data-f="ntTitle" data-add="task" value="' + esc(ui.ntTitle || '') + '" placeholder="Añadir una tarea o cita" aria-label="Nueva tarea" enterkeyhint="done">' +
-      '<button class="fab sm" data-a="ntAdd" aria-label="Añadir al plan">' + I('plus') + '</button></div>' +
-      '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">' +
-      '<input class="inp" type="time" style="width:auto" data-f="ntTime" value="' + esc(ui.ntTime || '') + '" aria-label="Hora (opcional)">' +
-      '<button class="btn ghost sm" data-a="ntAddTodo">Guardar sin fecha</button>' +
-      '<button class="btn ghost sm" data-a="ntMore" aria-expanded="' + !!ui.ntMore + '">' + (ui.ntMore ? 'Menos' : 'Más opciones') + '</button></div>';
+      '<button class="btn soft sm plan-when" data-a="ntMore" aria-expanded="' + !!ui.ntMore + '" aria-label="Día y hora de la nueva tarea: ' + esc(ntWhen) + '">' +
+      I('calendar', 15) + '<span>' + esc(ntWhen) + '</span></button>' +
+      '<button class="fab sm" data-a="ntAdd" aria-label="Añadir al plan">' + I('plus') + '</button></div>';
     if (ui.ntMore) {
-      h += '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">' +
-        '<input class="inp" type="date" style="width:auto" data-f="ntDate" value="' + esc(ui.ntDate || t) + '" aria-label="Día">' +
+      h += '<div class="plan-move plan-when-panel">' +
+        '<span class="tiny">Día</span>' +
+        '<input class="inp" type="date" data-f="ntDate" value="' + esc(ntDay) + '" min="' + t + '" aria-label="Día de la nueva tarea">' +
+        '<span class="tiny">Hora</span>' +
+        '<input class="inp" type="time" data-f="ntTime" value="' + esc(ui.ntTime || '') + '" aria-label="Hora (opcional)">' +
         '<span class="seg" role="group" aria-label="Tipo">' +
         '<button type="button" data-a="ntKind" data-v="task" aria-pressed="' + (kind === 'task') + '">Tarea</button>' +
-        '<button type="button" data-a="ntKind" data-v="appt" aria-pressed="' + (kind === 'appt') + '">Cita o trámite</button></span></div>';
+        '<button type="button" data-a="ntKind" data-v="appt" aria-pressed="' + (kind === 'appt') + '">Cita</button></span>' +
+        '<button class="btn accent xs" data-a="ntMore">Guardar</button></div>';
     }
     h += '</div>';
 
@@ -1840,15 +1844,26 @@ var V = {};
     /* 1. el plan de hoy, lo primero */
     h += planSection(t);
 
-    /* 2. rutinas: la de día a la vista; la de noche plegada hasta las 18:00 */
-    h += routine('day', 'Rutina de día', 'sunrise');
-    var nightList = S.routines.night || [], nightMarks = (S.rlog[t] || { night: [] }).night || [];
-    if (hora >= 18 || ui.nightOpen) {
-      h += routine('night', 'Rutina de noche', 'moon');
-    } else {
-      h += '<div class="sect"><button class="btn ghost block" data-a="toggleNight" style="justify-content:space-between">' +
-        '<span class="row" style="gap:8px">' + I('moon', 17) + 'Rutina de noche</span>' +
-        '<span class="pill num">' + nightMarks.length + ' de ' + nightList.length + '</span></button></div>';
+    /* 2. rutinas, plegables bajo un solo encabezado; dentro, la de día a la
+          vista y la de noche plegada hasta las 18:00 */
+    if (ui.routinesClosed === undefined) {
+      try { ui.routinesClosed = localStorage.getItem('bdv.rutinas.cerradas') === '1'; } catch (e) { ui.routinesClosed = false; }
+    }
+    var rOpen = !ui.routinesClosed;
+    h += '<div class="sect"><button class="fold-head" data-a="toggleRoutines" aria-expanded="' + rOpen + '">' +
+      '<span class="sect-title" style="font-size:1.05rem">' + I('sunrise') + 'Rutinas</span>' +
+      '<span class="row" style="gap:8px"><span class="pill num' + (tot.total && tot.done >= tot.total ? ' good' : '') + '">' + tot.done + ' de ' + tot.total + '</span>' +
+      I(rOpen ? 'down' : 'right', 18) + '</span></button></div>';
+    if (rOpen) {
+      h += routine('day', 'Rutina de día', 'sunrise');
+      var nightList = S.routines.night || [], nightMarks = (S.rlog[t] || { night: [] }).night || [];
+      if (hora >= 18 || ui.nightOpen) {
+        h += routine('night', 'Rutina de noche', 'moon');
+      } else {
+        h += '<div class="sect"><button class="btn ghost block" data-a="toggleNight" style="justify-content:space-between">' +
+          '<span class="row" style="gap:8px">' + I('moon', 17) + 'Rutina de noche</span>' +
+          '<span class="pill num">' + nightMarks.length + ' de ' + nightList.length + '</span></button></div>';
+      }
     }
 
     /* 3. la nota del día, cerca y a un toque */
@@ -3059,24 +3074,27 @@ var V = {};
     }
     if (a === 'ntMore') { ui.ntMore = !ui.ntMore; render(); return; }
     if (a === 'toggleNight') { ui.nightOpen = true; render(); return; }
+    if (a === 'toggleRoutines') {
+      ui.routinesClosed = !ui.routinesClosed;
+      try { localStorage.setItem('bdv.rutinas.cerradas', ui.routinesClosed ? '1' : '0'); } catch (er) { }
+      render(); return;
+    }
     if (a === 'evmove') { ui.moveId = ui.moveId === id ? null : id; render(); return; }
     if (a === 'evto') { moveEvent(el.getAttribute('data-day'), id, el.getAttribute('data-to')); return; }
     if (a === 'ntKind') { ui.ntKind = v === 'appt' ? 'appt' : 'task'; render(); return; }
-    if (a === 'ntAdd' || a === 'ntAddTodo') {
+    if (a === 'ntAdd') {
       var ntT = String(ui.ntTitle || '').trim();
       if (!ntT) { App.toast('Escribe primero qué es.'); return; }
       var ntK = ui.ntKind === 'appt' ? 'appt' : 'task';
-      if (a === 'ntAddTodo') {
-        if (S.todo.length >= 200) { App.toast('Ya tienes muchos pendientes sin fecha: quita alguno.'); return; }
-        S.todo.unshift({ id: App.uid(), title: ntT, kind: ntK });
-      } else {
-        var pd = /^\d{4}-\d\d-\d\d$/.test(ui.ntDate || '') ? ui.ntDate : App.today();
-        if (!S.events[pd]) S.events[pd] = [];
-        if (S.events[pd].length >= 60) { App.toast('Ese día ya está lleno.'); return; }
-        S.events[pd].push({ id: App.uid(), title: ntT, goalId: '', sid: '', time: /^([01]\d|2[0-3]):[0-5]\d$/.test(ui.ntTime || '') ? ui.ntTime : '', done: false, kind: ntK });
-      }
-      ui.ntTitle = ''; ui.ntTime = ''; ui.ntDate = '';
-      App.save(); render(); return;
+      var pd = /^\d{4}-\d\d-\d\d$/.test(ui.ntDate || '') ? ui.ntDate : App.today();
+      if (!S.events[pd]) S.events[pd] = [];
+      if (S.events[pd].length >= 60) { App.toast('Ese día ya está lleno.'); return; }
+      S.events[pd].push({ id: App.uid(), title: ntT, goalId: '', sid: '', time: /^([01]\d|2[0-3]):[0-5]\d$/.test(ui.ntTime || '') ? ui.ntTime : '', done: false, kind: ntK });
+      ui.ntTitle = ''; ui.ntTime = ''; ui.ntDate = ''; ui.ntMore = false;
+      App.save(); render();
+      // si no es para hoy, no aparece en la lista: se avisa de dónde quedó
+      if (pd !== App.today()) App.toast('Añadida al ' + App.fmt(pd) + '.');
+      return;
     }
     if (a === 'todoPull') {
       var tp = S.todo.filter(function (x) { return x.id === id; })[0];

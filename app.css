@@ -651,3 +651,14 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 .plan-move .inp{ padding:5px 9px; font-size:12.5px; width:auto; }
 .plan-group.spread{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .plan-group.spread .btn{ text-transform:none; letter-spacing:0; }
+/* botón con el día y la hora de la nueva tarea, junto al «+» */
+.plan-when{ flex:none; white-space:nowrap; gap:6px; }
+.plan-when span{ max-width:9.5em; overflow:hidden; text-overflow:ellipsis; }
+.plan-when-panel{ border-radius:12px; }
+/* encabezado plegable (Rutinas) */
+.fold-head{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%;
+  background:none; border:0; padding:4px 0; margin:0; font:inherit; color:inherit; cursor:pointer; text-align:left;
+}
+.fold-head:focus-visible{ outline:2px solid var(--accent); outline-offset:4px; border-radius:8px; }
+.fold-head > .row .ic{ color:var(--ink-2); }
