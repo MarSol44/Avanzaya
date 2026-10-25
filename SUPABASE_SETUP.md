@@ -27,13 +27,11 @@ como antes.
 Panel de Supabase → tu proyecto → **SQL Editor** → pega el contenido de
 `supabase/schema.sql` → **Run**.
 
-Antes de ejecutar, sustituye las dos apariciones de `PON_AQUI_TU_CRON_SECRET`
-por este valor (es un secreto solo para que pg_cron pueda llamar a tus
-funciones; no lo compartas):
-
-```
-TU_CRON_SECRET
-```
+No hay que pegar ningún secreto: el script genera dentro de la base de datos
+el secreto con el que pg_cron llama a tus funciones (`cron_secret`) y lo
+guarda en **Supabase Vault**. pg_cron lo lee de ahí en cada ejecución y las
+funciones lo comprueban con `cron_secret_ok()`, que solo puede usar el
+servidor. No aparece en ningún archivo.
 
 Si `create extension pg_cron` o `pg_net` fallan, actívalas primero en
 **Database → Extensions** y vuelve a ejecutar el script (es idempotente).
@@ -51,17 +49,15 @@ npx supabase link --project-ref fgpwhdfvqtlvfmmzhxsy
 
 ## 3. Genera las claves VAPID (recordatorio push)
 
-Ya las generé para ti; guárdalas, la privada no se vuelve a mostrar en
-ningún sitio:
-
-```
-VAPID_PUBLIC_KEY  = BCJBsw2SkMr2W1hUKbdOpFyET_9trsBcPEIJpkKNBjvTqp-9tw47035GaPsmUv9Wz7r6HzxGq-I45ey4pB29KzE
-VAPID_PRIVATE_KEY = TU_CLAVE_PRIVADA_VAPID
+```bash
+node supabase/rotar-vapid.mjs
 ```
 
-La pública ya está pegada en `sync.js` (es pública por diseño). La privada
-**no debe estar en ningún archivo del proyecto** — solo como secreto del
-servidor (siguiente paso).
+El script genera un par de claves nuevo y lo guarda directamente como
+secretos de las funciones (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`). Después
+escribe la clave **pública** en `sync.js`, que es pública por diseño. La
+privada no se muestra ni se guarda en ningún archivo del proyecto: solo vive
+en el gestor de secretos de Supabase.
 
 ## 4. Crea tu cuenta de Resend (correo semanal)
 
@@ -76,10 +72,10 @@ servidor (siguiente paso).
 
 ## 5. Configura los secretos de las funciones
 
+Las claves VAPID ya las puso el paso 3 y el secreto de cron vive en Vault
+(paso 1). Quedan estos:
+
 ```bash
-npx supabase secrets set CRON_SECRET=TU_CRON_SECRET
-npx supabase secrets set VAPID_PUBLIC_KEY=BCJBsw2SkMr2W1hUKbdOpFyET_9trsBcPEIJpkKNBjvTqp-9tw47035GaPsmUv9Wz7r6HzxGq-I45ey4pB29KzE
-npx supabase secrets set VAPID_PRIVATE_KEY=TU_CLAVE_PRIVADA_VAPID
 npx supabase secrets set VAPID_SUBJECT=mailto:tu-correo@tudominio.com
 npx supabase secrets set RESEND_API_KEY=re_TU_CLAVE_AQUI
 npx supabase secrets set RESEND_FROM="Brújula de Vida <hola@tudominio.com>"
@@ -129,18 +125,58 @@ la app instalada verán el aviso de "Hay una versión nueva" automáticamente.
 
 ## 9. Probar sin esperar al cron
 
-Los recordatorios corren cada 15 min y el correo semanal cada domingo — para
-probarlos ya mismo, dispáralos a mano:
+Los recordatorios corren cada 15 min y el correo semanal cada domingo. Para
+probarlos ya mismo sin sacar el secreto de Vault, lánzalos desde el
+**SQL Editor**; usan el mismo camino que pg_cron:
 
-```bash
-curl -X POST https://fgpwhdfvqtlvfmmzhxsy.supabase.co/functions/v1/send-reminders \
-  -H "x-cron-secret: TU_CRON_SECRET"
+```sql
+select net.http_post(
+  url     := 'https://fgpwhdfvqtlvfmmzhxsy.supabase.co/functions/v1/send-reminders',
+  headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret',
+               (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')),
+  body    := '{}'::jsonb
+);
+-- (cambia send-reminders por send-weekly-email para el correo)
 
-curl -X POST https://fgpwhdfvqtlvfmmzhxsy.supabase.co/functions/v1/send-weekly-email \
-  -H "x-cron-secret: TU_CRON_SECRET"
+-- respuesta, unos segundos después:
+select status_code, content from net._http_response order by id desc limit 1;
 ```
 
 Cada una devuelve un JSON con cuántos envíos hizo.
+
+## Rotar secretos
+
+Hazlo si alguno pudo quedar expuesto, y en cualquier caso antes del
+lanzamiento.
+
+**Primera vez tras este cambio** (pasar del secreto escrito en el SQL a Vault):
+
+```bash
+# 1. SQL Editor → pega supabase/schema.sql → Run
+#    (crea cron_secret en Vault y reprograma pg_cron para leerlo de ahí;
+#     las tareas viejas, que llevaban el secreto escrito, se sustituyen)
+# 2. despliega las funciones, que ahora comprueban contra Vault:
+npx supabase functions deploy send-reminders --no-verify-jwt
+npx supabase functions deploy send-weekly-email --no-verify-jwt
+# 3. borra el secreto viejo, que ya no usa nadie:
+npx supabase secrets unset CRON_SECRET
+# 4. claves VAPID nuevas:
+node supabase/rotar-vapid.mjs
+```
+
+Entre el paso 1 y el 2 puede fallar algún recordatorio; son un par de minutos.
+
+**Rotaciones siguientes:**
+
+1. **Secreto de cron:** SQL Editor → pega `supabase/rotar-cron-secret.sql` → Run.
+   Genera uno nuevo en Vault y el cambio es inmediato para pg_cron y para las
+   funciones; no hay que copiar nada.
+2. **Claves VAPID:** `node supabase/rotar-vapid.mjs`, después sube `sync.js` y
+   `sw.js` al hosting. Los móviles con el recordatorio activo se vuelven a
+   suscribir solos con la clave nueva al abrir la app, y conservan su hora.
+3. Nunca escribas valores de secretos en este documento ni en el repositorio:
+   solo en el gestor de secretos de Supabase (Vault y los secretos de las
+   funciones).
 
 ## 10. Lista de comprobación
 

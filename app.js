@@ -277,7 +277,7 @@ var Sec = (function () {
       out.events[k] = arrOf(ev[k], 60, function (x) {
         x = objOf(x);
         return {
-          id: idOf(x.id), title: s(x.title, 400), goalId: idOf(x.goalId), sid: s(x.sid, 40),
+          id: idOf(x.id), title: s(x.title, 400), goalId: x.goalId ? idOf(x.goalId) : '', sid: s(x.sid, 40),
           time: /^([01]\d|2[0-3]):[0-5]\d$/.test(x.time) ? x.time : '',
           done: !!x.done, kind: x.kind === 'appt' ? 'appt' : 'task'
         };
@@ -286,7 +286,7 @@ var Sec = (function () {
     // Pendientes que todavía no tienen día.
     out.todo = arrOf(d.todo, 200, function (x) {
       x = objOf(x);
-      return { id: idOf(x.id), title: s(x.title, 400), kind: x.kind === 'appt' ? 'appt' : 'task' };
+      return { id: idOf(x.id), title: s(x.title, 400), kind: x.kind === 'appt' ? 'appt' : 'task', goalId: x.goalId ? idOf(x.goalId) : '', sid: s(x.sid, 40) };
     });
 
     var ch = objOf(d.challenge);
@@ -1590,72 +1590,175 @@ var V = {};
   /* ------------------------------------------------- tareas de hoy y plan */
   var WD = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 
+  // Una tarea puede venir de un paso de meta (goalId + sid). Entonces su
+  // estado «hecha» es el del paso: se marca en un sitio y se ve en los dos.
+  function goalById(id) {
+    var g = App.byId(S.goalsS, id);
+    if (g) return { g: g, k: 'S' };
+    g = App.byId(S.goalsL, id);
+    return g ? { g: g, k: 'L' } : null;
+  }
+  function stepLink(e) {
+    if (!e || !e.goalId || !e.sid || e.sid === '__due') return null;
+    var x = goalById(e.goalId);
+    return x ? App.byId(x.g.steps || [], e.sid) : null;
+  }
+  function isDone(e) { var s = stepLink(e); return !!(e.done || (s && s.done)); }
+  // ¿Ya hay una tarea (en cualquier día o sin fecha) para este paso? Así nunca se duplica.
+  function linked(gid, sid) {
+    var k;
+    for (k in S.events) {
+      if (Object.prototype.hasOwnProperty.call(S.events, k) &&
+        S.events[k].some(function (e) { return e.goalId === gid && e.sid === sid; })) return true;
+    }
+    return S.todo.some(function (x) { return x.goalId === gid && x.sid === sid; });
+  }
+  // Pasos de metas (y fechas límite) que caen hoy y aún no están en el calendario.
+  function goalsToday(t) {
+    var out = [];
+    [['S', S.goalsS], ['L', S.goalsL]].forEach(function (p) {
+      p[1].forEach(function (g) {
+        (g.steps || []).forEach(function (s) {
+          // Un paso de largo plazo ascendido ya vive como meta corta: no se repite.
+          if (s.due === t && !(p[0] === 'L' && s.promoted) && !linked(g.id, s.id)) out.push({ k: p[0], g: g, s: s });
+        });
+        if (g.due === t && !g.done && !linked(g.id, '__due')) out.push({ k: p[0], g: g, s: null });
+      });
+    });
+    return out;
+  }
+  V.stepLink = stepLink; V.isDone = isDone; V.goalById = goalById;
+
+  function nowHM() { var d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+
   // Con hora primero y por orden; el resto va aparte, en «Cuando puedas».
-  function planRow(e, day) {
-    var open = ui.moveId === e.id, appt = e.kind === 'appt';
-    var h = '<div class="listrow plan' + (e.done ? ' is-done' : '') + '" style="padding:10px 6px 10px 12px">' +
-      '<button class="chk" role="checkbox" aria-checked="' + !!e.done + '" data-a="evdone" data-day="' + day + '" data-id="' + esc(e.id) + '" aria-label="Marcar «' + esc(e.title) + '» como hecha">' + I('check', 15) + '</button>' +
-      '<span class="grow" style="font-size:14px' + (e.done ? ';color:var(--ink-2);text-decoration:line-through' : '') + '">' + esc(e.title) + '</span>' +
-      (appt ? '<span class="pill accent">' + I('calendar', 13) + 'Cita</span>' : '') +
+  function planRow(e, day, opt) {
+    opt = opt || {};
+    var open = ui.moveId === e.id, appt = e.kind === 'appt', done = isDone(e);
+    var h = '<div class="listrow plan' + (done ? ' is-done' : '') + '">' +
+      '<button class="chk" role="checkbox" aria-checked="' + done + '" data-a="evdone" data-day="' + day + '" data-id="' + esc(e.id) + '" aria-label="Marcar «' + esc(e.title) + '» como hecha">' + I('check', 15) + '</button>' +
+      '<span class="grow plan-txt">' + esc(e.title) +
+      '<span class="plan-meta">' +
+      (opt.next ? '<span class="pill accent">Próxima</span>' : '') +
+      (opt.showDate ? '<span class="pill bad">' + esc(App.fmt(day)) + '</span>' : '') +
       (e.time ? '<span class="pill num">' + esc(e.time) + '</span>' : '') +
+      (appt ? '<span class="pill accent">' + I('calendar', 13) + 'Cita</span>' : '') +
+      (e.goalId && goalById(e.goalId) ? '<span class="pill">' + I('target', 13) + 'Meta</span>' : '') +
+      '</span></span>' +
       '<button class="iconbtn" data-a="evmove" data-id="' + esc(e.id) + '" aria-expanded="' + open + '" aria-label="Cambiar día u hora">' + I('pencil', 16) + '</button>' +
       '<button class="delbtn" data-a="evdel" data-day="' + day + '" data-id="' + esc(e.id) + '" aria-label="Quitar tarea">' + I('trash', 17) + '</button></div>';
     if (open) {
+      var t = App.today();
       h += '<div class="plan-move">' +
         '<span class="tiny">Pasar a</span>' +
-        '<button class="btn soft xs" data-a="evto" data-day="' + day + '" data-id="' + esc(e.id) + '" data-to="' + App.shift(day, 1) + '">Mañana</button>' +
-        '<button class="btn soft xs" data-a="evto" data-day="' + day + '" data-id="' + esc(e.id) + '" data-to="' + App.shift(day, 7) + '">En 7 días</button>' +
+        (day !== t ? '<button class="btn soft xs" data-a="evto" data-day="' + day + '" data-id="' + esc(e.id) + '" data-to="' + t + '">Hoy</button>' : '') +
+        '<button class="btn soft xs" data-a="evto" data-day="' + day + '" data-id="' + esc(e.id) + '" data-to="' + App.shift(day < t ? t : day, 1) + '">Mañana</button>' +
+        '<button class="btn soft xs" data-a="evto" data-day="' + day + '" data-id="' + esc(e.id) + '" data-to="' + App.shift(day < t ? t : day, 7) + '">En 7 días</button>' +
         '<button class="btn soft xs" data-a="evto" data-day="' + day + '" data-id="' + esc(e.id) + '" data-to="">Sin fecha</button>' +
-        '<input class="inp" type="date" style="padding:5px 9px;font-size:12.5px;width:auto" data-f="evdate" data-day="' + day + '" data-id="' + esc(e.id) + '" value="' + day + '" aria-label="Otro día">' +
+        '<input class="inp" type="date" data-f="evdate" data-day="' + day + '" data-id="' + esc(e.id) + '" value="' + day + '" aria-label="Otro día">' +
         '<span class="tiny">Hora</span>' +
-        '<input class="inp" type="time" style="padding:5px 9px;font-size:12.5px;width:auto" data-f="evtime" data-day="' + day + '" data-id="' + esc(e.id) + '" value="' + esc(e.time || '') + '" aria-label="Hora (opcional)">' +
+        '<input class="inp" type="time" data-f="evtime" data-day="' + day + '" data-id="' + esc(e.id) + '" value="' + esc(e.time || '') + '" aria-label="Hora (opcional)">' +
         '</div>';
     }
     return h;
   }
 
-  function taskList(day, empty) {
-    var list = S.events[day] || [];
-    if (!list.length) return '<p class="muted">' + empty + '</p>';
+  // Un paso de meta de hoy que aún no es tarea: se muestra en el plan y, al
+  // editarlo, se convierte en tarea real (enlazada al paso, sin duplicarse).
+  function goalRow(x) {
+    var c = App.cat(x.g.cat);
+    if (!x.s) {
+      return '<button class="listrow plan" data-a="openGoal" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '">' +
+        '<span class="thumb plan-ic">' + (c ? esc(c.emoji) : I('target', 15)) + '</span>' +
+        '<span class="grow plan-txt">' + esc(x.g.name || 'Meta sin nombre') +
+        '<span class="plan-meta"><span class="pill bad">' + I('flame', 13) + 'Vence hoy</span></span></span>' +
+        I('right', 16) + '</button>';
+    }
+    var done = !!x.s.done, title = (x.g.name || 'Meta') + ' · ' + (x.s.name || 'paso');
+    return '<div class="listrow plan' + (done ? ' is-done' : '') + '">' +
+      '<button class="chk" role="checkbox" aria-checked="' + done + '" data-a="gsDone" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '" aria-label="Marcar «' + esc(title) + '» como hecha">' + I('check', 15) + '</button>' +
+      '<span class="grow plan-txt">' + esc(title) +
+      '<span class="plan-meta"><span class="pill">' + I('target', 13) + 'Meta</span></span></span>' +
+      '<button class="iconbtn" data-a="gsEdit" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '" aria-label="Cambiar día u hora">' + I('pencil', 16) + '</button></div>';
+  }
+
+  function taskList(day, empty, extra) {
+    var list = S.events[day] || [], extraRows = extra || [];
+    if (!list.length && !extraRows.length) return '<p class="muted">' + empty + '</p>';
     var timed = list.filter(function (e) { return e.time; }).sort(function (x, y) { return x.time < y.time ? -1 : x.time > y.time ? 1 : 0; });
     var loose = list.filter(function (e) { return !e.time; });
+    // La siguiente con hora que aún no se ha hecho, solo en el día de hoy.
+    var nextId = '';
+    if (day === App.today()) {
+      var now = nowHM(), nx = timed.filter(function (e) { return !isDone(e) && e.time >= now; })[0];
+      if (nx) nextId = nx.id;
+    }
     var h = '<div class="list">';
-    timed.forEach(function (e) { h += planRow(e, day); });
-    if (loose.length) h += '<div class="plan-group">Cuando puedas</div>';
+    timed.forEach(function (e) { h += planRow(e, day, { next: e.id === nextId }); });
+    if (loose.length || extraRows.length) h += '<div class="plan-group">' + (timed.length ? 'Cuando puedas' : 'Sin horario') + '</div>';
+    extraRows.forEach(function (x) { h += goalRow(x); });
     loose.forEach(function (e) { h += planRow(e, day); });
     return h + '</div>';
   }
 
+  // Tareas de días anteriores (dos semanas) que se quedaron sin hacer.
+  function overdue(t) {
+    var out = [];
+    for (var i = 14; i >= 1; i--) {
+      var k = App.shift(t, -i);
+      (S.events[k] || []).forEach(function (e) { if (!isDone(e)) out.push({ e: e, day: k }); });
+    }
+    return out;
+  }
+
   /* «Plan de hoy»: tareas con horario, pendientes flexibles, y añadir o quitar */
   function planSection(t) {
-    var evs = S.events[t] || [];
-    var withTime = evs.filter(function (e) { return e.time; }).length;
-    var doneN = evs.filter(function (e) { return e.done; }).length;
+    var evs = S.events[t] || [], gt = goalsToday(t), late = overdue(t);
+    var steps = gt.filter(function (x) { return x.s; });
+    var total = evs.length + steps.length;
+    var doneN = evs.filter(isDone).length + steps.filter(function (x) { return x.s.done; }).length;
     var kind = ui.ntKind === 'appt' ? 'appt' : 'task';
+
     var h = '<div class="sect">' +
       '<div class="sect-head"><span class="sect-title" style="font-size:1.05rem">' + I('list') + 'Plan de hoy</span>' +
-      '<span class="pill num' + (evs.length && doneN === evs.length ? ' good' : '') + '">' + doneN + ' de ' + evs.length + '</span></div>' +
-      (evs.length ? '<p class="tiny">' + App.plural(evs.length, 'tarea', 'tareas') + ' · ' + (withTime ? withTime + ' con horario' : 'sin horario') + '</p>' : '') +
-      taskList(t, 'Nada planeado para hoy. Añade algo o trae un pendiente.');
+      (total ? '<span class="pill num' + (doneN === total ? ' good' : '') + '">' + doneN + ' de ' + total + '</span>' : '') + '</div>';
 
+    if (late.length) {
+      h += '<div class="list"><div class="plan-group spread">Atrasadas' +
+        '<button class="btn ghost xs" data-a="overdueAll">Pasar todas a hoy</button></div>';
+      late.slice(0, 5).forEach(function (x) { h += planRow(x.e, x.day, { showDate: true }); });
+      if (late.length > 5) h += '<p class="tiny" style="padding:6px 14px 10px">Y ' + (late.length - 5) + ' más.</p>';
+      h += '</div>';
+    }
+
+    h += taskList(t, 'Nada planeado para hoy. Añade lo primero que quieras hacer.', gt);
+
+    /* añadir: lo justo a la vista; día y tipo, si se piden */
     h += '<div class="plan-add">' +
-      '<div class="row" style="gap:8px"><input class="inp grow" data-f="ntTitle" data-add="task" value="' + esc(ui.ntTitle || '') + '" placeholder="Añadir una tarea o cita" aria-label="Nueva tarea">' +
+      '<div class="row" style="gap:8px"><input class="inp grow" data-f="ntTitle" data-add="task" value="' + esc(ui.ntTitle || '') + '" placeholder="Añadir una tarea o cita" aria-label="Nueva tarea" enterkeyhint="done">' +
       '<button class="fab sm" data-a="ntAdd" aria-label="Añadir al plan">' + I('plus') + '</button></div>' +
-      '<div class="row" style="gap:8px;flex-wrap:wrap">' +
+      '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">' +
       '<input class="inp" type="time" style="width:auto" data-f="ntTime" value="' + esc(ui.ntTime || '') + '" aria-label="Hora (opcional)">' +
-      '<input class="inp" type="date" style="width:auto" data-f="ntDate" value="' + esc(ui.ntDate || t) + '" aria-label="Día">' +
-      '<span class="seg" role="group" aria-label="Tipo">' +
-      '<button type="button" data-a="ntKind" data-v="task" aria-pressed="' + (kind === 'task') + '">Tarea</button>' +
-      '<button type="button" data-a="ntKind" data-v="appt" aria-pressed="' + (kind === 'appt') + '">Cita</button></span>' +
-      '<button class="btn ghost sm" data-a="ntAddTodo">Guardar sin fecha</button></div></div>';
+      '<button class="btn ghost sm" data-a="ntAddTodo">Guardar sin fecha</button>' +
+      '<button class="btn ghost sm" data-a="ntMore" aria-expanded="' + !!ui.ntMore + '">' + (ui.ntMore ? 'Menos' : 'Más opciones') + '</button></div>';
+    if (ui.ntMore) {
+      h += '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">' +
+        '<input class="inp" type="date" style="width:auto" data-f="ntDate" value="' + esc(ui.ntDate || t) + '" aria-label="Día">' +
+        '<span class="seg" role="group" aria-label="Tipo">' +
+        '<button type="button" data-a="ntKind" data-v="task" aria-pressed="' + (kind === 'task') + '">Tarea</button>' +
+        '<button type="button" data-a="ntKind" data-v="appt" aria-pressed="' + (kind === 'appt') + '">Cita o trámite</button></span></div>';
+    }
+    h += '</div>';
 
     if (S.todo.length) {
-      h += '<div class="plan-group">Pendientes sin fecha</div><div class="list">';
+      h += '<div class="list"><div class="plan-group">Pendientes sin fecha</div>';
       S.todo.forEach(function (x) {
-        h += '<div class="listrow" style="padding:10px 6px 10px 14px">' +
-          '<span class="grow" style="font-size:14px">' + esc(x.title) + '</span>' +
-          (x.kind === 'appt' ? '<span class="pill accent">' + I('calendar', 13) + 'Cita</span>' : '') +
-          '<button class="btn soft xs" data-a="todoPull" data-id="' + esc(x.id) + '">' + I('plus', 13) + 'Traer a hoy</button>' +
+        h += '<div class="listrow plan">' +
+          '<span class="grow plan-txt">' + esc(x.title) +
+          '<span class="plan-meta">' +
+            (x.kind === 'appt' ? '<span class="pill accent">' + I('calendar', 13) + 'Cita</span>' : '') +
+            (x.goalId && goalById(x.goalId) ? '<span class="pill">' + I('target', 13) + 'Meta</span>' : '') + '</span></span>' +
+          '<button class="btn soft xs" data-a="todoPull" data-id="' + esc(x.id) + '">' + I('plus', 13) + 'A hoy</button>' +
           '<button class="delbtn" data-a="tododel" data-id="' + esc(x.id) + '" aria-label="Quitar pendiente">' + I('trash', 17) + '</button></div>';
       });
       h += '</div>';
@@ -1692,14 +1795,14 @@ var V = {};
       '<div class="wstrip" role="group" aria-label="Días de la semana">' +
       '<button class="iconbtn" data-a="planWeek" data-v="-7" aria-label="Semana anterior">' + I('left', 17) + '</button>';
     days.forEach(function (k) {
-      var pend = (S.events[k] || []).filter(function (e) { return !e.done; }).length;
+      var pend = (S.events[k] || []).filter(function (e) { return !isDone(e); }).length;
       h += '<button class="wday" data-a="planDay" data-day="' + k + '" aria-pressed="' + (k === d) + '"' + (k === t ? ' data-today="1"' : '') +
         ' aria-label="' + esc(App.cap(App.fmtLong(k))) + (pend ? ', ' + pend + ' pendientes' : '') + '">' +
         '<span class="wd">' + WD[App.parseK(k).getDay()] + '</span><span class="wn">' + +k.slice(8) + '</span>' +
         '<span class="wdot">' + (pend ? pend : '') + '</span></button>';
     });
     h += '<button class="iconbtn" data-a="planWeek" data-v="7" aria-label="Semana siguiente">' + I('right', 17) + '</button></div>';
-    if (d === t) h += '<p class="muted">Es hoy: tus tareas están arriba.</p>';
+    if (d === t) h += '<p class="muted">Es hoy: tu plan está arriba.</p>';
     else h += '<p class="tiny">' + esc(App.cap(App.fmtLong(d))) + '</p>' + taskList(d, 'Nada planeado para este día.');
     return h + '</div>';
   }
@@ -1712,13 +1815,55 @@ var V = {};
     var hora = new Date().getHours();
     var saludo = hora < 6 ? 'Buenas noches' : hora < 13 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches';
 
+    // Resumen del día en el subtítulo: lo que queda por hacer.
+    var evs = S.events[t] || [];
+    var steps = goalsToday(t).filter(function (x) { return x.s; });
+    var pend = evs.filter(function (e) { return !isDone(e); }).length + steps.filter(function (x) { return !x.s.done; }).length;
+    var timedPend = evs.filter(function (e) { return e.time && !isDone(e); }).length;
+    var resumen = !(evs.length + steps.length) ? 'Sin plan todavía'
+      : !pend ? 'Todo hecho'
+        : App.plural(pend, 'pendiente', 'pendientes') + (timedPend ? ' · ' + timedPend + ' con hora' : '');
+
+    // Una frase motivadora por día en lugar del saludo. Sale de la fecha, así que
+    // no cambia al repintar la pantalla y recorre toda la lista antes de repetir.
+    var F = window.FRASES || [];
+    var dayN = Math.round(App.parseK(t).getTime() / 864e5);
+    var titulo = F.length ? '<h1 class="frase">' + esc(F[((dayN % F.length) + F.length) % F.length]) + '</h1>'
+      : '<h1>' + esc(saludo) + (name ? ', ' + esc(name) : '') + '</h1>';
+
     var h = '<div class="appbar"><div class="appbar-row">' +
-      '<h1>' + esc(saludo) + (name ? ', ' + esc(name) : '') + '</h1>' + profileBtn() + '</div>' +
-      '<span class="sub">' + esc(App.cap(App.fmtLong(t))) + '</span></div>';
+      titulo + profileBtn() + '</div>' +
+      '<span class="sub">' + esc(App.cap(App.fmtLong(t))) + ' · ' + esc(resumen) + '</span></div>';
 
     h += '<div class="scroll"><div class="page">';
 
-    /* la racha, o la invitación a empezarla */
+    /* 1. el plan de hoy, lo primero */
+    h += planSection(t);
+
+    /* 2. rutinas: la de día a la vista; la de noche plegada hasta las 18:00 */
+    h += routine('day', 'Rutina de día', 'sunrise');
+    var nightList = S.routines.night || [], nightMarks = (S.rlog[t] || { night: [] }).night || [];
+    if (hora >= 18 || ui.nightOpen) {
+      h += routine('night', 'Rutina de noche', 'moon');
+    } else {
+      h += '<div class="sect"><button class="btn ghost block" data-a="toggleNight" style="justify-content:space-between">' +
+        '<span class="row" style="gap:8px">' + I('moon', 17) + 'Rutina de noche</span>' +
+        '<span class="pill num">' + nightMarks.length + ' de ' + nightList.length + '</span></button></div>';
+    }
+
+    /* 3. la nota del día, cerca y a un toque */
+    var note = S.notes[t] || '';
+    h += '<div class="sect">' +
+      '<div class="sect-head"><span class="sect-title" style="font-size:1.05rem">' + I('note') + 'Nota de hoy</span></div>';
+    if (note || ui.noteOpen) {
+      h += '<textarea class="ta" data-f="note" placeholder="¿Qué te acercó hoy a donde quieres llegar, y qué te alejó?">' + esc(note) + '</textarea>';
+    } else {
+      h += '<button class="btn soft block" data-a="openNote" style="justify-content:flex-start;color:var(--ink-2);font-weight:500">' +
+        I('pencil', 17) + 'Escribir cómo ha ido el día</button>';
+    }
+    h += '</div>';
+
+    /* 4. la racha y las metas próximas, después del plan */
     h += '<div class="sect" style="gap:10px">';
     if (st > 0) {
       h += '<div class="kpi"><span class="display">' + st + '</span>' +
@@ -1734,36 +1879,9 @@ var V = {};
 
     h += soonSection();
 
-    /* plan de hoy: tareas con horario y pendientes flexibles */
-    h += planSection(t);
-
-    /* rutina de día como siguiente acción; la de noche plegada hasta que toca */
-    h += routine('day', 'Rutina de día', 'sunrise');
-    var nightList = S.routines.night || [], nightMarks = (S.rlog[t] || { night: [] }).night || [];
-    if (hora >= 18 || ui.nightOpen) {
-      h += routine('night', 'Rutina de noche', 'moon');
-    } else {
-      h += '<div class="sect"><button class="btn ghost block" data-a="toggleNight" style="justify-content:space-between">' +
-        '<span class="row" style="gap:8px">' + I('moon', 17) + 'Rutina de noche</span>' +
-        '<span class="pill num">' + nightMarks.length + ' de ' + nightList.length + '</span></button></div>';
-    }
-
+    /* 5. la semana y, al final, los avisos de la app */
     h += upcomingSection(t);
-
-    /* sugerencias de la app, con menos protagonismo */
     h += nudgeCard();
-
-    /* la nota del día, plegada hasta que hace falta */
-    var note = S.notes[t] || '';
-    h += '<div class="sect">' +
-      '<div class="sect-head"><span class="sect-title" style="font-size:1.05rem">' + I('note') + 'Nota de hoy</span></div>';
-    if (note || ui.noteOpen) {
-      h += '<textarea class="ta" data-f="note" placeholder="¿Qué te acercó hoy a donde quieres llegar, y qué te alejó?">' + esc(note) + '</textarea>';
-    } else {
-      h += '<button class="btn soft block" data-a="openNote" style="justify-content:flex-start;color:var(--ink-2);font-weight:500">' +
-        I('pencil', 17) + 'Escribir cómo ha ido el día</button>';
-    }
-    h += '</div>';
 
     h += '</div></div>';
     return h;
@@ -2685,8 +2803,14 @@ var V = {};
     if (!to && S.todo.length >= 200) { App.toast('Ya tienes muchos pendientes sin fecha: quita alguno.'); return; }
     S.events[from] = list.filter(function (x) { return x.id !== id; });
     if (!S.events[from].length) delete S.events[from];
-    if (to) { (S.events[to] = S.events[to] || []).push(e); }
-    else S.todo.unshift({ id: e.id, title: e.title, kind: e.kind });
+    if (to) {
+      (S.events[to] = S.events[to] || []).push(e);
+      // Reprogramar un paso de meta también cambia su fecha en Metas, para
+      // que el calendario no vuelva a colocarlo en el día antiguo.
+      var st = V.stepLink(e);
+      if (st) st.due = to;
+    }
+    else S.todo.unshift({ id: e.id, title: e.title, kind: e.kind, goalId: e.goalId || '', sid: e.sid || '' });
     ui.moveId = null;
     App.save(); render();
     App.toast(to ? 'Pasada al ' + App.fmt(to) + '.' : 'Guardada en pendientes sin fecha.');
@@ -2892,9 +3016,48 @@ var V = {};
     if (a === 'planWeek') { ui.planDay = App.shift(ui.planDay || App.today(), +v); ui.moveId = null; render(); return; }
     if (a === 'evdone') {
       var ed = (S.events[el.getAttribute('data-day')] || []).filter(function (x) { return x.id === id; })[0];
-      if (ed) { ed.done = !ed.done; App.save(); render(); }
+      if (ed) {
+        var nv = !V.isDone(ed), lst = V.stepLink(ed);
+        ed.done = nv;
+        if (lst) lst.done = nv;        // el paso de la meta se marca a la vez
+        App.save(); render();
+      }
       return;
     }
+    if (a === 'gsDone') {
+      var gx = App.findGoal(k, id), gs = gx && App.byId(gx.steps || [], sid);
+      if (gs) { gs.done = !gs.done; App.save(); render(); }
+      return;
+    }
+    if (a === 'gsEdit') {
+      // El paso pasa a ser una tarea de hoy enlazada; así se le puede poner hora o moverlo.
+      var gy = App.findGoal(k, id), gs2 = gy && App.byId(gy.steps || [], sid), td = App.today();
+      if (!gs2) return;
+      if (!S.events[td]) S.events[td] = [];
+      if (S.events[td].length >= 60) { App.toast('Ese día ya está lleno.'); return; }
+      var ne = { id: App.uid(), title: (gy.name || 'Meta') + ' · ' + (gs2.name || 'paso'), goalId: gy.id, sid: gs2.id, time: '', done: !!gs2.done, kind: 'task' };
+      S.events[td].push(ne);
+      ui.moveId = ne.id;
+      App.save(); render(); return;
+    }
+    if (a === 'overdueAll') {
+      var tdy = App.today(), moved = 0;
+      if (!S.events[tdy]) S.events[tdy] = [];
+      for (var oi = 14; oi >= 1; oi--) {
+        var od = App.shift(tdy, -oi), keep = [];
+        (S.events[od] || []).forEach(function (x) {
+          if (!V.isDone(x) && S.events[tdy].length < 60) {
+            S.events[tdy].push(x); moved++;
+            var ls = V.stepLink(x); if (ls) ls.due = tdy;
+          } else keep.push(x);
+        });
+        if (S.events[od]) { if (keep.length) S.events[od] = keep; else delete S.events[od]; }
+      }
+      App.save(); render();
+      App.toast(moved ? App.plural(moved, 'tarea pasada', 'tareas pasadas') + ' a hoy.' : 'Hoy ya está lleno.');
+      return;
+    }
+    if (a === 'ntMore') { ui.ntMore = !ui.ntMore; render(); return; }
     if (a === 'toggleNight') { ui.nightOpen = true; render(); return; }
     if (a === 'evmove') { ui.moveId = ui.moveId === id ? null : id; render(); return; }
     if (a === 'evto') { moveEvent(el.getAttribute('data-day'), id, el.getAttribute('data-to')); return; }
@@ -2921,7 +3084,8 @@ var V = {};
       var pd2 = App.today();
       if (!S.events[pd2]) S.events[pd2] = [];
       if (S.events[pd2].length >= 60) { App.toast('Ese día ya está lleno.'); return; }
-      S.events[pd2].push({ id: App.uid(), title: tp.title, goalId: '', sid: '', time: '', done: false, kind: tp.kind });
+      S.events[pd2].push({ id: App.uid(), title: tp.title, goalId: tp.goalId || '', sid: tp.sid || '', time: '', done: false, kind: tp.kind });
+      var tps = V.stepLink(S.events[pd2][S.events[pd2].length - 1]); if (tps) tps.due = pd2;
       S.todo = S.todo.filter(function (x) { return x.id !== id; });
       App.save(); render(); return;
     }

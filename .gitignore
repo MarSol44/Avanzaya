@@ -1,0 +1,5 @@
+# estado local del CLI de Supabase
+supabase/.temp/
+# variables y secretos locales: nunca al repositorio
+.env
+*.env

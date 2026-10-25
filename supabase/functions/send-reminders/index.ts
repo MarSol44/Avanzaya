@@ -3,22 +3,26 @@
 // suscripción, calcula la hora local de esa persona y solo envía si coincide
 // con la hora que eligió y no se le ha enviado ya hoy.
 //
-// Secretos que necesita (npx supabase secrets set NOMBRE=valor):
-//   CRON_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
+// Secretos que necesita (los pone supabase/rotar-vapid.mjs):
+//   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
 // SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta Supabase solo.
+// La cabecera x-cron-secret se comprueba contra Supabase Vault (cron_secret_ok).
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3';
 
 Deno.serve(async (req) => {
-  if (req.headers.get('x-cron-secret') !== Deno.env.get('CRON_SECRET')) {
-    return new Response('no', { status: 401 });
-  }
-
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
+
+  // Solo pg_cron conoce el secreto (vive en Vault); sin él, nada.
+  const secret = req.headers.get('x-cron-secret') || '';
+  const { data: allowed } = secret
+    ? await supabase.rpc('cron_secret_ok', { s: secret })
+    : { data: false };
+  if (allowed !== true) return new Response('no', { status: 401 });
 
   webpush.setVapidDetails(
     Deno.env.get('VAPID_SUBJECT') || 'mailto:hola@example.com',

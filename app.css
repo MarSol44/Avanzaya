@@ -118,6 +118,8 @@ ul,ol{ padding-left:20px; }
   letter-spacing:-.022em; flex:1; min-width:0; font-optical-sizing:auto;
 }
 .appbar .sub{ font-size:13px; color:var(--ink-2); line-height:1.45; }
+/* la frase del día ocupa el lugar del saludo: misma letra, algo menor para que quepa en dos líneas */
+.appbar h1.frase{ font-size:1.3rem; line-height:1.22; letter-spacing:-.015em; text-wrap:balance; }
 
 .iconbtn{
   width:38px; height:38px; flex:none; border:0; border-radius:50%;
@@ -639,3 +641,13 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 .plan-group{ font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2); padding:10px 14px 4px; }
 .plan-move{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 14px 12px; background:var(--accent-sf); }
 .plan-add{ display:flex; flex-direction:column; gap:8px; }
+.listrow.plan{ padding:10px 6px 10px 12px; align-items:center; }
+.plan-txt{ font-size:14px; display:flex; flex-direction:column; gap:5px; }
+.plan-meta{ display:flex; flex-wrap:wrap; gap:5px; }
+.plan-meta:empty{ display:none; }
+.listrow.plan.is-done .plan-txt{ color:var(--ink-2); text-decoration:line-through; }
+.listrow.plan.is-done .plan-meta{ text-decoration:none; opacity:.7; }
+.plan-ic{ width:30px; height:30px; border-radius:9px; font-size:15px; flex:none; background:color-mix(in srgb,var(--ink) 6%,transparent); }
+.plan-move .inp{ padding:5px 9px; font-size:12.5px; width:auto; }
+.plan-group.spread{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.plan-group.spread .btn{ text-transform:none; letter-spacing:0; }

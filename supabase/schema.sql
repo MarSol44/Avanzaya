@@ -75,9 +75,32 @@ create policy "push: borrado propio" on public.push_subscriptions
 -- ══════════════════════════════════════════════════ llamadas programadas
 -- Los "Edge Functions" llevan su propia comprobación de un secreto compartido
 -- (cabecera x-cron-secret) para que nadie más pueda dispararlos desde fuera.
--- Sustituye el valor de abajo por el que uses en:
---   npx supabase secrets set CRON_SECRET=...
--- (usa el mismo valor en los dos sitios).
+-- El secreto NO va escrito en ningún archivo: se genera dentro de la base de
+-- datos y vive solo en Supabase Vault ('cron_secret'). pg_cron lo lee de ahí
+-- en cada ejecución y las funciones lo comprueban con cron_secret_ok().
+-- Para rotarlo: supabase/rotar-cron-secret.sql.
+create extension if not exists supabase_vault;
+create extension if not exists pgcrypto with schema extensions;
+
+do $$
+begin
+  if not exists (select 1 from vault.secrets where name = 'cron_secret') then
+    perform vault.create_secret(encode(extensions.gen_random_bytes(32), 'hex'), 'cron_secret',
+      'Cabecera x-cron-secret con la que pg_cron llama a las Edge Functions');
+  end if;
+end $$;
+
+-- Solo el servidor (service_role, el que usan las funciones) puede preguntar
+-- si un valor es el secreto; nadie puede leerlo desde la app.
+create or replace function public.cron_secret_ok(s text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1 from vault.decrypted_secrets
+    where name = 'cron_secret' and decrypted_secret = s
+  );
+$$;
+revoke all on function public.cron_secret_ok(text) from public, anon, authenticated;
+grant execute on function public.cron_secret_ok(text) to service_role;
 
 select cron.unschedule('brujula-recordatorios') where exists (
   select 1 from cron.job where jobname = 'brujula-recordatorios'
@@ -88,7 +111,8 @@ select cron.schedule(
   $$
   select net.http_post(
     url     := 'https://fgpwhdfvqtlvfmmzhxsy.supabase.co/functions/v1/send-reminders',
-    headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', 'PON_AQUI_TU_CRON_SECRET'),
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret',
+                 (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')),
     body    := '{}'::jsonb
   );
   $$
@@ -103,7 +127,8 @@ select cron.schedule(
   $$
   select net.http_post(
     url     := 'https://fgpwhdfvqtlvfmmzhxsy.supabase.co/functions/v1/send-weekly-email',
-    headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', 'PON_AQUI_TU_CRON_SECRET'),
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret',
+                 (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')),
     body    := '{}'::jsonb
   );
   $$

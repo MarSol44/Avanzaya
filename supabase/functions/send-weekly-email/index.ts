@@ -4,8 +4,9 @@
 // en la semana que acaba de terminar y manda un correo con Resend.
 //
 // Secretos que necesita (npx supabase secrets set NOMBRE=valor):
-//   CRON_SECRET, RESEND_API_KEY, RESEND_FROM (p.ej. "Brújula de Vida <hola@tudominio.com>")
+//   RESEND_API_KEY, RESEND_FROM (p.ej. "Brújula de Vida <hola@tudominio.com>")
 // SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta Supabase solo.
+// La cabecera x-cron-secret se comprueba contra Supabase Vault (cron_secret_ok).
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -78,14 +79,18 @@ function emailHtml(name: string, s: ReturnType<typeof computeStats>) {
 }
 
 Deno.serve(async (req) => {
-  if (req.headers.get('x-cron-secret') !== Deno.env.get('CRON_SECRET')) {
-    return new Response('no', { status: 401 });
-  }
-
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
+
+  // Solo pg_cron conoce el secreto (vive en Vault); sin él, nada.
+  const secret = req.headers.get('x-cron-secret') || '';
+  const { data: allowed } = secret
+    ? await supabase.rpc('cron_secret_ok', { s: secret })
+    : { data: false };
+  if (allowed !== true) return new Response('no', { status: 401 });
+
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
   const RESEND_FROM = Deno.env.get('RESEND_FROM');
   if (!RESEND_API_KEY || !RESEND_FROM) {

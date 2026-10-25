@@ -7,7 +7,7 @@
   var SUPABASE_URL = 'https://fgpwhdfvqtlvfmmzhxsy.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZncHdoZGZ2cXRsdmZtbXpoeHN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNjI1MDgsImV4cCI6MjA4MjYzODUwOH0.KIIlA7_CC8i8OysF1zZGuH0xXFTVNyZDmpCBTt2ydcY';
   // Clave pública VAPID (la privada solo vive en los secretos de Supabase, nunca aquí).
-  var VAPID_PUBLIC_KEY = 'BCJBsw2SkMr2W1hUKbdOpFyET_9trsBcPEIJpkKNBjvTqp-9tw47035GaPsmUv9Wz7r6HzxGq-I45ey4pB29KzE';
+  var VAPID_PUBLIC_KEY = 'BG73dIlubuUs02IG16JYuMSNmmeLUXmzdYnymoB8c6oPJtsngZJalWDCq8mL2MoMI7L8osz-qNjIVsMomwestds';
 
   var CLOCK_KEY = 'brujula.sync.clock';
   var HOUR_KEY = 'bdv.push.hour';
@@ -140,6 +140,35 @@
         reminderState.checked = true;
         reminderState.active = !!sub;
         repaint();
+        // Si se rotaron las claves VAPID, la suscripción vieja ya no recibe
+        // nada: se renueva sola con la clave nueva y la misma hora.
+        if (sub && !sameKey(sub) && currentUser && sb && Notification.permission === 'granted') {
+          renewSub(reg, sub).then(function (fresh) { saveSubscription(fresh, reminderState.hour, true); })
+            .catch(function () { reminderState.active = false; repaint(); });
+        }
+      });
+    });
+  }
+
+  // ¿La suscripción se hizo con la clave pública VAPID actual?
+  function sameKey(sub) {
+    try {
+      var k = sub.options && sub.options.applicationServerKey;
+      if (!k) return true;   // el navegador no lo dice: no se toca
+      var a = new Uint8Array(k), b = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      if (a.length !== b.length) return false;
+      for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+      return true;
+    } catch (e) { return true; }
+  }
+  // Da de baja la suscripción vieja (también su fila) y crea otra con la clave actual.
+  function renewSub(reg, old) {
+    var endpoint = old.endpoint;
+    return old.unsubscribe().then(function () {
+      if (sb) sb.from('push_subscriptions').delete().eq('endpoint', endpoint).then(function () { });
+      return reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
     });
   }
@@ -167,7 +196,7 @@
       if (perm !== 'granted') { App.toast('No se activó: permiso denegado.'); return; }
       navigator.serviceWorker.ready.then(function (reg) {
         reg.pushManager.getSubscription().then(function (existing) {
-          if (existing) return existing;
+          if (existing) return sameKey(existing) ? existing : renewSub(reg, existing);
           return reg.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
@@ -177,17 +206,17 @@
       });
     });
   }
-  function saveSubscription(sub, hour) {
+  function saveSubscription(sub, hour, silent) {
     if (!sb || !sub || !currentUser) return;
     var j = sub.toJSON();
     sb.from('push_subscriptions').upsert({
       user_id: currentUser.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth,
       reminder_hour: hour, tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
     }, { onConflict: 'endpoint' }).then(function (res) {
-      if (res.error) { App.toast('No se pudo guardar el recordatorio.'); return; }
+      if (res.error) { if (!silent) App.toast('No se pudo guardar el recordatorio.'); return; }
       try { localStorage.setItem(HOUR_KEY, String(hour)); } catch (e) { }
       reminderState.active = true; reminderState.hour = hour; repaint();
-      App.toast('Recordatorio diario activado a las ' + String(hour).padStart(2, '0') + ':00.');
+      if (!silent) App.toast('Recordatorio diario activado a las ' + String(hour).padStart(2, '0') + ':00.');
     });
   }
   function disableReminder() {
