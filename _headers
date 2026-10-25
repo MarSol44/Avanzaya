@@ -1,0 +1,43 @@
+# Brújula de Vida — cabeceras para Cloudflare Pages (equivale al .htaccess de Apache).
+# HTTPS, compresión y «todo lo desconocido muestra la app» ya los hace Cloudflare solo.
+
+/*
+  # nadie puede meter la app dentro de un iframe suyo
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+  # el navegador no adivina tipos de archivo
+  X-Content-Type-Options: nosniff
+  # no se filtra la ruta completa a sitios ajenos
+  Referrer-Policy: strict-origin-when-cross-origin
+  # la app no pide cámara, micrófono ni ubicación: se apagan
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=(), usb=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin
+  Strict-Transport-Security: max-age=15552000
+
+# el service worker, la página y el manifiesto nunca se guardan en frío:
+# así una actualización llega el mismo día
+/
+  Cache-Control: no-cache, must-revalidate
+/index.html
+  Cache-Control: no-cache, must-revalidate
+/sw.js
+  Cache-Control: no-cache, must-revalidate
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: no-cache, must-revalidate
+
+# el código: se revalida, pero se reutiliza si no cambió
+/app.js
+  Cache-Control: no-cache
+/app.css
+  Cache-Control: no-cache
+/pwa.js
+  Cache-Control: no-cache
+/sync.js
+  Cache-Control: no-cache
+/frases.js
+  Cache-Control: no-cache
+
+# los iconos no cambian salvo que se sustituyan a mano
+/icons/*
+  Cache-Control: public, max-age=31536000, immutable

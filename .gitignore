@@ -3,3 +3,5 @@ supabase/.temp/
 # variables y secretos locales: nunca al repositorio
 .env
 *.env
+# carpeta que genera build.sh para Cloudflare Pages
+dist/
