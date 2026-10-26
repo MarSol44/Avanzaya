@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     ANTES DE SUBIR
+     avanzaya.pages.dev  →  cámbialo si usas otro dominio (aparece 3 veces más abajo)
+     Privacidad: la app no lleva analítica. Si se añade algún servicio externo,
+     hay que declararlo en la política de privacidad (js/presentacion/vistas/hojas.js).
+     ══════════════════════════════════════════════════════════════════ -->
+
+<title>Brújula de Vida</title>
+<meta name="description" content="La rueda de la vida en siete áreas, tu visión a cinco años, metas con pasos y rutinas de día y de noche. Gratis y funciona sin conexión. Úsala sin cuenta (todo queda en tu teléfono) o crea una para sincronizar entre dispositivos.">
+
+<link rel="canonical" href="https://avanzaya.pages.dev/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brújula de Vida">
+<meta property="og:title" content="Brújula de Vida">
+<meta property="og:description" content="Organiza tus sueños y metas. Úsala sin cuenta o sincroniza entre dispositivos.">
+<meta property="og:url" content="https://avanzaya.pages.dev/">
+<meta property="og:image" content="https://avanzaya.pages.dev/icons/og-mark.png">
+<meta property="og:locale" content="es_ES">
+<meta name="twitter:card" content="summary">
+
+<!-- Instalable: icono propio en la pantalla de inicio -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Brújula">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f2cfae" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#161311" media="(prefers-color-scheme: dark)">
+
+<!-- Nada se carga desde sitios que no estén en esta lista.
+     Sin 'unsafe-inline' en los scripts: no se puede inyectar código en la página. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://fgpwhdfvqtlvfmmzhxsy.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=Instrument+Sans:ital,wght@0,400..700;1,400..600&display=swap">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<div class="app" id="app">
+  <div id="root"></div>
+</div>
+<div class="sheetwrap" id="sheetWrap"><div class="sheet" role="dialog" aria-modal="true" id="sheet"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+
+<!-- barra de instalación: aparece sola cuando el navegador lo permite -->
+<div class="installbar" id="installbar" hidden>
+  <div class="installbar-txt">
+    <strong id="installbar-title">Ténla a un toque</strong>
+    <span id="installbar-sub">Añádela a tu pantalla de inicio y ábrela como una app.</span>
+  </div>
+  <div class="installbar-btns">
+    <button type="button" class="btn accent" id="installbar-ok">Instalar</button>
+    <button type="button" class="btn ghost" id="installbar-no" aria-label="Ahora no">Ahora no</button>
+  </div>
+</div>
+
+<!-- aviso de versión nueva -->
+<div class="updatebar" id="updatebar" hidden>
+  <span>Hay una versión nueva.</span>
+  <button type="button" class="btn accent" id="updatebar-ok">Actualizar</button>
+</div>
+
+<!-- recordatorio diario: aparece tras entrar con cuenta, si el navegador lo permite -->
+<div class="installbar" id="remindbar" hidden>
+  <div class="installbar-txt">
+    <strong>Recuérdamelo cada día</strong>
+    <span>Elige una hora y te avisamos aunque tengas la app cerrada.</span>
+  </div>
+  <div class="installbar-btns">
+    <input type="time" id="remindbar-time" value="20:00" style="min-height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:0 10px;font:inherit">
+    <button type="button" class="btn accent" id="remindbar-ok">Activar</button>
+    <button type="button" class="btn ghost" id="remindbar-no" aria-label="Ahora no">Ahora no</button>
+  </div>
+</div>
+
+<script src="/vendor/supabase.js"></script>
+<!-- Monolito en N capas. Cada capa solo usa las de abajo:
+     compartido → dominio → infraestructura → aplicación → presentación.
+     El adaptador de la nube va al final: se ofrece al puerto Nube cuando todo está listo. -->
+<script src="/js/compartido/util.js"></script>
+<script src="/js/compartido/fechas.js"></script>
+<script src="/js/compartido/eventos.js"></script>
+<script src="/js/dominio/tareas.js"></script>
+<script src="/js/dominio/metas.js"></script>
+<script src="/js/dominio/rutinas.js"></script>
+<script src="/js/dominio/areas.js"></script>
+<script src="/js/dominio/revision.js"></script>
+<script src="/js/dominio/identidad.js"></script>
+<script src="/js/infraestructura/seguridad.js"></script>
+<script src="/js/infraestructura/almacen.js"></script>
+<script src="/js/infraestructura/preferencias.js"></script>
+<script src="/js/infraestructura/nube.js"></script>
+<script src="/js/aplicacion/servicios.js"></script>
+<script src="/js/aplicacion/datos.js"></script>
+<script src="/js/aplicacion/cuentas.js"></script>
+<script src="/js/aplicacion/ajustes.js"></script>
+<script src="/js/aplicacion/objetivos.js"></script>
+<script src="/js/aplicacion/habitos.js"></script>
+<script src="/js/aplicacion/vision.js"></script>
+<script src="/js/aplicacion/progreso.js"></script>
+<script src="/js/aplicacion/chequeo.js"></script>
+<script src="/js/presentacion/frases.js"></script>
+<script src="/js/presentacion/iconos.js"></script>
+<script src="/js/presentacion/estado-ui.js"></script>
+<script src="/js/presentacion/formato.js"></script>
+<script src="/js/presentacion/pantalla.js"></script>
+<script src="/js/presentacion/pantallas.js"></script>
+<script src="/js/presentacion/vistas/entrada.js"></script>
+<script src="/js/presentacion/vistas/metas.js"></script>
+<script src="/js/presentacion/vistas/hoy.js"></script>
+<script src="/js/presentacion/vistas/vision.js"></script>
+<script src="/js/presentacion/vistas/perfil.js"></script>
+<script src="/js/presentacion/vistas/hojas.js"></script>
+<script src="/js/presentacion/interfaz.js"></script>
+<script src="/js/presentacion/controladores/navegacion.js"></script>
+<script src="/js/presentacion/controladores/hoy.js"></script>
+<script src="/js/presentacion/controladores/metas.js"></script>
+<script src="/js/presentacion/controladores/vision.js"></script>
+<script src="/js/presentacion/controladores/progreso.js"></script>
+<script src="/js/presentacion/controladores/entrada.js"></script>
+<script src="/js/presentacion/controladores/perfil.js"></script>
+<script src="/js/presentacion/pwa.js"></script>
+<script src="/js/arranque.js"></script>
+<script src="/js/infraestructura/nube-supabase.js"></script>
+</body>
+</html>
