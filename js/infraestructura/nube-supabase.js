@@ -41,7 +41,9 @@
   function signUp(email, password) {
     if (!sb || !email || !password) return;
     sb.auth.signUp({ email: email, password: password }).then(function (res) {
-      if (!res.error && (!res.data || !res.data.session)) {
+      // las cuentas de usuario o teléfono usan un correo interno que nadie recibe:
+      // a ellas no se les pide confirmar nada (en Supabase, «Confirm email» va apagado)
+      if (!res.error && (!res.data || !res.data.session) && !BdvIdentidad.esInterno(email)) {
         bus.emit('aviso', 'Cuenta creada. Confirma tu correo para sincronizar en otros dispositivos.');
       }
     });
@@ -58,15 +60,20 @@
     });
   }
 
-  function google() {
-    if (!sb) { bus.emit('aviso', 'El acceso con Google no está disponible ahora mismo.'); return; }
+  // Entrar con una red social (Google o Facebook) a través de Supabase.
+  var NOMBRES = { google: 'Google', facebook: 'Facebook' };
+  function red(proveedor) {
+    var nombre = NOMBRES[proveedor];
+    if (!sb) { bus.emit('aviso', 'El acceso con ' + nombre + ' no está disponible ahora mismo.'); return; }
     sb.auth.signInWithOAuth({
-      provider: 'google',
+      provider: proveedor,
       options: { redirectTo: location.origin + location.pathname }
     }).then(function (res) {
-      if (res.error) bus.emit('aviso', 'No se pudo abrir Google. Revisa que esté activado en Supabase.');
+      if (res.error) bus.emit('aviso', 'No se pudo abrir ' + nombre + '. Revisa que esté activado en Supabase.');
     });
   }
+  function google() { red('google'); }
+  function facebook() { red('facebook'); }
 
   function signOut() {
     clearTimeout(pushTimer); pushAgain = false;
@@ -85,8 +92,9 @@
     currentUser = session ? session.user : null;
     // Entrada con Google: primero se abre la cuenta local de ese correo y
     // solo después se sincroniza, para no mezclar datos de dos cuentas.
-    if (currentUser && currentUser.app_metadata && currentUser.app_metadata.provider === 'google') {
-      bus.emit('auth:google', currentUser);
+    var prov = currentUser && currentUser.app_metadata && currentUser.app_metadata.provider;
+    if (NOMBRES[prov]) {
+      bus.emit('auth:red', { user: currentUser, proveedor: prov });
     }
     refreshReminderState();
     if (currentUser) { pullThenMaybePush(); maybeOfferReminder(); }
@@ -243,7 +251,7 @@
 
   /* -------------------------------------------------------------- arranque */
   Nube.provide({
-    signUp: signUp, signIn: signIn, signOut: signOut, google: google, updatePassword: updatePassword,
+    signUp: signUp, signIn: signIn, signOut: signOut, google: google, facebook: facebook, updatePassword: updatePassword,
     pullNow: pullThenMaybePush,
     reminderState: function () { return reminderState; },
     enableReminder: enableReminder, disableReminder: disableReminder

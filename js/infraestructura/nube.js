@@ -15,6 +15,7 @@ var Nube = (function () {
   var NULL_SYNC = {
     signIn: noop, signUp: noop, signOut: noop, updatePassword: noop, pullNow: noop,
     google: function () { Bus.emit('aviso', 'El acceso con Google no está disponible ahora mismo.'); },
+    facebook: function () { Bus.emit('aviso', 'El acceso con Facebook no está disponible ahora mismo.'); },
     reminderState: function () { return { supported: false, active: false, hour: 20, checked: true }; },
     enableReminder: noop, disableReminder: noop
   };
@@ -32,7 +33,8 @@ var Nube = (function () {
     snapshot: function () { return Store.S; },
     // Aplica lo que llega de la nube (validado) y avisa; la pantalla repinta al oírlo.
     apply: function (remote) { Sec.sanitizeState(remote, Store.S); Store.saveNow(); Bus.emit('remote:applied'); },
-    accountEmail: function () { return Store.S.account && Store.S.account.email ? Store.S.account.email : ''; },
+    // correo con el que la cuenta existe en la nube (el interno, si es de usuario o teléfono)
+    accountEmail: function () { var a = Store.S.account; return a ? (a.nube || a.email || '') : ''; },
     storeId: function () { return Store.curKey() === Store.KEY ? '' : Store.curKey(); },
     rawLocal: function () { return Store.rawLocal(); }
   };

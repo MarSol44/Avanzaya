@@ -43,12 +43,12 @@
     h += '<div class="row" style="gap:16px;padding-top:4px">' + av +
       '<div class="grow" style="min-width:0">' +
       '<div style="font-family:var(--disp);font-size:1.5rem;font-weight:600;line-height:1.15;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(name) + '</div>' +
-      '<div class="tiny" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(a && a.email ? a.email : 'Estás usando la app sin cuenta') + '</div></div>' +
+      '<div class="tiny" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(Fmt.cuenta(a) || 'Estás usando la app sin cuenta') + '</div></div>' +
       '<label class="btn soft xs">' + I('image', 14) + 'Foto<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" id="pfPhoto2" style="display:none"></label>' +
       '</div>';
 
     if (S.guest) {
-      h += '<div class="notice">Estás sin cuenta. Todo funciona igual y se guarda en este navegador; si creas una cuenta, tus datos actuales se conservan.' +
+      h += '<div class="notice">Estás sin cuenta: todo funciona igual y se guarda solo en este navegador. Si creas una cuenta, tus datos actuales pasan a ella y se sincronizan en la nube.' +
         '<div style="margin-top:11px"><button class="btn accent sm" data-a="go" data-s="register">Crear una cuenta</button></div></div>';
     }
 
@@ -56,7 +56,7 @@
     h += sect('Cuenta',
       '<div class="list"><div class="listpad">' +
       '<label class="field"><span>Nombre de usuario</span><input class="inp" data-f="acName" value="' + esc(a ? a.name : '') + '" placeholder="Tu nombre"></label>' +
-      '<label class="field" style="margin-top:12px"><span>Correo</span><input class="inp" type="email" data-f="acMail" value="' + esc(a ? a.email : '') + '" placeholder="tu@correo.com"></label>' +
+      '<label class="field" style="margin-top:12px"><span>' + (!a || !a.login || a.login === 'email' ? 'Correo' : 'Correo de contacto (opcional)') + '</span><input class="inp" type="email" data-f="acMail" value="' + esc(a ? a.email : '') + '" placeholder="tu@correo.com"></label>' +
       '<button class="btn sm" data-a="saveAccount" style="margin-top:14px">Guardar cambios</button>' +
       '</div></div>');
 
@@ -82,7 +82,7 @@
 
     /* --- notificaciones (push real, con la app cerrada) --- */
     var rs = Recordatorio.estado();
-    var hasAcc = !!(a && a.email);
+    var hasAcc = !!(a && (a.nube || a.email));
     var canPush = rs.supported && hasAcc;
     var pushHint = !rs.supported ? 'Este navegador no admite notificaciones push.'
       : !hasAcc ? 'Necesitas una cuenta con sincronización activada para usarlo.'
@@ -127,7 +127,7 @@
     /* --- respaldo --- */
     h += sect('Respaldo',
       '<div class="list">' + link('save', 'Copia de seguridad', 'sheetBackup') + '</div>' +
-      '<p class="tiny">No hay Google Drive ni iCloud: eso necesitaría un servidor. Tu copia es un texto que puedes guardar donde quieras y pegar en otro dispositivo.</p>');
+      '<p class="tiny">Si tienes cuenta, tus datos ya se sincronizan con la nube. Esta copia es, además, un texto con todo lo tuyo para guardarlo donde quieras o pasarlo a otro dispositivo. «Borrar todo» solo borra este navegador.</p>');
 
     /* --- soporte y legal --- */
     h += sect('Soporte',
@@ -140,7 +140,7 @@
 
     h += '<div class="sect">' +
       '<button class="btn danger block" data-a="logout">' + I('logout', 18) + 'Cerrar sesión</button>' +
-      '<p class="tiny" style="text-align:center">Brújula de Vida · todo se guarda en este navegador</p></div>';
+      '<p class="tiny" style="text-align:center">Brújula de Vida · ' + (a && (a.nube || a.email) ? 'sincronizado con tu cuenta en la nube' : 'todo se guarda en este navegador') + '</p></div>';
 
     h += '</div></div>';
     return h;

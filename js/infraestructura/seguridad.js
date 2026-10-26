@@ -197,8 +197,18 @@ var Sec = (function () {
 
     var acc = objOf(d.account);
     var pw = passOf(acc.pass);
-    out.account = (acc.email || acc.name)
-      ? { name: s(acc.name, 120), email: s(acc.email, 254), pass: pw, created: dateOf(acc.created) }
+    var LOGINS = { email: 1, tel: 1, usuario: 1, red: 1 }, REDES = { google: 1, facebook: 1 };
+    var phone = /^\+?\d{8,15}$/.test(String(acc.phone || '')) ? String(acc.phone) : '';
+    var uname = /^[a-z0-9._-]{3,30}$/.test(String(acc.username || '')) ? String(acc.username) : '';
+    out.account = (acc.email || acc.name || phone || uname)
+      ? {
+        name: s(acc.name, 120), email: s(acc.email, 254), pass: pw, created: dateOf(acc.created),
+        login: LOGINS[acc.login] ? acc.login : 'email',                 // las cuentas antiguas son de correo
+        phone: phone, username: uname,
+        provider: REDES[acc.provider] ? acc.provider : '',
+        providerId: s(acc.providerId, 128),
+        nube: s(acc.nube, 254)                                          // correo con el que la cuenta está en la nube
+      }
       : null;
 
     var pr = objOf(d.profile);

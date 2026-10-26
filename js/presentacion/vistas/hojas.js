@@ -6,49 +6,70 @@
   'use strict';
   var S = Datos.estado(), ui = UIState, esc = Fmt.esc;
 
+  // Textos legales y de seguridad. Describen la versión que se publica: si
+  // cambia lo que la app envía o guarda fuera del navegador, hay que cambiarlos.
+  var CONTACTO = 'avanzayaapp@gmail.com';
+  var BdvIdentidad_DOMINIO = 'usuarios.avanzaya.pages.dev';   // = BdvIdentidad.DOMINIO (dominio/identidad.js)
   var DOCS = {
     terminos: ['file', 'Términos y condiciones',
-      'Brújula de Vida es una herramienta personal que funciona por completo dentro de tu navegador.\n\n' +
-      '1. No hay servidor. No enviamos, recibimos ni almacenamos nada fuera de tu dispositivo.\n' +
-      '2. La app se ofrece tal cual, sin garantía de disponibilidad ni de conservación de tus datos.\n' +
-      '3. Tú eres responsable de tus copias de seguridad. Si borras los datos del navegador, tu contenido desaparece.\n' +
-      '4. No es asesoramiento médico, psicológico ni financiero. Es un cuaderno con estructura.\n' +
-      '5. Puedes dejar de usarla cuando quieras: borrar los datos desde Perfil elimina todo de forma inmediata y definitiva.'],
+      'Brújula de Vida (Avanzaya) es una herramienta personal para organizar tus metas, rutinas y tu visión.\n\n' +
+      '1. Puedes usarla sin cuenta: entonces todo se guarda solo en este navegador.\n' +
+      '2. Puedes crear una cuenta con tu correo, tu teléfono o un nombre de usuario (y una contraseña), o entrar con Google o Facebook. Con cuenta, tus datos se guardan también en la nube para sincronizarlos entre tus dispositivos. Cómo y dónde, en la Política de privacidad.\n' +
+      '3. El teléfono y el nombre de usuario no se verifican ni reciben mensajes. Sin un correo real no podemos ayudarte a recuperar la contraseña: guárdala bien.\n' +
+      '4. La contraseña de la app protege el acceso a la app, no cifra tus datos. Lee «Cómo se protege tu cuenta» en Perfil.\n' +
+      '5. La app es gratuita y se ofrece tal cual, sin garantía de disponibilidad ni de conservación de tus datos. Haz copias de seguridad desde Perfil.\n' +
+      '6. No es asesoramiento médico, psicológico ni financiero. Es un cuaderno con estructura.\n' +
+      '7. Puedes dejar de usarla cuando quieras. «Borrar todo» (Perfil › Copia de seguridad) borra los datos de este navegador; para borrar también tu copia en la nube y tu cuenta, escríbenos.\n' +
+      '8. Contacto: ' + CONTACTO + '.'],
     privacidad: ['lock', 'Política de privacidad',
-      'La versión corta: no recogemos nada.\n\n' +
-      '• Qué se guarda: tus textos, metas, rutinas, fotos del tablero y ajustes, en el almacenamiento local de este navegador.\n' +
-      '• Quién puede verlo: quien tenga acceso a este dispositivo y a este navegador. Nadie más.\n' +
-      '• Contraseña: nunca se guarda. Se guarda una derivación PBKDF2-SHA256 con sal aleatoria, de la que no se puede volver atrás.\n' +
-      '• Cookies y rastreo: ninguno. No hay analítica, ni publicidad, ni terceros.\n' +
-      '• Salidas a internet: solo las tipografías de Google, sin enviar la dirección de esta página. Ninguna otra petición.\n' +
-      '• Tu respaldo no lleva la contraseña: si restauras en otro dispositivo, tendrás que crear una nueva.\n' +
-      '• Tus derechos: puedes exportar todo o borrarlo entero desde Perfil › Copia de seguridad.'],
+      'Responsable: Brújula de Vida (Avanzaya). Contacto: ' + CONTACTO + '.\n\n' +
+      'SI USAS LA APP SIN CUENTA\n' +
+      '• Lo que escribes (metas, rutinas, notas, fotos del tablero y ajustes) se guarda en el almacenamiento de este navegador. No se envía a nuestra nube.\n\n' +
+      'SI CREAS UNA CUENTA (con correo, teléfono o nombre de usuario, o con Google o Facebook)\n' +
+      '• Sincronización: una copia de todos tus datos de la app se guarda en Supabase, nuestro proveedor de base de datos, en servidores de Estados Unidos (Oregón). Incluye las fotos del tablero, tu nombre, tu correo y la versión protegida (derivada) de tu contraseña de la app, nunca la contraseña en sí.\n' +
+      '• Quién puede verla: desde la app, solo tu cuenta. El proveedor y quien administra el proyecto pueden acceder técnicamente a la base de datos: la copia va cifrada en la conexión (HTTPS), pero no está cifrada de extremo a extremo.\n' +
+      '• Inicio de sesión: Supabase guarda tu correo y su propia versión protegida de tu contraseña. Si creas la cuenta con teléfono o nombre de usuario, en la nube se guarda como un correo interno de la app que nadie recibe (por ejemplo, u.tu_usuario@' + BdvIdentidad_DOMINIO + '), que contiene tu teléfono o tu usuario. El teléfono no se verifica ni se usa para enviarte mensajes.\n' +
+      '• Google y Facebook (solo si entras con ellos): nos confirman tu correo (si lo compartes) y tu nombre; Google o Meta ven que usas su cuenta para entrar aquí.\n' +
+      '• Recordatorio diario (solo si lo activas): guardamos la suscripción de notificaciones de tu navegador, la hora que eliges y tu zona horaria. El aviso llega a través del servicio de notificaciones de tu navegador (Google, Apple o Mozilla).\n' +
+      '• Resumen semanal por correo: todavía no está activo. Si se activa, usará el servicio Resend con tu correo y las cifras de tu semana, y lo diremos aquí antes.\n\n' +
+      'EN TODOS LOS CASOS\n' +
+      '• El sitio se sirve desde Cloudflare y las tipografías desde Google Fonts: como en cualquier web, reciben tu dirección IP y datos técnicos de la conexión.\n' +
+      '• No hay analítica, ni publicidad, ni cookies de seguimiento.\n' +
+      '• Usamos tus datos solo para que la app funcione y estén en tus dispositivos. No los vendemos ni los compartimos para otros fines.\n' +
+      '• Tu copia de seguridad (Perfil › Copia de seguridad) es un texto con todos tus datos, incluida la versión protegida de tu contraseña: guárdala en un sitio seguro.\n\n' +
+      'TUS DERECHOS\n' +
+      '• Puedes ver y exportar todo desde Perfil › Copia de seguridad, y corregirlo desde la propia app.\n' +
+      '• «Borrar todo» borra solo los datos de este navegador. Tu copia en la nube y tu cuenta siguen guardadas: para borrarlas, escribe a ' + CONTACTO + ' desde el correo de tu cuenta.'],
     seguridad: ['shield', 'Cómo se protege tu cuenta',
-      'Lo primero, con honestidad: esta app no tiene servidor. La pantalla de inicio de sesión protege tus datos de quien coja el móvil, no de quien controle el dispositivo. Quien tenga acceso al navegador puede leer el almacenamiento local. No guardes aquí nada que no dejarías en un cuaderno sobre la mesa.\n\n' +
-      'Dicho eso, lo que sí se puede hacer bien, está hecho:\n\n' +
-      '• Contraseña — se deriva con PBKDF2-SHA256, 210.000 iteraciones y una sal aleatoria de 16 bytes. Nunca se guarda lo que escribes.\n' +
+      'Lo primero, con claridad: la contraseña de la app NO cifra tus datos. Sirve para que no se pueda entrar en tu cuenta desde la pantalla de inicio sin saberla, pero lo que escribes se guarda tal cual, sin cifrar, en el almacenamiento de este navegador. Quien tenga acceso a este dispositivo y sepa usar las herramientas del navegador puede leerlo, como un cuaderno sobre la mesa. Si tienes cuenta, la copia en la nube va cifrada en la conexión, pero tampoco está cifrada de extremo a extremo.\n\n' +
+      'Por eso: usa una contraseña distinta de la de tu correo, bloquea tu teléfono con PIN o huella, y no guardes aquí datos muy sensibles (contraseñas, datos bancarios, detalles médicos).\n\n' +
+      'Lo que sí está hecho:\n\n' +
+      '• Contraseña — se deriva con PBKDF2-SHA256, 210.000 iteraciones y una sal aleatoria de 16 bytes. Nunca se guarda lo que escribes. Si tienes cuenta, la contraseña también viaja por HTTPS a Supabase, que guarda su propia versión protegida para iniciar sesión en la nube.\n' +
       '• Comparación — en tiempo constante, para no filtrar información por lo que tarda en responder.\n' +
       '• Reglas — mínimo 8 caracteres, se rechazan las más usadas y las secuencias obvias.\n' +
       '• Fuerza bruta — tras cinco fallos seguidos hay que esperar, y la espera se dobla en cada intento.\n' +
       '• Sesión — caduca a los 14 días; si no marcas «mantener la sesión», al cerrar la pestaña.\n' +
       '• Cambio de contraseña — pide la actual y cierra la sesión, para que haya que volver a entrar.\n' +
+      '• Entrar sin cuenta — abre un espacio aparte y vacío: nunca muestra los datos de una cuenta de este dispositivo.\n' +
+      '• Si olvidas la contraseña — todavía no hay recuperación por correo. Si tu cuenta usa Google o Facebook, entra con ellos; si no, tus datos de este dispositivo quedan cerrados: guarda una copia de seguridad de vez en cuando y, si lo necesitas, escríbenos. Las cuentas de teléfono o usuario no tienen correo con el que recuperarla.\n' +
       '• Mensajes de error — nunca dicen si falló el correo o la contraseña.\n' +
+      '• Nube — cada cuenta solo puede leer y escribir su propia copia (reglas de seguridad por fila en la base de datos), y todo viaja por HTTPS.\n' +
       '• Aleatoriedad — todos los identificadores salen de crypto.getRandomValues, no de Math.random, y no son correlativos.\n' +
       '• Imágenes — se comprueba tipo, peso y tamaño, se rechazan los SVG (pueden llevar scripts) y todo se recodifica a JPEG, lo que descarta los metadatos EXIF.\n' +
       '• Respaldos — el texto que pegas se valida campo a campo contra un esquema estricto antes de tocar nada.\n' +
-      '• Sin código dinámico — no se usa eval ni se carga ningún script externo.'],
+      '• Código — la app solo ejecuta scripts servidos desde su propio sitio (la librería de Supabase va incluida) y la política de seguridad del navegador bloquea los de otros sitios. No se usa eval.'],
     ayuda: ['help', 'Cómo funciona',
       '1. Hoy — es la pantalla de inicio. Marca la rutina de día y la de noche y tu racha empieza a contar. Con eso solo, la app ya sirve.\n\n' +
       '2. Chequeo de vida — siete pantallas cortas para medir cómo estás en cada área. Repítelo cada pocos meses; el historial te muestra si subes o bajas.\n\n' +
       '3. Mi Yo del Futuro — una frase por área sobre dónde quieres estar en 5 años. De ahí sale tu Visión.\n\n' +
       '4. Metas — corto plazo (menos de 1 año) y largo plazo. Dentro de cada una defines los pasos; el porcentaje sale solo de los pasos marcados.\n\n' +
       '5. Pasos a metas — cuando un paso de una meta de largo plazo tiene fecha a menos de un año, puedes convertirlo en meta de corto plazo con un botón.\n\n' +
-      '6. Sincronizar — reparte los pasos de una meta por el calendario para que aparezcan el día que toca. El calendario vive dentro de la app: no se conecta con Google Calendar porque eso necesitaría un servidor y permisos de tu cuenta.\n\n' +
+      '6. Sincronizar — reparte los pasos de una meta por el calendario para que aparezcan el día que toca. El calendario vive dentro de la app: no se conecta con Google Calendar.\n\n' +
       '7. Rutinas — marca la rutina de día y la de noche; el calendario se pinta de verde, ámbar o rojo según lo que cumplas, y de ahí sale tu racha.\n\n' +
       'Consejo: haz una copia de seguridad de vez en cuando desde Perfil.'],
     feedback: ['mail', 'Enviar feedback',
-      'Esta versión no tiene servidor, así que no puede enviar mensajes por sí sola.\n\n' +
-      'Si algo no funciona o echas algo en falta, apúntalo aquí abajo: se guarda con el resto de tus datos y aparecerá en tu copia de seguridad, de forma que puedas copiarlo y mandarlo por donde prefieras.']
+      'La app no envía tus comentarios a ninguna parte por sí sola.\n\n' +
+      'Apúntalos aquí abajo: se guardan con el resto de tus datos (y, si tienes cuenta, en tu copia en la nube). Para hacérnoslos llegar, escríbenos a ' + CONTACTO + '.']
   };
 
   var COLORS = ['#5b6ee1', '#e07a45', '#d9527a', '#c9971f', '#2f9268', '#3d9bb0', '#7a63d6', '#b06ab8'];
@@ -203,12 +224,12 @@
       (S.account
         ? (S.account.pass
             ? '<label class="field"><span>Contraseña actual</span><input class="inp" type="password" id="pwOld"></label>'
-            : '<p class="notice">Esta cuenta no tiene contraseña (viene de un respaldo: las contraseñas no viajan en él). Crea una nueva.</p>') +
+            : '<p class="notice">Esta cuenta no tiene contraseña de la app (por ejemplo, si entraste con Google). Crea una nueva.</p>') +
           '<label class="field"><span>Nueva contraseña</span><input class="inp" type="password" id="pwNew" placeholder="Mínimo 8 caracteres"></label>' +
           '<label class="field"><span>Repite la nueva</span><input class="inp" type="password" id="pwNew2"></label>' +
           '<p class="tiny" id="pwMsg" style="min-height:16px"></p>' +
           '<button class="btn block" data-a="savePass">Guardar</button>' +
-          '<p class="notice">La contraseña solo desbloquea la app en este dispositivo y se guarda sin cifrar. No uses la de tu correo.</p>'
+          '<p class="notice">La contraseña protege el acceso a la app, pero no cifra tus datos: lo que escribes se guarda sin cifrar en este navegador. No uses la de tu correo.</p>'
         : '<p class="muted">Estás usando la app sin cuenta, así que no hay contraseña que cambiar.</p>' +
           '<button class="btn block" data-a="go" data-s="register">Crear una cuenta</button>') +
       '</div>';

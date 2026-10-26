@@ -16,6 +16,19 @@
   action('guest', function () { Cuentas.entrarSinCuenta(); goApp('hoy'); });
   action('enterApp', function () { Cuentas.entrarApp(); goApp('hoy'); });
   action('google', function () { Cuentas.google(); });
+  action('facebook', function () { Cuentas.facebook(); });
+
+  // Con qué se crea la cuenta: se cambia el campo sin repintar (no se pierde lo escrito).
+  action('regTipo', function (c) {
+    var d = V.REG_TIPOS[c.v]; if (!d) return;
+    ui.regTipo = c.v;
+    var tabs = document.querySelectorAll('[data-a="regTipo"]');
+    for (var i = 0; i < tabs.length; i++) tabs[i].setAttribute('aria-selected', tabs[i].getAttribute('data-v') === c.v);
+    var inp = document.getElementById('rgMail'), lab = document.getElementById('rgIdLabel'), hint = document.getElementById('rgIdHint');
+    if (lab) lab.textContent = d.label;
+    if (inp) { inp.type = d.type; inp.setAttribute('autocomplete', d.auto); inp.setAttribute('inputmode', d.mode); inp.placeholder = d.ph; inp.value = ''; inp.focus(); }
+    if (hint) { hint.textContent = d.hint; hint.hidden = !d.hint; }
+  });
   action('dologin', function (c) { c.e.preventDefault(); doLogin(); });
   action('doregister', function (c) { c.e.preventDefault(); doRegister(); });
 
@@ -38,7 +51,7 @@
     if (isBusy()) return;                     // antes de llamar: el servicio ya empieza a trabajar
     var err = document.getElementById('rgErr'), terms = document.getElementById('rgTerms');
     var r = Cuentas.registrar({
-      nombre: val('rgName'), correo: val('rgMail'), pass: val('rgPass'), pass2: val('rgPass2'),
+      nombre: val('rgName'), tipo: ui.regTipo || 'email', identificador: val('rgMail'), pass: val('rgPass'), pass2: val('rgPass2'),
       terminos: !!(terms && terms.checked), zona: V.guessTz()
     });
     if (!r.espera) { err.textContent = r.msg; return; }
@@ -51,9 +64,9 @@
     });
   }
 
-  // Google ya verificó quién es (aviso del adaptador de la nube por el bus).
-  Bus.on('auth:google', function (user) {
-    if (Cuentas.entrarConGoogle(user, V.guessTz())) goApp('hoy');
+  // Google o Facebook ya verificó quién es (aviso del adaptador de la nube por el bus).
+  Bus.on('auth:red', function (d) {
+    if (d && Cuentas.entrarConRed(d.user, d.proveedor, V.guessTz())) goApp('hoy');
   });
 
   /* --- chequeo de vida --- */

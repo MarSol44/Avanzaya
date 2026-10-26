@@ -8,7 +8,7 @@
      account:switched — se cambió de cuenta en este dispositivo
      remote:applied   — llegaron datos de la nube y ya están aplicados
      sync:changed     — cambió algo de la sincronización (repintar)
-     auth:google      — Google confirmó a una persona (dato: el usuario)
+     auth:red         — Google o Facebook confirmó a una persona (dato: { user, proveedor })
      aviso            — un mensaje para enseñar a la persona (dato: el texto)
    ========================================================================== */
 var Bus = (function () {

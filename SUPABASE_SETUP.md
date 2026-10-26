@@ -94,15 +94,60 @@ npx supabase functions deploy send-weekly-email --no-verify-jwt
 comprobando la cabecera `x-cron-secret`, no el JWT de Supabase (pg_cron no
 sabe generar uno).
 
-## 7. Recomendado: desactiva la confirmación de correo en Supabase Auth
+## 7. Obligatorio: desactiva la confirmación de correo en Supabase Auth
 
 **Authentication → Providers → Email → "Confirm email"** → apágalo.
 
-La app ya protege el acceso con su propia contraseña local; exigir además
-confirmar el correo en Supabase solo retrasa que la sincronización empiece a
-funcionar en el primer dispositivo. Si lo dejas activado, el primer registro
-mostrará un aviso pidiendo confirmar el correo antes de que la sincronización
-arranque — sigue siendo seguro, solo más lento.
+Las cuentas creadas con **teléfono** o **nombre de usuario** no tienen correo
+real: en Supabase se dan de alta con un correo interno de la app que nadie
+recibe (`tel.34600123456@usuarios.avanzaya.pages.dev`,
+`u.mari_23@usuarios.avanzaya.pages.dev`). Si la confirmación está activada,
+esas cuentas nunca podrían confirmarse ni sincronizar, y Supabase intentaría
+mandar correos a direcciones que no existen.
+
+El dominio interno está en `js/dominio/identidad.js` (`DOMINIO`). Si publicas
+la app en otro dominio, cámbialo ahí y en el texto de la política
+(`js/presentacion/vistas/hojas.js`). Las cuentas ya creadas conservan el suyo.
+
+Nota: el teléfono **no se verifica** (verificarlo por SMS exige un proveedor de
+pago, como Twilio). Sin correo real tampoco hay recuperación de contraseña.
+
+## 7b. Entrar con Google y con Facebook
+
+Las dos van a través de Supabase. En ambos casos la dirección de vuelta
+(*redirect*) que hay que dar al proveedor es:
+
+```
+https://fgpwhdfvqtlvfmmzhxsy.supabase.co/auth/v1/callback
+```
+
+Y en Supabase → **Authentication → URL Configuration** pon tu dirección
+publicada (p. ej. `https://avanzaya.pages.dev`) como **Site URL** y añádela en
+**Redirect URLs** (para probar en local, añade también `http://localhost:8765`).
+
+**Google**
+1. Google Cloud Console → APIs y servicios → Credenciales → Crear credenciales
+   → ID de cliente de OAuth → tipo "Aplicación web".
+2. En "URI de redireccionamiento autorizados", la dirección de vuelta de arriba.
+3. Supabase → **Authentication → Providers → Google** → actívalo y pega el
+   Client ID y el Client Secret.
+
+**Facebook**
+1. developers.facebook.com → **Mis apps → Crear app** → caso de uso
+   "Autenticar y solicitar datos a los usuarios con el inicio de sesión con
+   Facebook". Es gratis.
+2. En el producto **Inicio de sesión con Facebook → Configuración**, añade la
+   dirección de vuelta de arriba en "URI de redireccionamiento de OAuth válidos".
+3. En **Configuración de la app → Básica** copia el identificador de la app y la
+   clave secreta, y añade la URL de tu política de privacidad (puede ser la de
+   la app publicada). Meta la pide para poner la app en modo público.
+4. Supabase → **Authentication → Providers → Facebook** → actívalo y pega el
+   identificador y la clave secreta.
+5. Mientras la app de Meta esté en modo desarrollo, solo pueden entrar las
+   personas añadidas como probadoras; para todo el mundo, pásala a modo activo.
+
+Si alguien entra con Facebook sin compartir su correo, la app crea igualmente
+su cuenta (identificada por su id de Facebook en Supabase).
 
 ## 8. Sube los archivos nuevos/cambiados a Hostinger
 

@@ -33,6 +33,17 @@ var Fmt = (function () {
     } catch (e) { return start + ' – ' + end; }
   }
 
+  /* --------------------------------------------------------------- cuenta */
+  // Cómo se enseña con qué se entra: el correo, el teléfono, @usuario o la red social.
+  var REDES = { google: 'Google', facebook: 'Facebook' };
+  function cuenta(acc) {
+    if (!acc) return '';
+    if (acc.login === 'tel' && acc.phone) return acc.phone;
+    if (acc.login === 'usuario' && acc.username) return '@' + acc.username;
+    if (acc.email) return acc.email;
+    return acc.provider ? 'Cuenta de ' + (REDES[acc.provider] || acc.provider) : '';
+  }
+
   /* ---------------------------------------------------------------- metas */
   // Cuánto falta para la fecha límite, como texto y color: { txt, cls }.
   function due(k, done) {
@@ -113,7 +124,7 @@ var Fmt = (function () {
   }
 
   return {
-    esc: esc, plural: plural, cap: cap, fmt: fmt, fmtLong: fmtLong, weekLabel: weekLabel,
+    esc: esc, plural: plural, cap: cap, fmt: fmt, fmtLong: fmtLong, weekLabel: weekLabel, cuenta: cuenta,
     due: due, catOptions: catOptions, ring: ring, radar: radar
   };
 })();

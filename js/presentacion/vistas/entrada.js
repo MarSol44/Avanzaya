@@ -59,12 +59,42 @@
       '<p class="hero-quote" style="text-align:center;color:var(--ink-2);font-size:1.05rem">“Organiza tus sueños y metas.”</p>' +
       '</div>' +
       '<div class="stack sm" style="margin-top:18px">' +
-      '<button class="btn accent block" data-a="guest" style="padding:15px 20px;font-size:16px">Empezar</button>' +
-      '<button class="btn ghost block" data-a="go" data-s="login">Ya tengo una cuenta</button>' +
+      '<button class="btn accent block" data-a="go" data-s="login" style="padding:15px 20px;font-size:16px">Iniciar sesión</button>' +
+      '<button class="btn soft block" data-a="go" data-s="register" style="padding:15px 20px;font-size:16px">Regístrate</button>' +
       '</div>' +
-      '<p class="tiny" style="text-align:center;max-width:34ch;margin:0 auto">Sin registro y sin correo. Todo lo que escribas se guarda solo en este dispositivo; si luego quieres una contraseña, se la pones.</p>' +
+      '<div class="stack sm" style="align-items:center;gap:4px">' +
+      '<button class="btn ghost sm" data-a="guest">Probar sin cuenta</button>' +
+      '<p class="tiny" style="text-align:center;max-width:34ch;margin:0 auto">Sin cuenta, lo que escribas se queda solo en este dispositivo. Con cuenta, se sincroniza en la nube para usarlo en otros.</p>' +
+      '</div>' +
       '</div>';
   };
+
+  /* -------------------------------------------- cuentas: redes y tipo de acceso */
+  function redes() {
+    return '<div class="redes">' +
+      '<button class="btn soft block" type="button" data-a="google">Continuar con Google</button>' +
+      '<button class="btn soft block" type="button" data-a="facebook">Continuar con Facebook</button></div>';
+  }
+  // Con qué se crea la cuenta. El controlador cambia el campo sin repintar,
+  // para no borrar lo ya escrito.
+  V.REG_TIPOS = {
+    email: { tab: 'Correo', label: 'Correo electrónico', type: 'email', auto: 'email', mode: 'email', ph: 'tu@correo.com', hint: '' },
+    tel: { tab: 'Teléfono', label: 'Teléfono', type: 'tel', auto: 'tel', mode: 'tel', ph: '+34 600 123 456',
+      hint: 'Con el prefijo del país. No se verifica ni recibe mensajes, y sin correo no se puede recuperar la contraseña: apúntala bien.' },
+    usuario: { tab: 'Usuario', label: 'Nombre de usuario', type: 'text', auto: 'username', mode: 'text', ph: 'p. ej. mari_23',
+      hint: 'De 3 a 30 caracteres: letras sin tildes, números, punto, guion o guion bajo. Sin correo no se puede recuperar la contraseña: apúntala bien.' }
+  };
+  function tipoRegistro() {
+    var tipo = V.REG_TIPOS[ui.regTipo] ? ui.regTipo : 'email', d = V.REG_TIPOS[tipo];
+    return '<div class="field"><span>Crear la cuenta con</span>' +
+      '<div class="seg" role="tablist" aria-label="Crear la cuenta con">' +
+      ['email', 'tel', 'usuario'].map(function (k) {
+        return '<button type="button" role="tab" data-a="regTipo" data-v="' + k + '" aria-selected="' + (k === tipo) + '">' + V.REG_TIPOS[k].tab + '</button>';
+      }).join('') + '</div></div>' +
+      '<label class="field"><span id="rgIdLabel">' + d.label + '</span>' +
+      '<input class="inp" type="' + d.type + '" id="rgMail" autocomplete="' + d.auto + '" inputmode="' + d.mode + '" autocapitalize="none" spellcheck="false" placeholder="' + d.ph + '"></label>' +
+      '<p class="tiny" id="rgIdHint"' + (d.hint ? '' : ' hidden') + '>' + d.hint + '</p>';
+  }
 
   /* ----------------------------------------------------------- iniciar sesión */
   V.login = function () {
@@ -73,8 +103,8 @@
       '<button class="iconbtn" data-a="go" data-s="splash" aria-label="Volver">' + I('left') + '</button>' +
       '<h1>Iniciar sesión</h1></div></div>' +
       '<div class="scroll nonav"><form class="stack" id="loginForm" novalidate>' +
-      '<label class="field"><span>Correo electrónico</span>' +
-      '<input class="inp" type="email" id="liMail" autocomplete="email" placeholder="tu@correo.com"></label>' +
+      '<label class="field"><span>Correo, teléfono o usuario</span>' +
+      '<input class="inp" type="text" id="liMail" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="tu@correo.com, +34 600… o tu usuario"></label>' +
       '<label class="field"><span>Contraseña</span><span class="pwwrap">' +
       '<input class="inp" type="' + t + '" id="liPass" autocomplete="current-password" placeholder="Tu contraseña">' +
       '<button type="button" class="pweye" data-a="togglepw" aria-label="Ver u ocultar contraseña">' + I(ui.showPw ? 'eyeOff' : 'eye', 19) + '</button>' +
@@ -82,10 +112,10 @@
       '<label class="checkrow"><input type="checkbox" id="liKeep" checked>Mantener la sesión iniciada</label>' +
       '<p id="liErr" class="tiny" style="color:var(--bad);min-height:16px"></p>' +
       '<button class="btn block" type="submit" data-a="dologin">Iniciar sesión</button>' +
-      '<button class="btn soft block" type="button" data-a="google">Continuar con Google</button>' +
+      redes() +
       '<button class="btn ghost block" type="button" data-a="forgot">¿Olvidaste tu contraseña?</button>' +
       '<button class="btn soft block" type="button" data-a="go" data-s="register">Crear una cuenta nueva</button>' +
-      '<p class="notice">La cuenta vive solo en este navegador: no hay servidor que verifique nada ni correo de recuperación. Guarda tu respaldo desde Perfil.</p>' +
+      '<p class="notice">Al entrar, tus datos se sincronizan con tu copia en la nube (Supabase). La contraseña protege el acceso a la app, pero no cifra lo guardado en este navegador. Más en la <a href="#" data-a="legal" data-doc="privacidad">Política de privacidad</a>.</p>' +
       '</form></div>';
   };
 
@@ -100,8 +130,7 @@
       '<div class="scroll nonav"><form class="stack" id="regForm" novalidate>' +
       '<label class="field"><span>Nombre</span>' +
       '<input class="inp" id="rgName" autocomplete="given-name" placeholder="Solo tu nombre"></label>' +
-      '<label class="field"><span>Correo electrónico</span>' +
-      '<input class="inp" type="email" id="rgMail" autocomplete="email" placeholder="tu@correo.com"></label>' +
+      tipoRegistro() +
       '<label class="field"><span>Contraseña</span><span class="pwwrap">' +
       '<input class="inp" type="' + t + '" id="rgPass" autocomplete="new-password" placeholder="Mínimo 8 caracteres">' +
       '<button type="button" class="pweye" data-a="togglepw" aria-label="Ver u ocultar contraseña">' + I(ui.showPw ? 'eyeOff' : 'eye', 19) + '</button>' +
@@ -110,9 +139,10 @@
       '<input class="inp" type="' + t + '" id="rgPass2" autocomplete="new-password" placeholder="Repite la contraseña"></label>' +
       '<label class="checkrow"><input type="checkbox" id="rgTerms">' +
       '<span>Acepto los <a href="#" data-a="legal" data-doc="terminos">Términos y Condiciones</a> y la <a href="#" data-a="legal" data-doc="privacidad">Política de Privacidad</a>.</span></label>' +
+      '<p class="notice">Con una cuenta, tus datos se guardan también en la nube (Supabase, en EE. UU.) para sincronizarlos entre tus dispositivos. La contraseña no cifra lo que se guarda en este navegador.</p>' +
       '<p id="rgErr" class="tiny" style="color:var(--bad);min-height:16px"></p>' +
       '<button class="btn block" type="submit" data-a="doregister">Crear cuenta</button>' +
-      '<button class="btn soft block" type="button" data-a="google">Continuar con Google</button>' +
+      redes() +
       '</form></div>';
   };
 

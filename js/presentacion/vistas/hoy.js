@@ -55,13 +55,13 @@
 
     if (S.guest && used >= 5 && !off('cuenta', 10)) {
       return { id: 'cuenta', icon: 'lock', title: 'Ponle una contraseña a tus datos',
-        body: 'Llevas ' + Fmt.plural(used, 'día', 'días') + ' usando la app. Con una cuenta, nadie que coja este dispositivo puede abrirla.',
+        body: 'Llevas ' + Fmt.plural(used, 'día', 'días') + ' usando la app. Con una cuenta, hace falta tu contraseña para abrir tus datos desde la app y se sincronizan entre tus dispositivos. (La contraseña no los cifra.)',
         cta: 'Crear cuenta', act: 'go', attr: ' data-s="register"' };
     }
 
     if (used >= 10 && !S.lastBackup && !off('respaldo', 14)) {
       return { id: 'respaldo', icon: 'save', title: 'Guarda una copia de lo que llevas',
-        body: 'Todo vive en este navegador. Si lo borras, se va contigo. Copiar tu respaldo tarda diez segundos.',
+        body: 'Lo que hay en este navegador se pierde si lo borras. Copiar tu respaldo tarda diez segundos.',
         cta: 'Hacer copia', act: 'sheetBackup' };
     }
     return null;

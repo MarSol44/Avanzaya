@@ -689,3 +689,5 @@ button.hstat:hover{ border-color:var(--accent); }
 .hstat .hl{ font-size:11.5px; color:var(--ink-2); line-height:1.25; }
 .hstat.good{ background:var(--good-sf); border-color:transparent; }
 .hstat.good .hn{ color:var(--good); }
+/* botones de Google y Facebook */
+.redes{ display:flex; flex-direction:column; gap:8px; }

@@ -19,18 +19,23 @@ var Store = (function () {
     try { var u = JSON.parse(localStorage.getItem(USERS_KEY) || '{}'); return u && typeof u === 'object' ? u : {}; }
     catch (e) { return {}; }
   }
+  // El índice va por la clave de identidad de cada cuenta (correo, «tel:…»,
+  // «user:…» o «red:…»; ver dominio/identidad.js). Las cuentas antiguas, que
+  // se indexaban por correo, siguen encontrándose igual.
   function indexUser() {
-    if (!S.account || !S.account.email) return;
-    var u = users(), m = lc(S.account.email), k;
+    var m = BdvIdentidad.deCuenta(S.account);
+    if (!m) return;
+    var u = users(), k;
     for (k in u) if (Object.prototype.hasOwnProperty.call(u, k) && u[k] === curKey && k !== m) delete u[k];
     u[m] = curKey;
     try { localStorage.setItem(USERS_KEY, JSON.stringify(u)); } catch (e) { }
   }
-  function newUserKey(m) { return KEY + '.u.' + encodeURIComponent(lc(m)); }
-  function findKey(m) {
-    var u = users(), k = lc(m);
+  function newUserKey(clave) { return KEY + '.u.' + encodeURIComponent(lc(clave)); }
+  function findKey(clave) {
+    var u = users(), k = lc(clave);
+    if (!k) return null;
     if (Object.prototype.hasOwnProperty.call(u, k) && typeof u[k] === 'string' && u[k].indexOf(KEY) === 0) return u[k];
-    if (S.account && lc(S.account.email) === k) return curKey;
+    if (S.account && BdvIdentidad.deCuenta(S.account) === k) return curKey;
     return null;
   }
 
@@ -140,6 +145,20 @@ var Store = (function () {
   }
   function rawLocal() { try { return localStorage.getItem(curKey) || ''; } catch (e) { return ''; } }
 
+  // Espacio «sin cuenta» aparte: entrar sin cuenta nunca abre los datos de una
+  // cuenta de este dispositivo (esos solo se abren con su contraseña o Google).
+  var GUEST_KEY = KEY + '.invitado';
+  function esInvitado() { return curKey === GUEST_KEY; }
+  // Lleva el estado actual a otra clave (sin perder nada) y deja libre la anterior.
+  function moverA(key) {
+    if (key === curKey) return;
+    var old = curKey;
+    try { localStorage.setItem(key, JSON.stringify(S)); localStorage.removeItem(old); } catch (e) { }
+    curKey = key;
+    try { localStorage.setItem(ACTIVE_KEY, key); } catch (e) { }
+    indexUser();
+  }
+
   // Marca de «esta pestaña tiene la sesión abierta» (para las sesiones que no
   // se recuerdan al cerrar). Vive en sessionStorage, que se borra al cerrar.
   var live = {
@@ -151,6 +170,7 @@ var Store = (function () {
   return {
     KEY: KEY, S: S, defaults: defaults, load: load, save: save, saveNow: saveNow,
     curKey: function () { return curKey; }, findKey: findKey, newUserKey: newUserKey,
-    switchUser: switchUser, wipe: wipe, rawLocal: rawLocal, live: live
+    switchUser: switchUser, wipe: wipe, rawLocal: rawLocal, live: live,
+    GUEST_KEY: GUEST_KEY, esInvitado: esInvitado, moverA: moverA
   };
 })();

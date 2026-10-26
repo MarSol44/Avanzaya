@@ -4,7 +4,7 @@
 
    Cuando cambies la app, sube VERSION un número. Eso basta. */
 
-var VERSION = 'brujula-v20';
+var VERSION = 'brujula-v23';
 var SHELL   = VERSION + '-shell';
 var FUENTES = VERSION + '-fuentes';
 
@@ -21,6 +21,7 @@ var PRECACHE = [
   '/js/dominio/rutinas.js',
   '/js/dominio/areas.js',
   '/js/dominio/revision.js',
+  '/js/dominio/identidad.js',
   '/js/infraestructura/seguridad.js',
   '/js/infraestructura/almacen.js',
   '/js/infraestructura/preferencias.js',
@@ -128,9 +129,6 @@ self.addEventListener('fetch', function (e) {
 
   var url;
   try { url = new URL(req.url); } catch (err) { return; }
-
-  /* la analítica nunca se guarda ni se reintenta: si no hay red, se pierde y ya */
-  if (url.hostname.indexOf('cloudflareinsights.com') !== -1) return;
 
   /* navegación: primero la red (así la actualización llega),
      y si no hay, la copia guardada */

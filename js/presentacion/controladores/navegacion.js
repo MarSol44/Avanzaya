@@ -61,7 +61,7 @@
   action('forgot', function (c) {
     var el = c.el, e = c.e, id = c.id, k = c.k, v = c.v, sid = c.sid;
     e.preventDefault();
-    Pantalla.toast('No hay servidor que envíe correos. Si olvidaste la contraseña, entra sin cuenta: tus datos siguen ahí.');
+    Pantalla.toast('Aún no hay recuperación por correo. Si tu cuenta usa Google o Facebook, entra con ellos; si no, escríbenos a avanzayaapp@gmail.com.');
     return;
   });
   var act_legal_sheetDoc = function (c) {

@@ -9,7 +9,7 @@
   var render = UI.render, paintChrome = UI.paintChrome, meta = UI.meta;
 
   document.documentElement.lang = 'es';
-  meta('description', 'Brújula de Vida: define quién quieres ser, mide si avanzas y ajusta cada semana. Funciona entero en tu navegador, sin cuentas ni servidor.');
+  meta('description', 'Brújula de Vida: define quién quieres ser, mide si avanzas y ajusta cada semana. Úsala sin cuenta o crea una para sincronizar entre dispositivos.');
   meta('color-scheme', 'light dark');
 
   // Cuando llegan datos de la nube o cambia el estado de la sincronización,
