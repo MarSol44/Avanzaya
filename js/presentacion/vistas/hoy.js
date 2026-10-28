@@ -335,11 +335,11 @@
     /* 1. el día de un vistazo: pendientes, hábitos y racha */
     var allDone = tot.total && tot.done >= tot.total;
     h += '<div class="hstats">' +
-      '<div class="hstat"><span class="hn">' + pend + '</span> <span class="hl">' + (pend === 1 ? 'pendiente' : 'pendientes') + '</span></div>' +
+      '<div class="hstat"><span class="hn">' + pend + '</span> <span class="hl">' + (pend === 1 ? 'pendiente hoy' : 'pendientes hoy') + '</span></div>' +
       '<button class="hstat' + (allDone ? ' good' : '') + '" data-a="goRoutines" aria-label="Hábitos de hoy: ' + tot.done + ' de ' + tot.total + '. Ir a las rutinas">' +
       '<span class="hn">' + tot.done + '<small>/' + tot.total + '</small></span> <span class="hl">hábitos</span></button>' +
       '<div class="hstat"><span class="hn">' + (st > 0 ? I('flame', 18) : '') + st + '</span> <span class="hl">' +
-      (st > 0 ? (st === 1 ? 'día de racha' : 'días de racha') : 'empieza tu racha') + '</span></div>' +
+      (st > 0 ? (st === 1 ? 'día de racha' : 'días de racha') : 'atrasados') + '</span></div>' +
       '</div>';
 
     /* 2. la semana y el plan del día elegido */
