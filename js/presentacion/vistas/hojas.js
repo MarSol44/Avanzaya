@@ -158,7 +158,9 @@
     }
 
     h += '<div class="divider"></div>' +
-      '<button class="btn danger block" data-a="gdelSheet" data-k="' + k + '" data-id="' + esc(id) + '">' + I('trash', 17) + 'Eliminar esta meta</button>';
+      '<div class="row" style="gap:8px">' +
+      '<button class="btn block grow" data-a="closeSheet">' + I('check', 17) + 'Guardar</button>' +
+      '<button class="btn danger block" data-a="gdelSheet" data-k="' + k + '" data-id="' + esc(id) + '">' + I('trash', 17) + 'Eliminar</button></div>';
     h += '</div>';
     return h;
   }
