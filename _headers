@@ -2,8 +2,11 @@
 # HTTPS, compresión y «todo lo desconocido muestra la app» ya los hace Cloudflare solo.
 
 /*
-  # nadie puede meter la app dentro de un iframe suyo
-  Content-Security-Policy: frame-ancestors 'none'
+  # Política de seguridad completa también como cabecera (la del <meta> de
+  # index.html no admite frame-ancestors). Solo scripts del propio sitio:
+  # aunque alguien consiguiera colar texto, el navegador no lo ejecutaría.
+  # Si cambias la del <meta>, cambia esta igual.
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://fgpwhdfvqtlvfmmzhxsy.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'
   X-Frame-Options: DENY
   # el navegador no adivina tipos de archivo
   X-Content-Type-Options: nosniff

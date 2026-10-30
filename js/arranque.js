@@ -31,6 +31,7 @@
     if (ir && ['hoy', 'metas', 'vision', 'progreso'].indexOf(ir) !== -1) ui.tab = ir;
   } catch (e) { }
 
-  ui.screen = sesion ? 'app' : 'splash';
+  // Con sesión abierta y la bienvenida a medias, se sigue donde se dejó.
+  ui.screen = !sesion ? 'splash' : Bienvenida.pendiente() ? 'bienvenida' : 'app';
   render();
 })();

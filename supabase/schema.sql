@@ -24,7 +24,15 @@ create policy "estado: alta propia" on public.states
 
 drop policy if exists "estado: edición propia" on public.states;
 create policy "estado: edición propia" on public.states
-  for update using (auth.uid() = user_id);
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Tope de tamaño: la clave pública está en el código, así que cualquiera con
+-- cuenta puede escribir su fila directamente, sin pasar por la app. Con esto
+-- nadie llena la base de datos con un estado gigante (la app cabe de sobra:
+-- el navegador no guarda más de ~5 MB).
+alter table public.states drop constraint if exists states_tamano;
+alter table public.states add constraint states_tamano
+  check (pg_column_size(state) < 6 * 1024 * 1024 and jsonb_typeof(state) = 'object');
 
 -- updated_at lo fija siempre el servidor: así ningún reloj de cliente
 -- desincronizado puede hacer que un dispositivo pise los datos de otro.
@@ -56,6 +64,13 @@ create table if not exists public.push_subscriptions (
 
 alter table public.push_subscriptions enable row level security;
 
+-- Longitudes razonables: lo escribe el navegador de cada persona.
+alter table public.push_subscriptions drop constraint if exists push_longitudes;
+alter table public.push_subscriptions add constraint push_longitudes check (
+  char_length(endpoint) <= 1000 and endpoint like 'https://%'
+  and char_length(p256dh) <= 200 and char_length(auth) <= 100 and char_length(tz) <= 64
+);
+
 drop policy if exists "push: lectura propia" on public.push_subscriptions;
 create policy "push: lectura propia" on public.push_subscriptions
   for select using (auth.uid() = user_id);
@@ -66,7 +81,7 @@ create policy "push: alta propia" on public.push_subscriptions
 
 drop policy if exists "push: edición propia" on public.push_subscriptions;
 create policy "push: edición propia" on public.push_subscriptions
-  for update using (auth.uid() = user_id);
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "push: borrado propio" on public.push_subscriptions;
 create policy "push: borrado propio" on public.push_subscriptions

@@ -110,6 +110,16 @@
       return { ok: true, event: e };
     }
 
+    // Apuntar algo sin día: va directo a los pendientes sin fecha.
+    function addTodo(data) {
+      var title = String((data && data.title) || '').trim();
+      if (!title) return { ok: false, reason: 'empty' };
+      if (repo.todo().length >= LIMITS.todo) return { ok: false, reason: 'todoFull' };
+      var x = { id: uid(), title: title, kind: cleanKind(data.kind), goalId: '', sid: '' };
+      repo.setTodo([x].concat(repo.todo()));
+      return { ok: true, todo: x };
+    }
+
     function remove(day, id) {
       repo.setDay(day, without(repo.day(day), id));
       return { ok: true };
@@ -207,7 +217,7 @@
         goalsForDay: goalsForDay, overdue: overdue, pending: pending
       },
       commands: {
-        add: add, remove: remove, toggle: toggle, toggleStep: toggleStep,
+        add: add, addTodo: addTodo, remove: remove, toggle: toggle, toggleStep: toggleStep,
         materializeStep: materializeStep, move: move, setTime: setTime,
         pullTodo: pullTodo, removeTodo: removeTodo, moveOverdue: moveOverdue
       }

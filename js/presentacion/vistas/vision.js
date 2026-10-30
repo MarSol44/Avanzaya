@@ -33,7 +33,7 @@
 
   /* ========================================================= TABLERO VISIÓN */
   function board() {
-    var h = '<div class="page">';
+    var h = '';
     h += '<div class="sect">' +
       '<div class="chips">' +
       '<label class="btn soft sm">' + I('image', 17) + 'Imagen<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" id="boardImg" style="display:none"></label>' +
@@ -61,56 +61,75 @@
       });
       h += '</div>';
     }
-    return h + '</div></div>';
-  }
-
-  /* ======================================================= VISIÓN A 5 AÑOS */
-  function visionPage() {
-    var h = '<div class="page">';
-
-    h += '<div class="sect">' +
-      '<div class="sect-head"><span class="label">Tu mejor versión en 5 años</span>' +
-      '<button class="btn ghost xs" data-a="visionAdd">' + I('plus', 14) + 'Añadir</button></div>';
-    if (!S.visions.length) {
-      h += '<div class="empty"><span class="ee">' + I('leaf', 30) + '</span>' +
-        '<p>Aún no has escrito a dónde quieres llegar. Sin destino no hay forma de saber si avanzas.</p>' +
-        '<button class="btn accent sm" data-a="visionAdd">Escribirla ahora</button></div>';
-    } else {
-      S.visions.forEach(function (v, i) {
-        h += '<div class="card' + (i ? '' : ' raised') + '">' +
-          '<textarea class="ta" style="border:0;padding:0;background:transparent;font-size:15.5px" data-f="vision" data-id="' + esc(v.id) + '" placeholder="En 5 años quiero…">' + esc(v.text) + '</textarea>' +
-          '<div class="spread" style="margin-top:12px;padding-top:11px;border-top:1px solid var(--line)">' +
-          '<span class="tiny num">Escrita el ' + esc(Fmt.fmt(v.date)) + '</span>' +
-          '<button class="delbtn" data-a="visionDel" data-id="' + esc(v.id) + '" aria-label="Eliminar visión">' + I('trash', 17) + '</button>' +
-          '</div></div>';
-      });
-    }
-    h += '</div>';
-
-    /* todo lo demás, en tres filas */
-    var fut = 0;
-    S.cats.forEach(function (c) { if (S.future[c.id] && S.future[c.id].goal) fut++; });
-    var last = Revision.last();
-
-    h += '<div class="sect">' +
-      '<div class="sect-head"><span class="label">Profundizar</span></div>' +
-      '<div class="list">' +
-      row('sparkle', 'Mi Yo del Futuro', fut ? Fmt.plural(fut, 'área', 'áreas') : 'sin definir', 'go', ' data-s="future"') +
-      (last ? row('swap', 'Hoy frente a 5 años', '', 'go', ' data-s="vs"') : '') +
-      row('compass', 'Chequeos de vida',
-        last ? 'último ' + Revision.avg(last) + '/10' : 'ninguno', 'sheetRC') +
-      '</div></div>';
-
     return h + '</div>';
   }
 
+  /* ======================================================= VISIÓN A 5 AÑOS */
+  function futureCount() {
+    var n = 0;
+    S.cats.forEach(function (c) { if (S.future[c.id] && S.future[c.id].goal) n++; });
+    return n;
+  }
+
+  function visionPage() {
+    var h = '';
+
+    /* la visión: una tarjeta destacada; las demás, debajo */
+    if (!S.visions.length) {
+      h += '<div class="sect"><div class="empty"><span class="ee">' + I('leaf', 30) + '</span>' +
+        '<p>Aún no has escrito a dónde quieres llegar. Sin destino no hay forma de saber si avanzas.</p>' +
+        '<button class="btn accent sm" data-a="visionAdd">Escribirla ahora</button></div></div>';
+    } else {
+      h += '<div class="sect">';
+      S.visions.forEach(function (v, i) {
+        h += '<div class="' + (i ? 'card' : 'vcard') + '">' +
+          (i ? '' : '<span class="nx-leaf" aria-hidden="true">' + I('leaf', 150) + '</span><div class="nx-kick">' + I('sparkle', 16) + 'En 5 años</div>') +
+          '<textarea class="ta vc-text" data-f="vision" data-id="' + esc(v.id) + '" placeholder="En 5 años quiero…" aria-label="Tu visión a 5 años">' + esc(v.text) + '</textarea>' +
+          '<div class="vc-foot"><span class="tiny num">Escrita el ' + esc(Fmt.fmt(v.date)) + '</span>' +
+          '<button class="delbtn" data-a="visionDel" data-id="' + esc(v.id) + '" aria-label="Eliminar visión">' + I('trash', 18) + '</button></div></div>';
+      });
+      h += '<button class="btn ghost sm" data-a="visionAdd" style="align-self:flex-start">' + I('plus', 15) + 'Escribir otra visión</button></div>';
+    }
+
+    /* mi yo del futuro: una frase por área, directamente aquí */
+    h += '<div class="sect">' +
+      '<div class="sect-head"><span class="sect-title">' + I('sparkle') + 'Mi Yo del Futuro</span>' +
+      '<span class="pill num">' + futureCount() + ' de ' + S.cats.length + '</span></div>' +
+      '<p class="muted" style="margin-top:-6px">Una frase por área sobre dónde quieres estar. Toca una para escribirla.</p>' +
+      '<div class="fgrid">';
+    S.cats.forEach(function (c) {
+      var f = S.future[c.id], on = !!(f && f.goal);
+      h += '<button class="ftile' + (on ? ' on' : '') + '" data-a="openFuture" data-c="' + esc(c.id) + '" aria-label="' + esc(c.name) + (on ? ': ' + esc(f.goal) : ', sin escribir') + '">' +
+        '<span class="gc-ic" style="background:' + esc(c.color) + '22">' + esc(c.emoji) + '</span>' +
+        (on ? '<span class="ft-ok" aria-hidden="true">' + I('check', 14) + '</span>' : '') +
+        '<span class="ft-name">' + esc(c.name.split(' (')[0]) + '</span>' +
+        (on ? '<span class="ft-txt">' + esc(f.goal) + '</span>' : '<span class="ft-txt ft-empty">Sin escribir</span>') + '</button>';
+    });
+    h += '</div></div>';
+
+    /* para saber por dónde vas */
+    var last = Revision.last();
+    h += '<div class="sect">' +
+      '<div class="sect-head"><span class="label">Para saber por dónde vas</span></div>' +
+      '<div class="list">' +
+      (last || futureCount() ? row('swap', 'Hoy frente a 5 años', '', 'go', ' data-s="vs"') : '') +
+      row('compass', 'Chequeos de vida', last ? 'último ' + Revision.avg(last) + '/10' : 'ninguno', 'sheetRC') +
+      '</div></div>';
+
+    return h;
+  }
+
   V.vision = function () {
-    var h = '<div class="appbar bordered"><div class="appbar-row"><h1>Visión</h1>' + profileBtn() + '</div>' +
+    var fut = futureCount();
+    var sub = !S.visions.length && !fut ? 'Escribe a dónde quieres llegar.'
+      : 'Tu norte, escrito. ' + fut + ' de ' + S.cats.length + ' áreas pensadas.';
+    var h = V.cabecera({ kicker: 'A dónde voy', titulo: 'Visión', sub: sub, perfil: profileBtn(),
+      lado: '<span class="hd-leaf" aria-hidden="true">' + I('leaf', 74) + '</span>' });
+    h += '<div class="scroll"><div class="page">' +
       '<div class="seg" role="tablist">' +
       '<button role="tab" aria-selected="' + (ui.subVision === 'five') + '" data-a="subv" data-s="five">A 5 años</button>' +
       '<button role="tab" aria-selected="' + (ui.subVision === 'board') + '" data-a="subv" data-s="board">Tablero</button>' +
-      '</div></div>';
-    h += '<div class="scroll">' + (ui.subVision === 'board' ? board() : visionPage()) + '</div>';
+      '</div>' + (ui.subVision === 'board' ? board() : visionPage()) + '</div></div>';
     return h;
   };
 
@@ -136,18 +155,19 @@
           I('eye', 14) + 'Mostrar las ocultas</button>' : '');
     }
 
-    var h = '<div class="tblwrap"><table class="tbl"><thead><tr>' +
-      '<th>Meta</th><th class="r">Avance</th><th class="r" style="width:34px"></th>' +
-      '</tr></thead><tbody>';
+    var h = '<div class="plist">';
     shown.forEach(function (x) {
-      var pct = Goals.pct(x.g), st = Goals.state(x.g);
+      var pct = Goals.pct(x.g), st = Goals.state(x.g), d = Fmt.due(x.g.due, x.g.done), c = Areas.get(x.g.cat);
       var col = st === 'good' ? 'good' : st === 'bad' ? 'bad' : 'warn';
-      h += '<tr><td class="name"><span class="cell" style="font-weight:600">' + esc(x.g.name || 'Sin nombre') + '</span>' +
-        '<span class="bar thin" style="margin-top:6px;max-width:190px"><span style="width:' + pct + '%;background:var(--' + col + ')"></span></span></td>' +
-        '<td class="r num" style="font-weight:700;color:var(--' + col + ');padding-left:12px">' + pct + '%</td>' +
-        '<td class="r"><button class="delbtn" data-a="hideGoal" data-id="' + esc(x.g.id) + '" aria-label="Ocultar del progreso">' + I('eyeOff', 17) + '</button></td></tr>';
+      h += '<div class="pcard">' +
+        '<span class="gc-ic" style="background:' + (c ? esc(c.color) + '1f' : 'var(--accent-sf)') + '">' + (c ? esc(c.emoji) : I('target', 21)) + '</span>' +
+        '<div class="pc-main"><div class="pc-top"><span class="grow"><span class="gname">' + esc(x.g.name || 'Sin nombre') + '</span>' +
+        '<span class="pill ' + d.cls + '">' + (d.cls === 'bad' ? I('flame', 13) : '') + esc(d.txt) + '</span></span>' +
+        '<span class="pc-pct num" style="color:var(--' + col + ')">' + pct + '<small>%</small></span>' +
+        '<button class="delbtn" data-a="hideGoal" data-id="' + esc(x.g.id) + '" aria-label="Ocultar del progreso">' + I('eyeOff', 20) + '</button></div>' +
+        '<span class="bar thin"><span style="width:' + pct + '%;background:var(--' + col + ')"></span></span></div></div>';
     });
-    h += '</tbody></table></div>';
+    h += '</div>';
     if (all.length > 6) {
       h += '<p class="tiny">Y ' + Fmt.plural(all.length - 6, 'meta más', 'metas más') + '.</p>';
     }
@@ -170,38 +190,35 @@
       chTxt = doneN >= days ? 'completado' : Math.round(doneN / days * 100) + '%';
     }
 
-    var h = '<div class="appbar bordered"><div class="appbar-row"><h1>Progreso</h1>' + profileBtn() + '</div></div>';
+    var h = V.cabecera({ kicker: '¿Estoy avanzando?', titulo: 'Progreso', perfil: profileBtn(),
+      sub: st ? 'Llevas ' + Fmt.plural(st, 'día seguido', 'días seguidos') + ' cumpliendo tus rutinas.' : 'Marca una rutina hoy y tu racha empieza.',
+      lado: '<div class="hd-badge" role="img" aria-label="Racha: ' + Fmt.plural(st, 'día', 'días') + '">' + I('flame', 30) + st + '</div>' });
     h += '<div class="scroll"><div class="page">';
 
-    /* 1 — ¿estoy siendo constante? */
-    h += '<div class="sect" style="gap:14px">' +
-      '<span class="label">Constancia</span>' +
-      '<div class="kpi"><span class="display">' + st + '</span>' +
-      '<span class="unit" style="padding-bottom:6px">' + (st === 1 ? 'día seguido' : 'días seguidos') + '<br>cumpliendo rutinas</span></div>' +
-      '<div class="divider"></div>' +
-      '<div class="row" style="gap:20px">' +
-      Fmt.ring(pctS, 92, 'var(--good)', '<b style="font-size:1.35rem">' + pctS + '%</b>') +
-      '<div class="grow"><p class="muted" style="margin-bottom:7px">' +
-      (S.goalsS.length === 1 ? 'De tu única meta a corto plazo:' : 'De tus ' + S.goalsS.length + ' metas a corto plazo:') + '</p>' +
-      '<p class="tiny num" style="line-height:1.75"><strong style="color:var(--good)">' + doneS + '</strong> completadas · <strong>' +
-      (S.goalsS.length - doneS) + '</strong> en marcha</p>' +
-      (r ? '<p class="tiny" style="margin-top:6px">Último chequeo: <strong class="num">' + Revision.avg(r) + '/10</strong></p>' : '') +
-      '</div></div></div>';
+    /* 1 — tres números */
+    h += '<div class="hstats">' +
+      '<div class="hstat"><span class="hn">' + doneS + '<small>/' + S.goalsS.length + '</small></span> <span class="hl">metas cortas logradas</span></div>' +
+      '<div class="hstat"><span class="hn">' + w.full + '<small>/' + (w.elapsed || 7) + '</small></span> <span class="hl">días completos esta semana</span></div>' +
+      '<div class="hstat"><span class="hn">' + (r ? Revision.avg(r) : '—') + (r ? '<small>/10</small>' : '') + '</span> <span class="hl">' + (r ? 'último chequeo' : 'sin chequeo aún') + '</span></div></div>';
 
     /* 2 — ¿cómo van mis metas? */
     h += '<div class="sect">' +
-      '<div class="sect-head"><span class="label">Tus metas</span>' +
-      '<button class="btn ghost xs" data-a="goGoals" data-s="S">Ver todas</button></div>' +
+      '<div class="sect-head"><span class="sect-title">' + I('target') + 'Tus metas</span>' +
+      '<button class="btn soft xs" data-a="goGoals" data-s="S">Ver todas</button></div>' +
       goalTable() + '</div>';
 
     /* 3 — lo que se hace, no lo que se mira */
+    function fila(icono, titulo, sub, pill, cls, accion) {
+      return '<button class="rcard" data-a="' + accion + '"><span class="plan-ic">' + I(icono, 20) + '</span>' +
+        '<span class="rc-txt"><strong>' + titulo + '</strong><span>' + sub + '</span></span>' +
+        '<span class="pill ' + cls + '">' + pill + '</span>' + I('right', 18) + '</button>';
+    }
     h += '<div class="sect">' +
-      '<div class="sect-head"><span class="label">Cada cierto tiempo</span></div>' +
-      '<div class="list">' +
-      row('rotate', 'Revisión semanal',
-        (rv && rv.focus ? 'hecha' : w.full + ' de ' + (w.elapsed || 7) + ' días'), 'goReview') +
-      row('zap', 'Reto de 30 días', chTxt, 'sheetChallenge') +
-      row('trophy', 'Todo lo que has logrado', String(S.wins.length), 'sheetWins') +
+      '<div class="sect-head"><span class="sect-title">' + I('rotate') + 'Cada cierto tiempo</span></div>' +
+      '<div class="plist">' +
+      fila('rotate', 'Revisión semanal', 'Dos minutos: qué funcionó y tu foco', rv && rv.focus ? 'Hecha' : 'Pendiente', rv && rv.focus ? 'good' : 'accent', 'goReview') +
+      fila('zap', 'Reto de 30 días', c ? esc(c.name || 'Tu reto') : 'Elige una cosa y sostenla 30 días', esc(chTxt), c ? 'accent' : '', 'sheetChallenge') +
+      fila('trophy', 'Todo lo que has logrado', 'Tu lista de victorias', String(S.wins.length), S.wins.length ? 'good' : '', 'sheetWins') +
       '</div></div>';
 
     h += '</div></div>';

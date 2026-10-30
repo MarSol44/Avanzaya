@@ -189,6 +189,14 @@ var Sec = (function () {
 
     out.start = dateOf(d.start);
     out.onboarded = !!d.onboarded;
+    // Bienvenida. Quien ya usaba la app antes de que existiera no la ve de golpe.
+    var wc = objOf(d.welcome), wcNueva = !d.welcome && !d.onboarded;
+    out.welcome = {
+      done: d.welcome ? !!wc.done : !wcNueva, pospuesta: !!wc.pospuesta, paso: n(wc.paso, 0, 4, 0),
+      area: /^[A-Za-z0-9_-]{1,40}$/.test(String(wc.area || '')) ? String(wc.area) : '',
+      cambio: s(wc.cambio, 400), meta: s(wc.meta, 120), vision: s(wc.vision, 400),
+      freno: /^[a-z]{1,20}$/.test(String(wc.freno || '')) ? String(wc.freno) : ''
+    };
     out.session = !!d.session;
     out.guest = !!d.guest;
     out.sessionMode = d.sessionMode === 'temp' ? 'temp' : 'keep';

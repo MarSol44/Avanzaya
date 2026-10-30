@@ -15,12 +15,14 @@
   // La barra se construye con las pestañas registradas (V.tab).
   function tabbar() {
     var cur = currentTab();
-    return '<nav class="tabbar" role="tablist">' + V.tabs.filter(function (t) { return t.inBar !== false; }).map(function (t) {
+    var fab = '<button class="tab-fab" data-a="quick" aria-label="Apuntar algo">' + I('plus', 28) + '</button>';
+    return '<nav class="tabbar" role="tablist">' + V.tabs.filter(function (t) { return t.inBar !== false; }).map(function (t, i) {
       var n = t.badge ? t.badge() : 0;
       var badge = n ? '<span class="tbadge" aria-hidden="true">' + (n > 9 ? '9+' : n) + '</span>' : '';
       return '<button role="tab" aria-selected="' + (cur.id === t.id || cur.parent === t.id) + '" data-a="tab" data-t="' + t.id + '"' +
         (n ? ' aria-label="' + t.label + ', ' + Fmt.plural(n, 'tarea pendiente', 'tareas pendientes') + '"' : '') + '>' +
-        '<span class="ti">' + I(t.icon, 21) + badge + '</span>' + t.label + '</button>';
+        '<span class="ti">' + I(t.icon, 21) + badge + '</span><span class="tl">' + t.label + '</span></button>' +
+        (i === 1 ? fab : '');   // el «+» va en el centro, entre las dos primeras pestañas y las dos últimas
     }).join('') + '</nav>';
   }
 
@@ -234,6 +236,7 @@
     if (add === 'step') btn = document.querySelector('#sheet [data-a="stepAdd"]');
     if (add === 'win') btn = document.querySelector('[data-a="addWin"]');
     if (add === 'challenge') btn = document.querySelector('[data-a="addChallenge"]');
+    if (add === 'quick') btn = document.querySelector('#sheet [data-a="qSave"]');
     if (btn) btn.click();
   });
 

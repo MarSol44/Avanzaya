@@ -4,7 +4,7 @@
 
    Cuando cambies la app, sube VERSION un número. Eso basta. */
 
-var VERSION = 'brujula-v26';
+var VERSION = 'brujula-v30';
 var SHELL   = VERSION + '-shell';
 var FUENTES = VERSION + '-fuentes';
 
@@ -22,6 +22,7 @@ var PRECACHE = [
   '/js/dominio/areas.js',
   '/js/dominio/revision.js',
   '/js/dominio/identidad.js',
+  '/js/dominio/bienvenida.js',
   '/js/infraestructura/seguridad.js',
   '/js/infraestructura/almacen.js',
   '/js/infraestructura/preferencias.js',
@@ -35,6 +36,7 @@ var PRECACHE = [
   '/js/aplicacion/vision.js',
   '/js/aplicacion/progreso.js',
   '/js/aplicacion/chequeo.js',
+  '/js/aplicacion/bienvenida.js',
   '/js/presentacion/frases.js',
   '/js/presentacion/iconos.js',
   '/js/presentacion/estado-ui.js',
@@ -47,6 +49,7 @@ var PRECACHE = [
   '/js/presentacion/vistas/vision.js',
   '/js/presentacion/vistas/perfil.js',
   '/js/presentacion/vistas/hojas.js',
+  '/js/presentacion/vistas/bienvenida.js',
   '/js/presentacion/interfaz.js',
   '/js/presentacion/controladores/navegacion.js',
   '/js/presentacion/controladores/hoy.js',
@@ -55,6 +58,7 @@ var PRECACHE = [
   '/js/presentacion/controladores/progreso.js',
   '/js/presentacion/controladores/entrada.js',
   '/js/presentacion/controladores/perfil.js',
+  '/js/presentacion/controladores/bienvenida.js',
   '/js/presentacion/pwa.js',
   '/js/arranque.js',
   '/js/infraestructura/nube-supabase.js',

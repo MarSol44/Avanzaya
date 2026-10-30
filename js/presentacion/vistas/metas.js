@@ -106,22 +106,23 @@
   /* ------------------------------------------------------------ fila de meta */
   function goalCard(g, kind) {
     var pct = Goals.pct(g), d = Fmt.due(g.due, g.done), c = Areas.get(g.cat);
-    var steps = (g.steps || []).length;
-    return '<div class="goal' + (g.done ? ' done' : '') + '">' +
-      '<button class="chk" role="checkbox" aria-checked="' + !!g.done + '" data-a="gdone" data-k="' + kind + '" data-id="' + esc(g.id) + '" aria-label="Marcar como completada">' + I('check', 15) + '</button>' +
-      '<button class="row grow top" style="background:none;border:0;padding:0;text-align:left;gap:12px" data-a="openGoal" data-k="' + kind + '" data-id="' + esc(g.id) + '">' +
-      '<span class="thumb" style="background:' + (c ? esc(c.color) + '1f' : 'color-mix(in srgb,var(--ink) 6%,transparent)') + '">' + (c ? esc(c.emoji) : I('target', 20)) + '</span>' +
-      '<span class="grow"><span class="gname">' + esc(g.name || 'Meta sin nombre') + '</span>' +
-      '<span class="gmeta">' +
+    var steps = g.steps || [], stepsDone = steps.filter(function (s) { return s.done; }).length;
+    var col = Goals.state(g) === 'good' ? 'good' : Goals.state(g) === 'bad' ? 'bad' : 'warn';
+    return '<div class="gcard' + (g.done ? ' done' : '') + '">' +
+      '<button class="gc-body" data-a="openGoal" data-k="' + kind + '" data-id="' + esc(g.id) + '" aria-label="Abrir la meta «' + esc(g.name || 'Meta sin nombre') + '»">' +
+      '<span class="gc-ic" style="background:' + (c ? esc(c.color) + '1f' : 'var(--accent-sf)') + '">' + (c ? esc(c.emoji) : I('target', 21)) + '</span>' +
+      '<span class="gc-col">' +
+      (c ? '<span class="gc-kick">' + esc(c.name) + '</span>' : '') +
+      '<span class="gname">' + esc(g.name || 'Meta sin nombre') + '</span>' +
+      '<span class="gc-pills">' +
       (g.due ? '<span class="pill num">' + I('calendar', 13) + esc(Fmt.fmt(g.due)) + '</span>' : '') +
       '<span class="pill ' + d.cls + '">' + (d.cls === 'bad' ? I('flame', 13) : '') + esc(d.txt) + '</span>' +
-      (g.priority && g.priority !== 'Media' ? '<span class="pill">' + esc(g.priority) + '</span>' : '') +
-      (steps ? '<span class="pill num">' + Fmt.plural(steps, 'paso', 'pasos') + '</span>' : '') +
+      (g.priority && g.priority !== 'Media' ? '<span class="pill' + (g.priority === 'Alta' ? ' accent' : '') + '">Prioridad ' + esc(g.priority.toLowerCase()) + '</span>' : '') +
       '</span>' +
-      '<span class="bar thin" style="margin-top:9px"><span style="width:' + pct + '%;background:var(--' +
-      (Goals.state(g) === 'good' ? 'good' : Goals.state(g) === 'bad' ? 'bad' : 'warn') + ')"></span></span>' +
+      '<span class="gc-bar"><span class="bar thin"><span style="width:' + pct + '%;background:var(--' + col + ')"></span></span>' +
+      '<span class="gc-steps num">' + (steps.length ? stepsDone + '/' + steps.length + ' pasos · ' : '') + pct + ' %</span></span>' +
       '</span></button>' +
-      '<button class="delbtn" data-a="gdel" data-k="' + kind + '" data-id="' + esc(g.id) + '" aria-label="Eliminar meta" title="Eliminar meta">' + I('trash', 17) + '</button>' +
+      '<button class="chk lg" role="checkbox" aria-checked="' + !!g.done + '" data-a="gdone" data-k="' + kind + '" data-id="' + esc(g.id) + '" aria-label="Marcar «' + esc(g.name || 'meta') + '» como completada">' + I('check', 18) + '</button>' +
       '</div>';
   }
 
@@ -145,7 +146,7 @@
     var h = '<div class="sect">' +
       '<div class="sect-head"><span class="sect-title">' + I(icon) + title + '</span>' +
       '<button class="fab sm" data-a="newGoal" data-k="' + kind + '" aria-label="Añadir meta a ' + title + '">' + I('plus', 22) + '</button></div>' +
-      '<p class="tiny" style="margin-top:-6px">' + sub + '</p>';
+      '<p class="muted" style="margin-top:-6px">' + sub + '</p>';
 
     if (all.length) {
       h += '<div class="row" style="gap:11px">' +
@@ -171,7 +172,7 @@
           }).join('') + '</div>') +
         '</div>';
     } else {
-      h += '<div class="list">';
+      h += '<div class="goal-list">';
       list.forEach(function (g) { h += goalCard(g, kind); });
       h += '</div>';
     }
@@ -180,13 +181,26 @@
 
   /* ------------------------------------------------------------- la pestaña */
   V.metas = function () {
-    var h = '<div class="appbar bordered"><div class="appbar-row"><h1>Metas</h1>' + profileBtn() + '</div>' +
-      '<div class="seg" role="tablist">' +
-      '<button role="tab" aria-selected="' + (ui.subMetas === 'goals') + '" data-a="sub" data-s="goals">Mis metas</button>' +
-      '<button role="tab" aria-selected="' + (ui.subMetas === 'cal') + '" data-a="sub" data-s="cal">Calendario</button>' +
-      '</div></div>';
+    var all = S.goalsS.concat(S.goalsL), today = Dates.today();
+    var open = all.filter(function (g) { return !g.done; });
+    var late = open.filter(function (g) { return g.due && Dates.diff(today, g.due) < 0; }).length;
+    var week = open.filter(function (g) { return g.due && Dates.diff(today, g.due) >= 0 && Dates.diff(today, g.due) <= 7; }).length;
+    var sub = !all.length ? 'Aún no tienes metas. Empieza por una pequeña.'
+      : Fmt.plural(open.length, 'meta en marcha', 'metas en marcha') + '.' + (late ? ' ' + Fmt.plural(late, 'atrasada', 'atrasadas') + '.' : '');
+
+    var h = V.cabecera({ kicker: 'Tu rumbo', titulo: 'Metas', sub: sub, perfil: profileBtn(),
+      lado: V.anilloCab(all.length - open.length, all.length, 'Metas completadas') });
 
     h += '<div class="scroll"><div class="page">';
+    h += '<div class="sect" style="gap:16px"><div class="seg" role="tablist">' +
+      '<button role="tab" aria-selected="' + (ui.subMetas === 'goals') + '" data-a="sub" data-s="goals">Mis metas</button>' +
+      '<button role="tab" aria-selected="' + (ui.subMetas === 'cal') + '" data-a="sub" data-s="cal">Calendario</button></div>' +
+      (ui.subMetas === 'cal' ? '' :
+        '<div class="hstats">' +
+        '<div class="hstat"><span class="hn">' + open.length + '</span> <span class="hl">en marcha</span></div>' +
+        '<div class="hstat"><span class="hn">' + week + '</span> <span class="hl">' + (week === 1 ? 'vence esta semana' : 'vencen esta semana') + '</span></div>' +
+        '<div class="hstat' + (late ? ' warn' : '') + '"><span class="hn">' + late + '</span> <span class="hl">' + (late === 1 ? 'atrasada' : 'atrasadas') + '</span></div></div>') +
+      '</div>';
 
     if (ui.subMetas === 'cal') {
       h += calendar();

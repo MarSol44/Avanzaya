@@ -53,6 +53,7 @@ var Store = (function () {
       profile: { photo: '', lang: 'es', tz: '', weekStart: 1 },
       prefs: { theme: 'auto', notifs: true },
       onboarded: false,
+      welcome: { done: false, pospuesta: false, paso: 0, area: '', cambio: '', meta: '', vision: '', freno: '' },   // bienvenida y primer plan
 
       cats: BdvAreas.base(),
 

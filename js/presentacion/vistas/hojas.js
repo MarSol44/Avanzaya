@@ -397,6 +397,32 @@
     return h + '</div></div>';
   }
 
+  /* ------------------------------------------------------- apuntar algo (el «+») */
+  var CUANDO = [['hoy', 'sunrise', 'Hoy'], ['manana', 'sun', 'Mañana'], ['sin', 'note', 'Sin fecha']];
+  function quickSheet() {
+    var q = ui.quick || (ui.quick = { title: '', when: 'hoy', time: '', kind: 'task' });
+    var sin = q.when === 'sin';
+    var h = head('sparkle', 'Apuntar algo') + '<div class="sheet-body">' +
+      '<input class="inp qk-title" data-f="qTitle" data-add="quick" maxlength="400" value="' + esc(q.title) + '" placeholder="¿Qué no quieres olvidar?" aria-label="Qué apuntar" enterkeyhint="done">' +
+      '<div class="field"><span>¿Para cuándo?</span><div class="seg3" role="group" aria-label="¿Para cuándo?" style="margin-top:4px">' +
+      CUANDO.map(function (w) {
+        return '<button type="button" data-a="qWhen" data-v="' + w[0] + '" aria-pressed="' + (q.when === w[0]) + '"><span class="ic">' + I(w[1], 18) + '</span>' + w[2] + '</button>';
+      }).join('') + '</div></div>';
+    if (!sin) {
+      h += '<div class="qk-row">' +
+        '<label class="field grow"><span>Hora (opcional)</span><input class="inp" type="time" data-f="qTime" value="' + esc(q.time) + '"></label>' +
+        '<div class="field"><span>Tipo</span><span class="seg" role="group" aria-label="Tipo" style="margin-top:4px">' +
+        '<button type="button" data-a="qKind" data-v="task" aria-pressed="' + (q.kind === 'task') + '">Tarea</button>' +
+        '<button type="button" data-a="qKind" data-v="appt" aria-pressed="' + (q.kind === 'appt') + '">Cita</button></span></div></div>';
+    } else {
+      h += '<p class="muted">Queda en «Pendientes sin fecha», dentro del plan de Hoy. No se te pierde.</p>';
+    }
+    h += '<div class="qk-row qk-btns"><button class="btn accent grow" data-a="qSave" style="padding:15px 20px">' + I('check', 19) + 'Guardar</button>' +
+      '<button class="btn soft" data-a="qMore" style="padding:15px 20px">' + I('plus', 18) + 'Y otra</button></div>';
+    if (!sin) h += '<p class="muted">Aparece en el plan de ' + (q.when === 'manana' ? 'mañana' : 'hoy') + '.</p>';
+    return h + '</div>';
+  }
+
   /* ------------------------------------------------------------- despachador */
   V.sheet = function () {
     var s = ui.sheet;
@@ -413,6 +439,7 @@
     if (s.t === 'challenge') return challengeSheet();
     if (s.t === 'wins') return winsSheet();
     if (s.t === 'rc') return rcSheet();
+    if (s.t === 'quick') return quickSheet();
     return '';
   };
   V.DOCS = DOCS;

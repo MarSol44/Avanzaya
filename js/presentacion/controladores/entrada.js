@@ -11,10 +11,15 @@
     isBusy = UI.isBusy, setBusy = UI.setBusy;
   function val(id) { return (document.getElementById(id) || {}).value || ''; }
   function top() { render(); window.scrollTo(0, 0); }
+  // Tras entrar: la bienvenida si aún toca; si no, directamente a Hoy.
+  function entrar() {
+    if (Bienvenida.pendiente()) { ui.screen = 'bienvenida'; top(); }
+    else goApp('hoy');
+  }
 
   /* --- entrar --- */
-  action('guest', function () { Cuentas.entrarSinCuenta(); goApp('hoy'); });
-  action('enterApp', function () { Cuentas.entrarApp(); goApp('hoy'); });
+  action('guest', function () { Cuentas.entrarSinCuenta(); entrar(); });
+  action('enterApp', function () { Cuentas.entrarApp(); entrar(); });
   action('google', function () { Cuentas.google(); });
   action('facebook', function () { Cuentas.facebook(); });
 
@@ -43,7 +48,7 @@
       setBusy(false); busyBtn('[data-a="dologin"]', false);
       err.style.color = 'var(--bad)';
       if (!res.ok) { err.textContent = res.msg; return; }
-      goApp('hoy');
+      entrar();
     });
   }
 
@@ -66,7 +71,7 @@
 
   // Google o Facebook ya verificó quién es (aviso del adaptador de la nube por el bus).
   Bus.on('auth:red', function (d) {
-    if (d && Cuentas.entrarConRed(d.user, d.proveedor, V.guessTz())) goApp('hoy');
+    if (d && Cuentas.entrarConRed(d.user, d.proveedor, V.guessTz())) entrar();
   });
 
   /* --- chequeo de vida --- */

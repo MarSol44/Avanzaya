@@ -56,15 +56,17 @@
     return '<div class="scroll nonav" style="display:flex;flex-direction:column;justify-content:center;min-height:100dvh;gap:26px;padding-top:40px">' +
       '<div class="stack" style="gap:18px">' + mark() +
       '<div class="brand">Brújula de Vida</div>' +
-      '<p class="hero-quote" style="text-align:center;color:var(--ink-2);font-size:1.05rem">“Organiza tus sueños y metas.”</p>' +
-      '</div>' +
+      '<div class="stack sm" style="text-align:center;gap:10px">' +
+      '<p class="hero-quote">No tienes que tener toda tu vida resuelta.</p>' +
+      '<p class="muted" style="max-width:34ch;margin:0 auto">Solo necesitas descubrir qué es importante para ti y dar el siguiente paso.</p>' +
+      '</div></div>' +
       '<div class="stack sm" style="margin-top:18px">' +
       '<button class="btn accent block" data-a="go" data-s="login" style="padding:15px 20px;font-size:16px">Iniciar sesión</button>' +
       '<button class="btn soft block" data-a="go" data-s="register" style="padding:15px 20px;font-size:16px">Regístrate</button>' +
       '</div>' +
       '<div class="stack sm" style="align-items:center;gap:4px">' +
       '<button class="btn ghost sm" data-a="guest">Probar sin cuenta</button>' +
-      '<p class="tiny" style="text-align:center;max-width:34ch;margin:0 auto">Sin cuenta, lo que escribas se queda solo en este dispositivo. Con cuenta, se sincroniza en la nube para usarlo en otros.</p>' +
+      '<p class="tiny" style="text-align:center;max-width:34ch;margin:0 auto">Tres preguntas y tendrás tu primer paso. Sin cuenta, lo que escribas se queda solo en este dispositivo; con cuenta, se sincroniza en la nube para usarlo en otros.</p>' +
       '</div>' +
       '</div>';
   };

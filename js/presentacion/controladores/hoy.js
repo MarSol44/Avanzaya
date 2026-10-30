@@ -74,6 +74,42 @@
     if (day !== (ui.planDay || Dates.today())) Pantalla.toast('Añadida al ' + Fmt.fmt(day) + '.');
   });
 
+  /* --- el «+» de la barra: apuntar algo desde cualquier pantalla ---------- */
+  function quick() { return ui.quick || (ui.quick = { title: '', when: 'hoy', time: '', kind: 'task' }); }
+  action('quick', function () {
+    ui.quick = { title: '', when: 'hoy', time: '', kind: 'task' };
+    UI.openSheet({ t: 'quick' });
+    setTimeout(function () { var el = document.querySelector('#sheet [data-f="qTitle"]'); if (el) el.focus(); }, 60);
+  });
+  action('qWhen', function (c) { var q = quick(); q.when = c.v; if (q.when === 'sin') q.time = ''; UI.renderSheet(); });
+  action('qKind', function (c) { quick().kind = c.v === 'appt' ? 'appt' : 'task'; UI.renderSheet(); });
+  UI.onInput('qTitle', function (c) { quick().title = c.el.value; });
+  UI.onInput('qTime', function (c) { quick().time = c.el.value; });
+  UI.onChange('qTime', function (c) { quick().time = c.el.value; });
+
+  // Apunta lo escrito donde toca. Devuelve true si se apuntó.
+  function apuntar() {
+    var q = quick(), r;
+    if (q.when === 'sin') r = Tasks.addTodo({ title: q.title, kind: 'task' });
+    else r = Tasks.add(q.when === 'manana' ? Dates.shift(Dates.today(), 1) : Dates.today(), { title: q.title, time: q.time, kind: q.kind });
+    if (!r.ok) { explain(r); return false; }
+    return true;
+  }
+  action('qSave', function () {
+    var q = quick(), when = q.when;
+    if (!apuntar()) return;
+    UI.closeSheet(); render();
+    Pantalla.toast(when === 'sin' ? 'Guardada en pendientes sin fecha.' : when === 'manana' ? 'Apuntada para mañana.' : 'Apuntada en el plan de hoy.');
+  });
+  action('qMore', function () {
+    var q = quick();
+    if (!apuntar()) return;
+    q.title = ''; q.time = ''; q.kind = 'task';   // el día se conserva; la hora y el tipo, no
+    UI.renderSheet(); render();
+    var el = document.querySelector('#sheet [data-f="qTitle"]'); if (el) el.focus();
+    Pantalla.toast('Apuntada. Escribe la siguiente.');
+  });
+
   /* --- Hoy: pendientes sin fecha --------------------------------------- */
   action('todoPull', function (c) { var r = Tasks.pullTodo(c.id, targetDay()); if (!r.ok) { explain(r); return; } commit(); });
   action('tododel', function (c) { Tasks.removeTodo(c.id); commit(); });

@@ -60,8 +60,15 @@ function computeStats(state: any) {
   return { full, partial, marks, notes, streak, weekLabel: lastWeekStart + ' – ' + shift(lastWeekStart, 6) };
 }
 
+// Todo lo que viene del estado lo escribe la persona (puede ser cualquier
+// cosa, no solo lo que la app permite): se escapa antes de meterlo en el HTML.
+function escHtml(v: unknown) {
+  return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function emailHtml(name: string, s: ReturnType<typeof computeStats>) {
-  const primer = name ? name.split(' ')[0] : '';
+  const primer = escHtml(name.split(' ')[0].slice(0, 40));
   return `
   <div style="font-family:Georgia,serif;max-width:480px;margin:0 auto;padding:32px 20px;color:#2a2420">
     <h1 style="font-size:22px;margin:0 0 4px">Tu semana en Brújula de Vida</h1>
@@ -97,26 +104,35 @@ Deno.serve(async (req) => {
     return new Response('faltan RESEND_API_KEY o RESEND_FROM', { status: 500 });
   }
 
-  const { data: rows, error } = await supabase.from('states').select('state');
-  if (error) return new Response(error.message, { status: 500 });
+  const { data: rows, error } = await supabase.from('states').select('user_id, state');
+  if (error) return new Response('error al leer los estados', { status: 500 });
 
   let sent = 0, skipped = 0;
   for (const row of rows || []) {
     const state = row.state || {};
-    const email = state.account && state.account.email;
-    if (!email) { skipped++; continue; }
+
+    // El destinatario sale de la cuenta verificada en Supabase, NUNCA del
+    // estado: el estado lo escribe la persona y podría poner el correo de
+    // otra (o una lista de correos) para usar este envío como spam.
+    const { data: u } = await supabase.auth.admin.getUserById(row.user_id);
+    const email = u && u.user && u.user.email;
+    const confirmado = !!(u && u.user && u.user.email_confirmed_at);
+    // sin correo, sin confirmar o con el correo interno de las cuentas de
+    // usuario/teléfono (que nadie recibe): no se envía
+    if (typeof email !== 'string' || !confirmado || email.toLowerCase().endsWith('@usuarios.avanzaya.pages.dev')) { skipped++; continue; }
 
     const stats = computeStats(state);
     if (stats.marks === 0) { skipped++; continue; } // nada que contar esa semana
 
+    const nombre = state.account && typeof state.account.name === 'string' ? state.account.name : '';
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: RESEND_FROM,
-        to: email,
+        to: [email],
         subject: 'Tu semana en Brújula de Vida',
-        html: emailHtml(state.account.name || '', stats)
+        html: emailHtml(nombre, stats)
       })
     });
     if (res.ok) sent++; else skipped++;
