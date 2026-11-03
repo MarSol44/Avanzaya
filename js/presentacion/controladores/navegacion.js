@@ -15,6 +15,7 @@
   /* --- navegación --- */
   action('go', function (c) {
     var el = c.el, e = c.e, id = c.id, k = c.k, v = c.v, sid = c.sid;
+    Pantalla.quitarToast();
     ui.screen = sid; ui.viewRC = null; render(); window.scrollTo(0, 0); return;
   });
   action('tab', function (c) {
@@ -26,6 +27,7 @@
       return;
     }
     closeSheetSilent();
+    Pantalla.quitarToast();
     if (ui.tab === 'perfil' && tt !== 'perfil') popNav('perfil');
     goApp(tt);
     if (tt === 'perfil') pushNav('perfil');
@@ -50,18 +52,12 @@
     ui.showPw = !ui.showPw;
     var wrap = el.closest('form') || document;
     var pws = wrap.querySelectorAll('input[type="password"], input[data-pw]');
-    var all = wrap.querySelectorAll('#liPass,#rgPass,#rgPass2');
+    var all = wrap.querySelectorAll('#liPass,#rgPass,#rgPass2,#ncPass,#ncPass2');
     for (var i = 0; i < all.length; i++) {
       all[i].type = ui.showPw ? 'text' : 'password';
       all[i].setAttribute('data-pw', '1');
     }
     el.innerHTML = I(ui.showPw ? 'eyeOff' : 'eye', 19);
-    return;
-  });
-  action('forgot', function (c) {
-    var el = c.el, e = c.e, id = c.id, k = c.k, v = c.v, sid = c.sid;
-    e.preventDefault();
-    Pantalla.toast('Aún no hay recuperación por correo. Si tu cuenta usa Google o Facebook, entra con ellos; si no, escríbenos a avanzayaapp@gmail.com.');
     return;
   });
   var act_legal_sheetDoc = function (c) {

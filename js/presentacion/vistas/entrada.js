@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Pantallas de entrada: inicio, sesión, registro, Reality Check,
+   Pantallas de entrada: inicio, sesión, registro, chequeo de vida,
    Mi Yo del Futuro y la comparación Hoy vs 5 años.
    ========================================================================== */
 (function () {
@@ -64,10 +64,8 @@
       '<button class="btn accent block" data-a="go" data-s="login" style="padding:15px 20px;font-size:16px">Iniciar sesión</button>' +
       '<button class="btn soft block" data-a="go" data-s="register" style="padding:15px 20px;font-size:16px">Regístrate</button>' +
       '</div>' +
-      '<div class="stack sm" style="align-items:center;gap:4px">' +
-      '<button class="btn ghost sm" data-a="guest">Probar sin cuenta</button>' +
-      '<p class="tiny" style="text-align:center;max-width:34ch;margin:0 auto">Tres preguntas y tendrás tu primer paso. Sin cuenta, lo que escribas se queda solo en este dispositivo; con cuenta, se sincroniza en la nube para usarlo en otros.</p>' +
-      '</div>' +
+      redes() +
+      '<p class="tiny" style="text-align:center;max-width:34ch;margin:0 auto">Tres preguntas y tendrás tu primer paso. Tus datos se guardan en tu cuenta y los tienes en todos tus dispositivos.</p>' +
       '</div>';
   };
 
@@ -77,27 +75,6 @@
       '<button class="btn soft block" type="button" data-a="google">Continuar con Google</button>' +
       '<button class="btn soft block" type="button" data-a="facebook">Continuar con Facebook</button></div>';
   }
-  // Con qué se crea la cuenta. El controlador cambia el campo sin repintar,
-  // para no borrar lo ya escrito.
-  V.REG_TIPOS = {
-    email: { tab: 'Correo', label: 'Correo electrónico', type: 'email', auto: 'email', mode: 'email', ph: 'tu@correo.com', hint: '' },
-    tel: { tab: 'Teléfono', label: 'Teléfono', type: 'tel', auto: 'tel', mode: 'tel', ph: '+34 600 123 456',
-      hint: 'Con el prefijo del país. No se verifica ni recibe mensajes, y sin correo no se puede recuperar la contraseña: apúntala bien.' },
-    usuario: { tab: 'Usuario', label: 'Nombre de usuario', type: 'text', auto: 'username', mode: 'text', ph: 'p. ej. mari_23',
-      hint: 'De 3 a 30 caracteres: letras sin tildes, números, punto, guion o guion bajo. Sin correo no se puede recuperar la contraseña: apúntala bien.' }
-  };
-  function tipoRegistro() {
-    var tipo = V.REG_TIPOS[ui.regTipo] ? ui.regTipo : 'email', d = V.REG_TIPOS[tipo];
-    return '<div class="field"><span>Crear la cuenta con</span>' +
-      '<div class="seg" role="tablist" aria-label="Crear la cuenta con">' +
-      ['email', 'tel', 'usuario'].map(function (k) {
-        return '<button type="button" role="tab" data-a="regTipo" data-v="' + k + '" aria-selected="' + (k === tipo) + '">' + V.REG_TIPOS[k].tab + '</button>';
-      }).join('') + '</div></div>' +
-      '<label class="field"><span id="rgIdLabel">' + d.label + '</span>' +
-      '<input class="inp" type="' + d.type + '" id="rgMail" autocomplete="' + d.auto + '" inputmode="' + d.mode + '" autocapitalize="none" spellcheck="false" placeholder="' + d.ph + '"></label>' +
-      '<p class="tiny" id="rgIdHint"' + (d.hint ? '' : ' hidden') + '>' + d.hint + '</p>';
-  }
-
   /* ----------------------------------------------------------- iniciar sesión */
   V.login = function () {
     var t = ui.showPw ? 'text' : 'password';
@@ -105,19 +82,53 @@
       '<button class="iconbtn" data-a="go" data-s="splash" aria-label="Volver">' + I('left') + '</button>' +
       '<h1>Iniciar sesión</h1></div></div>' +
       '<div class="scroll nonav"><form class="stack" id="loginForm" novalidate>' +
-      '<label class="field"><span>Correo, teléfono o usuario</span>' +
-      '<input class="inp" type="text" id="liMail" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="tu@correo.com, +34 600… o tu usuario"></label>' +
+      '<label class="field"><span>Correo electrónico</span>' +
+      '<input class="inp" type="email" id="liMail" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="tu@correo.com" value="' + esc(ui.loginEmail || '') + '"></label>' +
       '<label class="field"><span>Contraseña</span><span class="pwwrap">' +
       '<input class="inp" type="' + t + '" id="liPass" autocomplete="current-password" placeholder="Tu contraseña">' +
       '<button type="button" class="pweye" data-a="togglepw" aria-label="Ver u ocultar contraseña">' + I(ui.showPw ? 'eyeOff' : 'eye', 19) + '</button>' +
       '</span></label>' +
       '<label class="checkrow"><input type="checkbox" id="liKeep" checked>Mantener la sesión iniciada</label>' +
       '<p id="liErr" class="tiny" style="color:var(--bad);min-height:16px"></p>' +
+      '<button class="btn ghost sm" type="button" data-a="reenviar" id="liReenviar" hidden style="align-self:flex-start">Reenviar el correo de confirmación</button>' +
       '<button class="btn block" type="submit" data-a="dologin">Iniciar sesión</button>' +
       redes() +
       '<button class="btn ghost block" type="button" data-a="forgot">¿Olvidaste tu contraseña?</button>' +
       '<button class="btn soft block" type="button" data-a="go" data-s="register">Crear una cuenta nueva</button>' +
       '<p class="notice">Al entrar, tus datos se sincronizan con tu copia en la nube (Supabase). La contraseña protege el acceso a la app, pero no cifra lo guardado en este navegador. Más en la <a href="#" data-a="legal" data-doc="privacidad">Política de privacidad</a>.</p>' +
+      '</form></div>';
+  };
+
+  /* ------------------------------------------ revisa tu correo (tras registrarse) */
+  V.confirmar = function () {
+    return '<div class="appbar"><div class="appbar-row">' +
+      '<button class="iconbtn" data-a="go" data-s="splash" aria-label="Volver">' + I('left') + '</button>' +
+      '<h1>Confirma tu correo</h1></div></div>' +
+      '<div class="scroll nonav"><div class="stack">' +
+      '<span style="color:var(--accent);margin:8px auto 0">' + I('mail', 44) + '</span>' +
+      '<p class="hero-quote" style="text-align:center">Revisa tu correo</p>' +
+      '<p class="muted" style="text-align:center">Te enviamos un enlace a <strong>' + esc(ui.confirmEmail || '') + '</strong>. Ábrelo para activar tu cuenta y después inicia sesión.</p>' +
+      '<p class="tiny" style="text-align:center">¿No llega? Mira en spam o pide otro.</p>' +
+      '<p id="cfMsg" class="tiny" style="text-align:center;min-height:16px"></p>' +
+      '<button class="btn accent block" data-a="cfLogin">Ya lo confirmé: iniciar sesión</button>' +
+      '<button class="btn ghost block" data-a="reenviar">Reenviar el correo</button>' +
+      '</div></div>';
+  };
+
+  /* --------------------------------- nueva contraseña (viene del enlace) */
+  V.nuevaClave = function () {
+    var t = ui.showPw ? 'text' : 'password';
+    return '<div class="appbar"><div class="appbar-row"><h1>Nueva contraseña</h1></div></div>' +
+      '<div class="scroll nonav"><form class="stack" id="claveForm" novalidate>' +
+      '<label class="field"><span>Nueva contraseña</span><span class="pwwrap">' +
+      '<input class="inp" type="' + t + '" id="ncPass" autocomplete="new-password" placeholder="Mínimo 8 caracteres">' +
+      '<button type="button" class="pweye" data-a="togglepw" aria-label="Ver u ocultar contraseña">' + I(ui.showPw ? 'eyeOff' : 'eye', 19) + '</button>' +
+      '</span></label>' +
+      '<label class="field"><span>Repítela</span>' +
+      '<input class="inp" type="' + t + '" id="ncPass2" autocomplete="new-password" placeholder="Repite la contraseña"></label>' +
+      '<p id="ncErr" class="tiny" style="color:var(--bad);min-height:16px"></p>' +
+      '<button class="btn block" type="submit" data-a="doNuevaClave">Guardar contraseña</button>' +
+      '<button class="btn ghost block" type="button" data-a="cancelarClave">Ahora no</button>' +
       '</form></div>';
   };
 
@@ -132,7 +143,9 @@
       '<div class="scroll nonav"><form class="stack" id="regForm" novalidate>' +
       '<label class="field"><span>Nombre</span>' +
       '<input class="inp" id="rgName" autocomplete="given-name" placeholder="Solo tu nombre"></label>' +
-      tipoRegistro() +
+      '<label class="field"><span>Correo electrónico</span>' +
+      '<input class="inp" type="email" id="rgMail" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="tu@correo.com"></label>' +
+      '<p class="tiny">Te enviaremos un enlace para confirmarlo.</p>' +
       '<label class="field"><span>Contraseña</span><span class="pwwrap">' +
       '<input class="inp" type="' + t + '" id="rgPass" autocomplete="new-password" placeholder="Mínimo 8 caracteres">' +
       '<button type="button" class="pweye" data-a="togglepw" aria-label="Ver u ocultar contraseña">' + I(ui.showPw ? 'eyeOff' : 'eye', 19) + '</button>' +
@@ -180,7 +193,8 @@
   }
   V.guessTz = guessTz;
 
-  /* ------------------------------------------------------------ reality check */
+  /* ------------------------------------------------------------ chequeo de vida */
+  V.RC_INICIAL = 5;   // donde empieza cada deslizador
   V.rc = function () {
     var a = Revision.AREAS[ui.rcStep], d = S.rcDraft || (S.rcDraft = Revision.newDraft());
     var n = Revision.AREAS.length, pct = (ui.rcStep + 1) / n * 100;
@@ -193,34 +207,23 @@
       '<span class="n">' + (ui.rcStep + 1) + ' de ' + n + '</span></div></div>';
 
     h += '<div class="scroll nonav"><div class="stack lg">';
-    h += '<p class="hero-quote" style="text-align:center;color:var(--ink-2)">“' + esc(a.lead) + '”</p>';
+    h += '<p class="hero-quote" style="text-align:center;color:var(--ink-2)">' + esc(a.lead) + '</p>';
     h += '<div class="card"><div class="stack">' +
       '<div class="sect-title"><span style="font-size:1.3em">' + a.emoji + '</span>' + esc(a.title) + '</div>';
 
     (a.sliders || []).forEach(function (s) {
-      var v = d.scores[s.k] == null ? 5 : +d.scores[s.k];
+      var v = d.scores[s.k] == null ? V.RC_INICIAL : +d.scores[s.k];
       h += '<div class="stack sm">' +
         '<span style="font-size:13.5px;font-weight:600;color:var(--ink-2)">' + esc(s.q) + '</span>' +
         '<div class="row" style="gap:16px"><span class="scaleval" data-sv="' + s.k + '">' + v + '</span>' +
         '<input class="slider grow" type="range" min="1" max="10" step="1" value="' + v + '" data-rc="' + s.k + '" ' +
         'style="--v:' + ((v - 1) / 9 * 100) + '%" aria-label="' + esc(s.q) + '"></div>' +
-        '<div class="scalerow"><span>1 · muy insatisfecho</span><span>10 · pleno</span></div></div>';
+        '<div class="scalerow"><span>1 · muy mal</span><span>10 · muy bien</span></div></div>';
     });
-
-    if (a.three) {
-      var cur = d.scores[a.three.k];
-      var opts = [['2', 'Muy mal', '😖'], ['5.5', 'Neutral', '😐'], ['9', 'Muy bien', '😄']];
-      h += '<div class="stack sm"><span style="font-size:13.5px;font-weight:600;color:var(--ink-2)">' + esc(a.three.q) + '</span><div class="seg3">';
-      opts.forEach(function (o) {
-        h += '<button type="button" data-rc3="' + a.three.k + '" data-v="' + o[0] + '" aria-pressed="' + (String(cur) === o[0]) + '">' +
-          '<span class="e">' + o[2] + '</span>' + o[1] + '</button>';
-      });
-      h += '</div></div>';
-    }
 
     if (a.adjectives) {
       h += '<label class="field"><span>Escribe 5 adjetivos que te describan hoy</span>' +
-        '<input class="inp" data-rcadj value="' + esc(d.adjectives || '') + '" placeholder="curiosa, dispersa, tenaz, impaciente, leal"></label>';
+        '<input class="inp" data-rcadj value="' + esc(d.adjectives || '') + '" placeholder="tenaz, amable, impaciente, leal, alegre"></label>';
     }
 
     var open = ui.rcOpen ? 'true' : 'false';
@@ -266,8 +269,8 @@
     h += '<div class="card"><div class="stack"><div class="sect-title">' + I('chart') + 'Área por área</div><div class="barlist">';
     rows.forEach(function (x) {
       var v = x.v == null ? 0 : x.v;
-      h += '<div class="barrow"><span class="bl">' + x.c.emoji + ' ' + esc(x.c.name.split(' (')[0]) + '</span>' +
-        '<span class="bar grow"><span style="width:' + (v * 10) + '%;background:' + x.c.color + '"></span></span>' +
+      h += '<div class="barrow"><span class="bl">' + esc(x.c.emoji) + ' ' + esc(x.c.name.split(' (')[0]) + '</span>' +
+        '<span class="bar grow"><span style="width:' + (v * 10) + '%;background:' + esc(x.c.color) + '"></span></span>' +
         '<span class="bv num" style="color:' + (x.v == null ? 'var(--ink-2)' : 'var(--ink)') + '">' + (x.v == null ? '—' : (Math.round(v * 10) / 10)) + '</span></div>';
     });
     h += '</div></div></div>';
@@ -311,7 +314,7 @@
     S.cats.forEach(function (c) {
       var f = S.future[c.id] || {};
       h += '<button class="goal" data-a="openFuture" data-c="' + esc(c.id) + '">' +
-        '<span class="thumb" style="background:' + c.color + '22">' + c.emoji + '</span>' +
+        '<span class="thumb" style="background:' + esc(c.color) + '22">' + esc(c.emoji) + '</span>' +
         '<span class="grow"><span class="gname" style="display:block">' + esc(c.name) + '</span>' +
         '<span class="muted" style="display:block;margin-top:3px;font-size:12.5px">' +
         (f.goal ? '“' + esc(f.goal) + '”' : 'Cómo quiero sentirme y vivir aquí') + '</span></span>' +
@@ -355,7 +358,7 @@
       '<div><div class="vt">En 5 años</div>' +
       (fut.length
         ? '<div class="stack sm">' + fut.slice(0, 4).map(function (f) {
-            return '<div class="row" style="gap:7px;align-items:flex-start"><span>' + f.c.emoji + '</span>' +
+            return '<div class="row" style="gap:7px;align-items:flex-start"><span>' + esc(f.c.emoji) + '</span>' +
               '<span style="font-size:12.5px;line-height:1.4">' + esc(f.g) + '</span></div>';
           }).join('') + (fut.length > 4 ? '<span class="tiny">y ' + (fut.length - 4) + ' más</span>' : '') + '</div>'
         : '<p class="tiny">Aún no definiste tus metas de 5 años.</p>') +
@@ -375,6 +378,8 @@
   V.screen('splash', V.splash);
   V.screen('login', V.login);
   V.screen('register', V.register);
+  V.screen('nuevaClave', V.nuevaClave);
+  V.screen('confirmar', V.confirmar);
   V.screen('rc', V.rc);
   V.screen('rcsum', function () { return V.rcsum(UIState.viewRC); });
   V.screen('future', V.future);

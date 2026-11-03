@@ -94,23 +94,57 @@ npx supabase functions deploy send-weekly-email --no-verify-jwt
 comprobando la cabecera `x-cron-secret`, no el JWT de Supabase (pg_cron no
 sabe generar uno).
 
-## 7. Obligatorio: desactiva la confirmación de correo en Supabase Auth
+## 7. Obligatorio: activa la confirmación de correo en Supabase Auth
 
-**Authentication → Providers → Email → "Confirm email"** → apágalo.
+**Authentication → Providers → Email → "Confirm email"** → actívalo.
 
-Las cuentas creadas con **teléfono** o **nombre de usuario** no tienen correo
-real: en Supabase se dan de alta con un correo interno de la app que nadie
-recibe (`tel.34600123456@usuarios.avanzaya.pages.dev`,
-`u.mari_23@usuarios.avanzaya.pages.dev`). Si la confirmación está activada,
-esas cuentas nunca podrían confirmarse ni sincronizar, y Supabase intentaría
-mandar correos a direcciones que no existen.
+Las cuentas se crean solo con correo (o con Google o Facebook), así que cada
+persona confirma el suyo con el enlace que le llega. Hasta entonces la cuenta no
+se abre: nadie puede registrarse con un correo que no es suyo. El enlace vuelve
+a la app y lleva a iniciar sesión.
 
-El dominio interno está en `js/dominio/identidad.js` (`DOMINIO`). Si publicas
-la app en otro dominio, cámbialo ahí y en el texto de la política
-(`js/presentacion/vistas/hojas.js`). Las cuentas ya creadas conservan el suyo.
+Para que eso funcione:
 
-Nota: el teléfono **no se verifica** (verificarlo por SMS exige un proveedor de
-pago, como Twilio). Sin correo real tampoco hay recuperación de contraseña.
+- **Authentication → URL Configuration**: tu dirección publicada como
+  **Site URL** y también en **Redirect URLs** (ver 7b).
+- **Authentication → Emails → SMTP Settings**: con usuarios reales, configura un
+  SMTP propio (Resend sirve: el mismo que el correo semanal). El servidor de
+  correo que trae Supabase envía muy pocos correos por hora y es para pruebas:
+  con él, a partir de unas pocas altas los correos de confirmación dejan de
+  llegar y esas personas no pueden entrar.
+- Opcional: en **Authentication → Emails → Templates → Confirm signup** puedes
+  poner el texto en español.
+
+Las cuentas antiguas de teléfono o nombre de usuario (correo interno
+`@usuarios.avanzaya.pages.dev`) ya no se pueden crear. Si quedara alguna en la
+nube, con la confirmación activada no podría entrar desde otro dispositivo.
+
+## 7c. Ajustes de seguridad del panel
+
+No se pueden poner desde el código: hazlo una vez en el panel de Supabase.
+
+- **Authentication → Attack Protection → Prevent use of leaked passwords**:
+  actívalo (rechaza contraseñas que aparecen en filtraciones conocidas).
+- **Authentication → Providers → Email → Minimum password length**: 8, igual que
+  la app. Si no, alguien que llame a la API directamente puede usar una de 6.
+- **Authentication → Rate Limits**: revisa el de altas y el de inicios de sesión
+  por IP; los valores por defecto son generosos.
+- **Authentication → Attack Protection → CAPTCHA** (Cloudflare Turnstile): la
+  mejor defensa contra altas automáticas. Necesita también un cambio en la app
+  (mandar el token del CAPTCHA al registrarse) y añadir
+  `https://challenges.cloudflare.com` a la política de seguridad (`_headers`,
+  `index.html` y `.htaccess`).
+- **Edge Functions**: deja publicadas solo `send-reminders` y `send-weekly-email`.
+  Cualquier otra que aparezca ahí y no esté en `supabase/functions/` sobra.
+
+## 7a. Recuperar la contraseña
+
+«¿Olvidaste tu contraseña?» envía un correo con un enlace que vuelve a la app.
+Para que funcione, en Supabase → **Authentication → URL Configuration** tu
+dirección publicada tiene que estar como **Site URL** y en **Redirect URLs**
+(ver el apartado siguiente). El servidor de correo incluido en Supabase tiene un
+límite bajo de envíos por hora y es para pruebas: con usuarios reales, configura
+un SMTP propio en **Authentication → Emails → SMTP Settings**.
 
 ## 7b. Entrar con Google y con Facebook
 

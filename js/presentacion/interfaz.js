@@ -16,7 +16,7 @@
   function tabbar() {
     var cur = currentTab();
     var fab = '<button class="tab-fab" data-a="quick" aria-label="Apuntar algo">' + I('plus', 28) + '</button>';
-    return '<nav class="tabbar" role="tablist">' + V.tabs.filter(function (t) { return t.inBar !== false; }).map(function (t, i) {
+    return '<div class="tab-scrim" aria-hidden="true"></div><nav class="tabbar" role="tablist">' + V.tabs.filter(function (t) { return t.inBar !== false; }).map(function (t, i) {
       var n = t.badge ? t.badge() : 0;
       var badge = n ? '<span class="tbadge" aria-hidden="true">' + (n > 9 ? '9+' : n) + '</span>' : '';
       return '<button role="tab" aria-selected="' + (cur.id === t.id || cur.parent === t.id) + '" data-a="tab" data-t="' + t.id + '"' +
@@ -51,6 +51,7 @@
     if (s === 'app') h += tabbar();
     root.innerHTML = h;
     growAll(root);
+    Bus.emit('pintado', s);
     if (ui.refocus) {
       var el = document.getElementById(ui.refocus);
       if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { } }
@@ -159,28 +160,19 @@
 
   function armedDelete(el, run) {
     if (el.getAttribute('data-armed') === '1') { run(); return; }
+    var antes = el.innerHTML, conTexto = el.classList.contains('btn');
     el.setAttribute('data-armed', '1');
-    el.innerHTML = I('check', 17);
+    el.innerHTML = conTexto ? '¿Seguro? Pulsa otra vez' : I('check', 17);
     el.setAttribute('title', 'Pulsa otra vez para confirmar');
-    Pantalla.toast('Pulsa otra vez para confirmar.');
+    if (!conTexto) Pantalla.toast('Pulsa otra vez para confirmar.');
     setTimeout(function () {
       if (!el.parentNode) return;
-      el.removeAttribute('data-armed'); el.innerHTML = I('trash', 17);
+      el.removeAttribute('data-armed'); el.innerHTML = antes;
     }, 3500);
   }
 
   /* --------------------------------------------------------------- clics */
   document.addEventListener('click', function (e) {
-    /* escala de tres valores del Reality Check */
-    var three = e.target.closest('[data-rc3]');
-    if (three) {
-      var tk = three.getAttribute('data-rc3');
-      Chequeo.puntuar(tk, three.getAttribute('data-v'));
-      var sibs = document.querySelectorAll('[data-rc3="' + tk + '"]');
-      for (var z = 0; z < sibs.length; z++) sibs[z].setAttribute('aria-pressed', sibs[z] === three ? 'true' : 'false');
-      return;
-    }
-
     var el = e.target.closest('[data-a]');
     if (!el) return;
     var a = el.getAttribute('data-a'),

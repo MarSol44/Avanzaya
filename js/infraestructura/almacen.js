@@ -24,10 +24,9 @@ var Store = (function () {
   // se indexaban por correo, siguen encontrándose igual.
   function indexUser() {
     var m = BdvIdentidad.deCuenta(S.account);
-    if (!m) return;
     var u = users(), k;
     for (k in u) if (Object.prototype.hasOwnProperty.call(u, k) && u[k] === curKey && k !== m) delete u[k];
-    u[m] = curKey;
+    if (m) u[m] = curKey;
     try { localStorage.setItem(USERS_KEY, JSON.stringify(u)); } catch (e) { }
   }
   function newUserKey(clave) { return KEY + '.u.' + encodeURIComponent(lc(clave)); }
@@ -53,7 +52,7 @@ var Store = (function () {
       profile: { photo: '', lang: 'es', tz: '', weekStart: 1 },
       prefs: { theme: 'auto', notifs: true },
       onboarded: false,
-      welcome: { done: false, pospuesta: false, paso: 0, area: '', cambio: '', meta: '', vision: '', freno: '' },   // bienvenida y primer plan
+      welcome: { done: false, pospuesta: false, paso: 0, area: '', cambio: '', meta: '', vision: '', freno: '', borrador: null, realista: '' },   // bienvenida y primer plan
 
       cats: BdvAreas.base(),
 
@@ -69,10 +68,8 @@ var Store = (function () {
       goalsL: [],                    // largo plazo
       hidden: {},                    // { goalId: true } — ocultas en Progreso
 
-      routines: {
-        day: [{ id: Util.uid(), name: 'Mover el cuerpo 20 min' }, { id: Util.uid(), name: 'Leer 10 páginas' }],
-        night: [{ id: Util.uid(), name: 'Repasar el día' }, { id: Util.uid(), name: 'Dejar el móvil fuera' }]
-      },
+      rest: { week: [], dates: {} }, // descanso: días de la semana (0 = domingo) y fechas sueltas
+      routines: { day: [], night: [] },
       rlog: {},                      // { fecha: { day:[ids], night:[ids] } }
       notes: {},                     // { fecha: 'texto' }
       events: {},                    // { fecha: [{ id, title, goalId, sid, time:'HH:MM'|'', done, kind:'task'|'appt' }] }
@@ -146,8 +143,8 @@ var Store = (function () {
   }
   function rawLocal() { try { return localStorage.getItem(curKey) || ''; } catch (e) { return ''; } }
 
-  // Espacio «sin cuenta» aparte: entrar sin cuenta nunca abre los datos de una
-  // cuenta de este dispositivo (esos solo se abren con su contraseña o Google).
+  // Espacio de cuando la app se podía usar sin cuenta. Ya no se abre: si quien lo
+  // usaba crea una cuenta, sus datos pasan a ella (aplicacion/cuentas.js).
   var GUEST_KEY = KEY + '.invitado';
   function esInvitado() { return curKey === GUEST_KEY; }
   // Lleva el estado actual a otra clave (sin perder nada) y deja libre la anterior.

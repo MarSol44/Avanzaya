@@ -42,7 +42,12 @@
 
   /* --- Hoy: tareas --------------------------------------------------- */
   action('evdone', function (c) { var r = Tasks.toggle(c.el.getAttribute('data-day'), c.id); if (r.ok) commit(); });
-  action('evdel', function (c) { Tasks.remove(c.el.getAttribute('data-day'), c.id); commit(); });
+  action('evdel', function (c) {
+    var day = c.el.getAttribute('data-day'), r = Tasks.remove(day, c.id);
+    ui.moveId = null;
+    commit();
+    Pantalla.toast('Tarea quitada.', function () { Tasks.restore(day, r.event); commit(); });
+  });
   action('evmove', function (c) { ui.moveId = ui.moveId === c.id ? null : c.id; render(); });
   action('evto', function (c) { moveTask(c.el.getAttribute('data-day'), c.id, c.el.getAttribute('data-to')); });
   action('overdueAll', function () {
@@ -63,10 +68,9 @@
 
   /* --- Hoy: añadir ----------------------------------------------------- */
   action('ntMore', function () { ui.ntMore = !ui.ntMore; render(); });
-  action('ntKind', function (c) { ui.ntKind = c.v === 'appt' ? 'appt' : 'task'; render(); });
   action('ntAdd', function () {
     var day = /^\d{4}-\d\d-\d\d$/.test(ui.ntDate || '') ? ui.ntDate : targetDay();
-    var r = Tasks.add(day, { title: ui.ntTitle, time: ui.ntTime, kind: ui.ntKind });
+    var r = Tasks.add(day, { title: ui.ntTitle, time: ui.ntTime });
     if (!r.ok) { explain(r); return; }
     ui.ntTitle = ''; ui.ntTime = ''; ui.ntDate = ''; ui.ntMore = false;
     commit();
@@ -75,14 +79,28 @@
   });
 
   /* --- el «+» de la barra: apuntar algo desde cualquier pantalla ---------- */
-  function quick() { return ui.quick || (ui.quick = { title: '', when: 'hoy', time: '', kind: 'task' }); }
+  function nuevoApunte() { return { title: '', when: 'hoy', time: '', date: '', rutina: 'day', days: [0, 1, 2, 3, 4, 5, 6] }; }
+  function quick() { return ui.quick || (ui.quick = nuevoApunte()); }
   action('quick', function () {
-    ui.quick = { title: '', when: 'hoy', time: '', kind: 'task' };
+    ui.quick = nuevoApunte();
     UI.openSheet({ t: 'quick' });
     setTimeout(function () { var el = document.querySelector('#sheet [data-f="qTitle"]'); if (el) el.focus(); }, 60);
   });
-  action('qWhen', function (c) { var q = quick(); q.when = c.v; if (q.when === 'sin') q.time = ''; UI.renderSheet(); });
-  action('qKind', function (c) { quick().kind = c.v === 'appt' ? 'appt' : 'task'; UI.renderSheet(); });
+  action('qWhen', function (c) {
+    var q = quick();
+    // «Elegir fecha» y «Se repite» se desmarcan tocándolos otra vez
+    q.when = q.when === c.v && (c.v === 'fecha' || c.v === 'repite') ? 'hoy' : c.v;
+    if (q.when === 'sin' || q.when === 'repite') q.time = '';
+    UI.renderSheet();
+  });
+  action('qDia', function (c) {
+    var q = quick(), d = +c.v, p = q.days.indexOf(d);
+    if (p >= 0 && q.days.length === 1) { Pantalla.toast('Deja al menos un día.'); return; }
+    if (p >= 0) q.days.splice(p, 1); else q.days.push(d);
+    UI.renderSheet();
+  });
+  action('qRutina', function (c) { quick().rutina = c.v === 'night' ? 'night' : 'day'; UI.renderSheet(); });
+  UI.onChange('qDate', function (c) { quick().date = c.el.value; UI.renderSheet(); });
   UI.onInput('qTitle', function (c) { quick().title = c.el.value; });
   UI.onInput('qTime', function (c) { quick().time = c.el.value; });
   UI.onChange('qTime', function (c) { quick().time = c.el.value; });
@@ -90,8 +108,16 @@
   // Apunta lo escrito donde toca. Devuelve true si se apuntó.
   function apuntar() {
     var q = quick(), r;
-    if (q.when === 'sin') r = Tasks.addTodo({ title: q.title, kind: 'task' });
-    else r = Tasks.add(q.when === 'manana' ? Dates.shift(Dates.today(), 1) : Dates.today(), { title: q.title, time: q.time, kind: q.kind });
+    if (q.when === 'repite') {
+      r = Habitos.nuevo(q.rutina, q.title, q.days);
+    } else if (q.when === 'sin') {
+      r = Tasks.addTodo({ title: q.title, kind: 'task' });
+    } else if (q.when === 'fecha') {
+      if (!q.date || q.date < Dates.today()) { Pantalla.toast('Elige hoy o un día que aún no haya pasado.'); return false; }
+      r = Tasks.add(q.date, { title: q.title, time: q.time });
+    } else {
+      r = Tasks.add(q.when === 'manana' ? Dates.shift(Dates.today(), 1) : Dates.today(), { title: q.title, time: q.time });
+    }
     if (!r.ok) { explain(r); return false; }
     return true;
   }
@@ -99,12 +125,13 @@
     var q = quick(), when = q.when;
     if (!apuntar()) return;
     UI.closeSheet(); render();
-    Pantalla.toast(when === 'sin' ? 'Guardada en pendientes sin fecha.' : when === 'manana' ? 'Apuntada para mañana.' : 'Apuntada en el plan de hoy.');
+    Pantalla.toast(when === 'sin' ? 'Guardada en pendientes sin fecha.' : when === 'repite' ? 'Hábito añadido a tu rutina ' + (q.rutina === 'night' ? 'de noche.' : 'de día.') :
+      when === 'fecha' ? 'Apuntada para el ' + Fmt.fmt(q.date) + '.' : when === 'manana' ? 'Apuntada para mañana.' : 'Apuntada en el plan de hoy.');
   });
   action('qMore', function () {
     var q = quick();
     if (!apuntar()) return;
-    q.title = ''; q.time = ''; q.kind = 'task';   // el día se conserva; la hora y el tipo, no
+    q.title = ''; q.time = '';   // el día se conserva; la hora, no
     UI.renderSheet(); render();
     var el = document.querySelector('#sheet [data-f="qTitle"]'); if (el) el.focus();
     Pantalla.toast('Apuntada. Escribe la siguiente.');
@@ -112,7 +139,11 @@
 
   /* --- Hoy: pendientes sin fecha --------------------------------------- */
   action('todoPull', function (c) { var r = Tasks.pullTodo(c.id, targetDay()); if (!r.ok) { explain(r); return; } commit(); });
-  action('tododel', function (c) { Tasks.removeTodo(c.id); commit(); });
+  action('tododel', function (c) {
+    var r = Tasks.removeTodo(c.id);
+    commit();
+    Pantalla.toast('Pendiente quitado.', function () { Tasks.restoreTodo(r.todo); commit(); });
+  });
 
   /* --- secciones plegables (preferencias de este dispositivo) ---------- */
   action('toggleNight', function () { ui.nightOpen = true; render(); });
@@ -121,12 +152,10 @@
     Preferencias.set('rutinas.cerradas', ui.routinesClosed);
     render();
   });
-  action('goRoutines', function () {
-    ui.routinesClosed = false;
-    Preferencias.set('rutinas.cerradas', false);
+  action('toggleNote', function () {
+    ui.noteClosed = !ui.noteClosed;
+    Preferencias.set('nota.cerrada', ui.noteClosed);
     render();
-    var rt = document.getElementById('rutinas');
-    if (rt && rt.scrollIntoView) { try { rt.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (er) { rt.scrollIntoView(); } }
   });
   action('dismiss', function (c) { Habitos.descartarAviso(c.id); render(); });
   action('openAddRoutine', function (c) { ui.addRoutine = c.k; ui.editRoutine = null; render(); focusAdd('r' + c.k); });
@@ -142,7 +171,8 @@
   });
 
   /* --- rutinas --- */
-  action('rtoggle', function (c) { Habitos.marcar(ui.selDay, c.k, c.id); render(); });
+  action('rtoggle', function (c) { Habitos.marcar(c.el.getAttribute('data-day'), c.k, c.id); render(); });
+  action('rSugerir', function (c) { Habitos.nuevo(c.k, c.v); render(); });
   action('radd', function (c) {
     var inp = document.querySelector('[data-add="r' + c.k + '"]');
     var r = Habitos.nuevo(c.k, inp && inp.value);
@@ -152,6 +182,15 @@
     Pantalla.toast('Hábito añadido.');
   });
   action('rdel', function (c) { armedDelete(c.el, function () { Habitos.borrar(c.k, c.id); render(); }); });
+
+  action('rDia', function (c) {
+    if (!Habitos.dia(c.k, c.id, +c.v).ok) { Pantalla.toast('Deja al menos un día, o ponlo en pausa.'); return; }
+    render();
+  });
+  action('rPausa', function (c) { Habitos.pausar(c.k, c.id); render(); });
+  action('restPanel', function () { ui.restOpen = !ui.restOpen; render(); });
+  action('restDia', function (c) { Habitos.descansoSemanal(+c.v); render(); });
+  action('restHoy', function () { Habitos.descansarHoy(); render(); });
 
   UI.onInput('ntTitle', function (c) {
     var el = c.el, id = c.id, k = c.k, sid = c.sid, g;
@@ -165,7 +204,7 @@
     var el = c.el, id = c.id, k = c.k, sid = c.sid, g;
     ui.ntDate = el.value; return;
   });
-  UI.onInput('note', function (c) { Habitos.nota(ui.selDay, c.el.value); grow(c.el); });
+  UI.onInput('note', function (c) { Habitos.nota(c.el.getAttribute('data-day'), c.el.value); grow(c.el); });
   UI.onInput('rname', function (c) { Habitos.nombre(c.k, c.id, c.el.value); });
   UI.onChange('evdate', function (c) {
     var el = c.el, id = c.id, k = c.k, sid = c.sid, g;

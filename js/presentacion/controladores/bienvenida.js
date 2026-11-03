@@ -37,9 +37,26 @@
     Bienvenida.posponer(); goApp('hoy');
     Pantalla.toast('Guardado. Puedes seguir cuando quieras desde Hoy.');
   });
+  /* --- el borrador del plan --- */
+  function indice(c) { return +c.el.getAttribute('data-i'); }
+  UI.onInput('bvPlanNombre', function (c) { Bienvenida.nombrePlan(c.el.value); });
+  UI.onInput('bvPasoNombre', function (c) { Bienvenida.pasoNombre(indice(c), c.el.value); UI.grow(c.el); });
+  UI.onChange('bvPasoFecha', function (c) {
+    if (!Bienvenida.pasoFecha(indice(c), c.el.value)) Pantalla.toast('Elige hoy o un día que aún no haya pasado.');
+    render();
+  });
+  action('bvPasoQuitar', function (c) { Bienvenida.quitarPaso(indice(c)); render(); });
+  action('bvPasoNuevo', function () {
+    if (!Bienvenida.anadirPaso()) return;
+    render();
+    var t = document.querySelectorAll('[data-f="bvPasoNombre"]');
+    if (t.length) t[t.length - 1].focus();
+  });
+  action('bvRealista', function (c) { Bienvenida.realista(c.v); render(); });
+  action('bvAligerar', function () { Bienvenida.aligerar(); render(); });
+
   action('bvAceptar', function () {
-    var nombres = [].map.call(document.querySelectorAll('[data-bvpaso]'), function (el) { return el.value; });
-    Bienvenida.aceptar((document.getElementById('bvNombre') || {}).value, nombres);
+    Bienvenida.aceptar();
     top();   // pantalla final: qué se guardó y dónde
   });
   action('bvFin', function () { ui.planDay = Dates.today(); goApp('hoy'); });

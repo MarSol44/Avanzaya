@@ -3,7 +3,18 @@
 -- Es idempotente: puedes volver a ejecutarlo si algo cambia sin duplicar nada.
 
 create extension if not exists pg_cron;
-create extension if not exists pg_net;
+create extension if not exists pg_net with schema extensions;
+
+-- pg_net no debe vivir en el esquema público (lo expone la API). No se puede
+-- mover: se reinstala en «extensions»; sus funciones siguen en net.*, así que
+-- las llamadas programadas de más abajo no cambian.
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_net' and extnamespace = 'public'::regnamespace) then
+    drop extension pg_net;
+    create extension pg_net with schema extensions;
+  end if;
+end $$;
 
 -- ══════════════════════════════════════════════════ estado sincronizado
 create table if not exists public.states (
@@ -34,10 +45,11 @@ alter table public.states drop constraint if exists states_tamano;
 alter table public.states add constraint states_tamano
   check (pg_column_size(state) < 6 * 1024 * 1024 and jsonb_typeof(state) = 'object');
 
--- updated_at lo fija siempre el servidor: así ningún reloj de cliente
--- desincronizado puede hacer que un dispositivo pise los datos de otro.
+-- updated_at lo fija siempre el servidor, también al crear la fila: así ningún
+-- reloj de cliente (desincronizado o manipulado) puede hacer que un dispositivo
+-- pise los datos de otro.
 create or replace function public.tocar_updated_at() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   new.updated_at = now();
   return new;
@@ -46,7 +58,7 @@ $$;
 
 drop trigger if exists states_updated_at on public.states;
 create trigger states_updated_at
-  before update on public.states
+  before insert or update on public.states
   for each row execute function public.tocar_updated_at();
 
 -- ══════════════════════════════════════════════════ suscripciones push
@@ -64,12 +76,32 @@ create table if not exists public.push_subscriptions (
 
 alter table public.push_subscriptions enable row level security;
 
--- Longitudes razonables: lo escribe el navegador de cada persona.
+-- Longitudes razonables: lo escribe el navegador de cada persona. La dirección
+-- tiene que ser de un servicio de notificaciones de verdad (Google, Mozilla,
+-- Apple o Microsoft): si no, cualquiera con cuenta podría hacer que el servidor
+-- mandara peticiones a la dirección que quisiera.
 alter table public.push_subscriptions drop constraint if exists push_longitudes;
 alter table public.push_subscriptions add constraint push_longitudes check (
-  char_length(endpoint) <= 1000 and endpoint like 'https://%'
+  char_length(endpoint) <= 1000
+  and endpoint ~ '^https://(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|web\.push\.apple\.com|[a-z0-9.-]+\.push\.apple\.com|[a-z0-9.-]+\.notify\.windows\.com)/'
   and char_length(p256dh) <= 200 and char_length(auth) <= 100 and char_length(tz) <= 64
 );
+
+-- Unos pocos dispositivos por cuenta: sin tope, una sola cuenta podría llenar la
+-- tabla y hacer que el envío diario no llegue a nadie más.
+create or replace function public.limitar_suscripciones() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if (select count(*) from public.push_subscriptions where user_id = new.user_id) >= 10 then
+    raise exception 'Demasiados dispositivos con recordatorio en esta cuenta.' using errcode = 'check_violation';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists push_limite on public.push_subscriptions;
+create trigger push_limite
+  before insert on public.push_subscriptions
+  for each row execute function public.limitar_suscripciones();
 
 drop policy if exists "push: lectura propia" on public.push_subscriptions;
 create policy "push: lectura propia" on public.push_subscriptions
@@ -86,6 +118,22 @@ create policy "push: edición propia" on public.push_subscriptions
 drop policy if exists "push: borrado propio" on public.push_subscriptions;
 create policy "push: borrado propio" on public.push_subscriptions
   for delete using (auth.uid() = user_id);
+
+-- ══════════════════════════════════════════════════ quién puede tocar qué
+-- Supabase da por defecto todos los permisos a «anon» (sin sesión) y a
+-- «authenticated» en cada tabla nueva, y las reglas por fila (RLS) no cubren
+-- TRUNCATE. Aquí se deja solo lo que la app usa:
+--   · sin sesión, nada;
+--   · con sesión, leer y escribir su propia fila (las reglas de arriba).
+revoke all on table public.states, public.push_subscriptions from anon;
+revoke all on table public.states, public.push_subscriptions from authenticated;
+grant select, insert, update on table public.states to authenticated;
+grant select, insert, update, delete on table public.push_subscriptions to authenticated;
+
+-- Las tablas que se creen en el futuro empiezan cerradas para quien no ha
+-- iniciado sesión: hay que abrirlas a propósito.
+alter default privileges in schema public revoke all on tables from anon;
+alter default privileges in schema public revoke all on functions from anon;
 
 -- ══════════════════════════════════════════════════ llamadas programadas
 -- Los "Edge Functions" llevan su propia comprobación de un secreto compartido
@@ -128,7 +176,8 @@ select cron.schedule(
     url     := 'https://fgpwhdfvqtlvfmmzhxsy.supabase.co/functions/v1/send-reminders',
     headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret',
                  (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')),
-    body    := '{}'::jsonb
+    body    := '{}'::jsonb,
+    timeout_milliseconds := 30000   -- la función tarda unos segundos en arrancar en frío
   );
   $$
 );
@@ -144,7 +193,8 @@ select cron.schedule(
     url     := 'https://fgpwhdfvqtlvfmmzhxsy.supabase.co/functions/v1/send-weekly-email',
     headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret',
                  (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')),
-    body    := '{}'::jsonb
+    body    := '{}'::jsonb,
+    timeout_milliseconds := 30000   -- la función tarda unos segundos en arrancar en frío
   );
   $$
 );

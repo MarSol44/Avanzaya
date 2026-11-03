@@ -23,7 +23,7 @@ var Ajustes = (function () {
   function areaNueva(emoji, nombre, color) {
     nombre = String(nombre || '').trim();
     if (!nombre) return { ok: false, reason: 'empty' };
-    S.cats.push({ id: Util.uid(), emoji: String(emoji || '').trim() || '⭐', name: nombre, color: color || '#5b6ee1' });
+    S.cats.push({ id: Util.uid(), emoji: String(emoji || '').trim().slice(0, 8) || '⭐', name: nombre.slice(0, 120), color: Sec.colorOf(color) });
     Store.save();
     return { ok: true };
   }
@@ -34,8 +34,8 @@ var Ajustes = (function () {
     delete S.future[id];
     Store.save();
   }
-  function areaNombre(id, v) { var c = Areas.get(id); if (c) c.name = v; Store.save(); }
-  function areaEmoji(id, v) { var c = Areas.get(id); if (c) c.emoji = v; Store.save(); }
+  function areaNombre(id, v) { var c = Areas.get(id); if (c) c.name = String(v || '').slice(0, 120); Store.save(); }
+  function areaEmoji(id, v) { var c = Areas.get(id); if (c) c.emoji = String(v || '').slice(0, 8); Store.save(); }
 
   /* ------------------------------------------------------------ respaldo */
   function respaldoTexto() { return JSON.stringify(S); }

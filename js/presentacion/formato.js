@@ -113,12 +113,12 @@ var Fmt = (function () {
         var vv = Revision.cat(r, cats[m].id);
         if (vv == null) continue;
         var p = pt(m, vv);
-        h += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3.5" fill="' + cats[m].color + '" stroke="var(--surface)" stroke-width="1.5"></circle>';
+        h += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3.5" fill="' + esc(cats[m].color) + '" stroke="var(--surface)" stroke-width="1.5"></circle>';
       }
     }
     for (var q = 0; q < n; q++) {
       var lp = pt(q, 12.4);
-      h += '<text x="' + lp[0].toFixed(1) + '" y="' + lp[1].toFixed(1) + '" font-size="15" text-anchor="middle" dominant-baseline="middle">' + cats[q].emoji + '</text>';
+      h += '<text x="' + lp[0].toFixed(1) + '" y="' + lp[1].toFixed(1) + '" font-size="15" text-anchor="middle" dominant-baseline="middle">' + esc(cats[q].emoji) + '</text>';
     }
     return h + '</svg>';
   }

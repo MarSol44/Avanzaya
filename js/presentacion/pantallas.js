@@ -26,6 +26,15 @@ V.cabecera = function (o) {
     (o.sub ? '<p class="hoy-frase">' + Fmt.esc(o.sub) + '</p>' : '') + '</div>' + (o.lado || '') + '</div></div>';
 };
 // Anillo pequeño para esas cabeceras: «17 %» y «1/6» debajo.
+// Los siete días como botones. `activo(d)` dice cuáles están marcados; `attrs`,
+// lo que lleva cada botón además del día (data-a, data-id…).
+V.diasSemana = function (etiqueta, attrs, activo) {
+  return '<span class="dchips" role="group" aria-label="' + Fmt.esc(etiqueta) + '">' +
+    [[1, 'L', 'lunes'], [2, 'M', 'martes'], [3, 'X', 'miércoles'], [4, 'J', 'jueves'], [5, 'V', 'viernes'], [6, 'S', 'sábado'], [0, 'D', 'domingo']].map(function (d) {
+      return '<button type="button" class="dchip" ' + attrs + ' data-v="' + d[0] + '" aria-label="' + d[2] + '" aria-pressed="' + !!activo(d[0]) + '">' + d[1] + '</button>';
+    }).join('') + '</span>';
+};
+
 V.anilloCab = function (hecho, total, etiqueta) {
   if (!total) return '';
   var pct = Math.round(hecho / total * 100);

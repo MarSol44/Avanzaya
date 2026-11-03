@@ -9,13 +9,12 @@
   // Textos legales y de seguridad. Describen la versión que se publica: si
   // cambia lo que la app envía o guarda fuera del navegador, hay que cambiarlos.
   var CONTACTO = 'avanzayaapp@gmail.com';
-  var BdvIdentidad_DOMINIO = 'usuarios.avanzaya.pages.dev';   // = BdvIdentidad.DOMINIO (dominio/identidad.js)
   var DOCS = {
     terminos: ['file', 'Términos y condiciones',
       'Brújula de Vida (Avanzaya) es una herramienta personal para organizar tus metas, rutinas y tu visión.\n\n' +
-      '1. Puedes usarla sin cuenta: entonces todo se guarda solo en este navegador.\n' +
-      '2. Puedes crear una cuenta con tu correo, tu teléfono o un nombre de usuario (y una contraseña), o entrar con Google o Facebook. Con cuenta, tus datos se guardan también en la nube para sincronizarlos entre tus dispositivos. Cómo y dónde, en la Política de privacidad.\n' +
-      '3. El teléfono y el nombre de usuario no se verifican ni reciben mensajes. Sin un correo real no podemos ayudarte a recuperar la contraseña: guárdala bien.\n' +
+      '1. Para usarla necesitas una cuenta: con tu correo y una contraseña (el correo se confirma con un enlace), o entrando con Google o Facebook.\n' +
+      '2. Tus datos se guardan en este dispositivo y también en la nube, para sincronizarlos entre tus dispositivos. Cómo y dónde, en la Política de privacidad.\n' +
+      '3. Si olvidas la contraseña, puedes crear otra con el enlace que te enviamos a tu correo.\n' +
       '4. La contraseña de la app protege el acceso a la app, no cifra tus datos. Lee «Cómo se protege tu cuenta» en Perfil.\n' +
       '5. La app es gratuita y se ofrece tal cual, sin garantía de disponibilidad ni de conservación de tus datos. Haz copias de seguridad desde Perfil.\n' +
       '6. No es asesoramiento médico, psicológico ni financiero. Es un cuaderno con estructura.\n' +
@@ -23,12 +22,11 @@
       '8. Contacto: ' + CONTACTO + '.'],
     privacidad: ['lock', 'Política de privacidad',
       'Responsable: Brújula de Vida (Avanzaya). Contacto: ' + CONTACTO + '.\n\n' +
-      'SI USAS LA APP SIN CUENTA\n' +
-      '• Lo que escribes (metas, rutinas, notas, fotos del tablero y ajustes) se guarda en el almacenamiento de este navegador. No se envía a nuestra nube.\n\n' +
-      'SI CREAS UNA CUENTA (con correo, teléfono o nombre de usuario, o con Google o Facebook)\n' +
+      'TU CUENTA (con correo, o con Google o Facebook)\n' +
+      '• Lo que escribes (metas, rutinas, notas, fotos del tablero y ajustes) se guarda en el almacenamiento de este navegador y en tu copia en la nube.\n' +
       '• Sincronización: una copia de todos tus datos de la app se guarda en Supabase, nuestro proveedor de base de datos, en servidores de Estados Unidos (Oregón). Incluye las fotos del tablero, tu nombre, tu correo y la versión protegida (derivada) de tu contraseña de la app, nunca la contraseña en sí.\n' +
       '• Quién puede verla: desde la app, solo tu cuenta. El proveedor y quien administra el proyecto pueden acceder técnicamente a la base de datos: la copia va cifrada en la conexión (HTTPS), pero no está cifrada de extremo a extremo.\n' +
-      '• Inicio de sesión: Supabase guarda tu correo y su propia versión protegida de tu contraseña. Si creas la cuenta con teléfono o nombre de usuario, en la nube se guarda como un correo interno de la app que nadie recibe (por ejemplo, u.tu_usuario@' + BdvIdentidad_DOMINIO + '), que contiene tu teléfono o tu usuario. El teléfono no se verifica ni se usa para enviarte mensajes.\n' +
+      '• Inicio de sesión: Supabase guarda tu correo y su propia versión protegida de tu contraseña, y nos envía por ti los correos para confirmar la cuenta y para cambiar la contraseña.\n' +
       '• Google y Facebook (solo si entras con ellos): nos confirman tu correo (si lo compartes) y tu nombre; Google o Meta ven que usas su cuenta para entrar aquí.\n' +
       '• Recordatorio diario (solo si lo activas): guardamos la suscripción de notificaciones de tu navegador, la hora que eliges y tu zona horaria. El aviso llega a través del servicio de notificaciones de tu navegador (Google, Apple o Mozilla).\n' +
       '• Resumen semanal por correo: todavía no está activo. Si se activa, usará el servicio Resend con tu correo y las cifras de tu semana, y lo diremos aquí antes.\n\n' +
@@ -48,10 +46,11 @@
       '• Comparación — en tiempo constante, para no filtrar información por lo que tarda en responder.\n' +
       '• Reglas — mínimo 8 caracteres, se rechazan las más usadas y las secuencias obvias.\n' +
       '• Fuerza bruta — tras cinco fallos seguidos hay que esperar, y la espera se dobla en cada intento.\n' +
-      '• Sesión — caduca a los 14 días; si no marcas «mantener la sesión», al cerrar la pestaña.\n' +
+      '• Sesión — caduca tras 14 días sin abrir la app; si no marcas «mantener la sesión», al cerrar la pestaña.\n' +
       '• Cambio de contraseña — pide la actual y cierra la sesión, para que haya que volver a entrar.\n' +
-      '• Entrar sin cuenta — abre un espacio aparte y vacío: nunca muestra los datos de una cuenta de este dispositivo.\n' +
-      '• Si olvidas la contraseña — todavía no hay recuperación por correo. Si tu cuenta usa Google o Facebook, entra con ellos; si no, tus datos de este dispositivo quedan cerrados: guarda una copia de seguridad de vez en cuando y, si lo necesitas, escríbenos. Las cuentas de teléfono o usuario no tienen correo con el que recuperarla.\n' +
+      '• Varias cuentas en un dispositivo — cada una tiene su espacio: entrar en una nunca muestra los datos de otra.\n' +
+      '• Si olvidas la contraseña — en «¿Olvidaste tu contraseña?» te enviamos un enlace a tu correo para crear otra. Si tu cuenta usa Google o Facebook, entra con ellos.\n' +
+      '• Correo confirmado — la cuenta no se abre hasta que confirmas el correo con el enlace que te enviamos: nadie puede registrarse con un correo que no es suyo.\n' +
       '• Mensajes de error — nunca dicen si falló el correo o la contraseña.\n' +
       '• Nube — cada cuenta solo puede leer y escribir su propia copia (reglas de seguridad por fila en la base de datos), y todo viaja por HTTPS.\n' +
       '• Aleatoriedad — todos los identificadores salen de crypto.getRandomValues, no de Math.random, y no son correlativos.\n' +
@@ -60,7 +59,7 @@
       '• Código — la app solo ejecuta scripts servidos desde su propio sitio (la librería de Supabase va incluida) y la política de seguridad del navegador bloquea los de otros sitios. No se usa eval.'],
     ayuda: ['help', 'Cómo funciona',
       '1. Hoy — es la pantalla de inicio. Marca la rutina de día y la de noche y tu racha empieza a contar. Con eso solo, la app ya sirve.\n\n' +
-      '2. Chequeo de vida — siete pantallas cortas para medir cómo estás en cada área. Repítelo cada pocos meses; el historial te muestra si subes o bajas.\n\n' +
+      '2. Chequeo de vida — ocho pantallas cortas para medir cómo estás en cada área. Repítelo cada pocos meses; el historial te muestra si subes o bajas.\n\n' +
       '3. Mi Yo del Futuro — una frase por área sobre dónde quieres estar en 5 años. De ahí sale tu Visión.\n\n' +
       '4. Metas — corto plazo (menos de 1 año) y largo plazo. Dentro de cada una defines los pasos; el porcentaje sale solo de los pasos marcados.\n\n' +
       '5. Pasos a metas — cuando un paso de una meta de largo plazo tiene fecha a menos de un año, puedes convertirlo en meta de corto plazo con un botón.\n\n' +
@@ -232,7 +231,7 @@
           '<p class="tiny" id="pwMsg" style="min-height:16px"></p>' +
           '<button class="btn block" data-a="savePass">Guardar</button>' +
           '<p class="notice">La contraseña protege el acceso a la app, pero no cifra tus datos: lo que escribes se guarda sin cifrar en este navegador. No uses la de tu correo.</p>'
-        : '<p class="muted">Estás usando la app sin cuenta, así que no hay contraseña que cambiar.</p>' +
+        : '<p class="muted">Inicia sesión para cambiar la contraseña.</p>' +
           '<button class="btn block" data-a="go" data-s="register">Crear una cuenta</button>') +
       '</div>';
   }
@@ -375,7 +374,7 @@
     h += '<button class="btn accent block" data-a="newRC">' + I('plus', 17) + 'Hacer un chequeo ahora</button>';
     if (!S.rc.length) {
       h += '<div class="empty" style="padding:18px 0"><span class="ee">' + I('compass', 30) + '</span>' +
-        '<p>Son siete pantallas cortas que miden cómo estás en cada área de tu vida. Repetirlo cada pocos meses te enseña si de verdad avanzas.</p></div>';
+        '<p>Son ocho pantallas cortas que miden cómo estás en cada área de tu vida. Repetirlo cada pocos meses te enseña si de verdad avanzas.</p></div>';
       return h + '</div>';
     }
     h += '<div class="steps">';
@@ -400,26 +399,39 @@
   /* ------------------------------------------------------- apuntar algo (el «+») */
   var CUANDO = [['hoy', 'sunrise', 'Hoy'], ['manana', 'sun', 'Mañana'], ['sin', 'note', 'Sin fecha']];
   function quickSheet() {
-    var q = ui.quick || (ui.quick = { title: '', when: 'hoy', time: '', kind: 'task' });
-    var sin = q.when === 'sin';
+    var q = ui.quick || (ui.quick = { title: '', when: 'hoy', time: '', date: '', rutina: 'day', days: [0, 1, 2, 3, 4, 5, 6] });
+    var sin = q.when === 'sin', fecha = q.when === 'fecha', repite = q.when === 'repite';
     var h = head('sparkle', 'Apuntar algo') + '<div class="sheet-body">' +
-      '<input class="inp qk-title" data-f="qTitle" data-add="quick" maxlength="400" value="' + esc(q.title) + '" placeholder="¿Qué no quieres olvidar?" aria-label="Qué apuntar" enterkeyhint="done">' +
+      '<input class="inp qk-title" data-f="qTitle" data-add="quick" maxlength="400" value="' + esc(q.title) + '" placeholder="¿Qué quieres apuntar?" aria-label="Qué apuntar" enterkeyhint="done">' +
       '<div class="field"><span>¿Para cuándo?</span><div class="seg3" role="group" aria-label="¿Para cuándo?" style="margin-top:4px">' +
       CUANDO.map(function (w) {
         return '<button type="button" data-a="qWhen" data-v="' + w[0] + '" aria-pressed="' + (q.when === w[0]) + '"><span class="ic">' + I(w[1], 18) + '</span>' + w[2] + '</button>';
-      }).join('') + '</div></div>';
-    if (!sin) {
-      h += '<div class="qk-row">' +
-        '<label class="field grow"><span>Hora (opcional)</span><input class="inp" type="time" data-f="qTime" value="' + esc(q.time) + '"></label>' +
-        '<div class="field"><span>Tipo</span><span class="seg" role="group" aria-label="Tipo" style="margin-top:4px">' +
-        '<button type="button" data-a="qKind" data-v="task" aria-pressed="' + (q.kind === 'task') + '">Tarea</button>' +
-        '<button type="button" data-a="qKind" data-v="appt" aria-pressed="' + (q.kind === 'appt') + '">Cita</button></span></div></div>';
-    } else {
+      }).join('') + '</div>' +
+      // lo menos habitual, aparte: la pantalla sigue siendo Hoy, Mañana o Sin fecha
+      '<div class="qk-more">' +
+      '<button type="button" class="btn ghost xs" data-a="qWhen" data-v="fecha" aria-pressed="' + fecha + '">' + I('calendar', 15) + 'Elegir fecha</button>' +
+      '<button type="button" class="btn ghost xs" data-a="qWhen" data-v="repite" aria-pressed="' + repite + '">' + I('rotate', 15) + 'Se repite</button>' +
+      '</div></div>';
+    if (fecha) {
+      h += '<label class="field"><span>Fecha</span><input class="inp" type="date" data-f="qDate" min="' + Dates.today() + '" value="' + esc(q.date) + '"></label>';
+    }
+    if (repite) {
+      h += '<div class="field"><span>¿Qué días?</span><div style="margin-top:6px">' +
+        V.diasSemana('Días en que se repite', 'data-a="qDia"', function (d) { return q.days.indexOf(d) >= 0; }) + '</div></div>' +
+        '<div class="field"><span>¿En qué rutina?</span><span class="seg" role="group" aria-label="Rutina" style="margin-top:4px">' +
+        '<button type="button" data-a="qRutina" data-v="day" aria-pressed="' + (q.rutina === 'day') + '">De día</button>' +
+        '<button type="button" data-a="qRutina" data-v="night" aria-pressed="' + (q.rutina === 'night') + '">De noche</button></span></div>' +
+        '<p class="muted">Se guarda como hábito: aparece en tus rutinas esos días y suma a tu racha. Lo cambias o pausas en «Editar».</p>';
+    } else if (sin) {
       h += '<p class="muted">Queda en «Pendientes sin fecha», dentro del plan de Hoy. No se te pierde.</p>';
+    } else {
+      h += '<label class="field"><span>Hora (opcional)</span><input class="inp" type="time" data-f="qTime" value="' + esc(q.time) + '"></label>';
     }
     h += '<div class="qk-row qk-btns"><button class="btn accent grow" data-a="qSave" style="padding:15px 20px">' + I('check', 19) + 'Guardar</button>' +
       '<button class="btn soft" data-a="qMore" style="padding:15px 20px">' + I('plus', 18) + 'Y otra</button></div>';
-    if (!sin) h += '<p class="muted">Aparece en el plan de ' + (q.when === 'manana' ? 'mañana' : 'hoy') + '.</p>';
+    if (!sin && !repite && !(fecha && !q.date)) {
+      h += '<p class="muted">Aparece en el plan ' + (fecha ? 'del ' + esc(Fmt.fmt(q.date)) : q.when === 'manana' ? 'de mañana' : 'de hoy') + '.</p>';
+    }
     return h + '</div>';
   }
 

@@ -9,6 +9,9 @@
      remote:applied   — llegaron datos de la nube y ya están aplicados
      sync:changed     — cambió algo de la sincronización (repintar)
      auth:red         — Google o Facebook confirmó a una persona (dato: { user, proveedor })
+     auth:recuperar   — se llegó desde el enlace para cambiar una contraseña olvidada
+     auth:confirmado  — se llegó desde el enlace que confirma el correo (dato: el correo)
+     pintado          — se repintó la pantalla (dato: qué pantalla)
      aviso            — un mensaje para enseñar a la persona (dato: el texto)
    ========================================================================== */
 var Bus = (function () {

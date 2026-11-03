@@ -46,7 +46,7 @@
     h += '<div class="callegend">' +
       '<span><i style="background:var(--good)"></i>Día completo</span>' +
       '<span><i style="background:var(--warn)"></i>A medias</span>' +
-      '<span><i style="background:var(--bad)"></i>Sin avance</span>' +
+      '<span><i style="background:color-mix(in srgb,var(--ink) 14%,transparent)"></i>Sin marcar</span>' +
       '<span><i style="background:var(--accent)"></i>Con tareas</span></div>';
     return h + '</div>';
   }
@@ -57,7 +57,7 @@
   function dayPanel() {
     var k = ui.selDay, evs = S.events[k] || [], tot = Routines.dayTotals(k);
     var isToday = k === Dates.today();
-    var note = S.notes[k] || '';
+    var note = S.notes[k] || '', futuro = k > Dates.today();
 
     var h = '<div class="sect">' +
       '<div class="sect-head"><span class="sect-title" style="font-size:1.05rem">' +
@@ -74,13 +74,15 @@
         var log = S.rlog[k] || { day: [], night: [] }, marks = log[kind] || [];
         (S.routines[kind] || []).forEach(function (it) {
           var on = marks.indexOf(it.id) >= 0;
+          if (!on && !Routines.dueOn(kind, k).some(function (x) { return x.id === it.id; })) return;   // ese día no tocaba
           h += '<div class="listrow" style="padding:10px 14px">' +
-            '<button class="chk" role="checkbox" aria-checked="' + on + '" data-a="rtoggle" data-k="' + kind + '" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + '">' + I('check', 15) + '</button>' +
+            (futuro ? '' : '<button class="chk" role="checkbox" aria-checked="' + on + '" data-a="rtoggle" data-day="' + k + '" data-k="' + kind + '" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + '">' + I('check', 15) + '</button>') +
             '<span class="grow"' + (on ? ' style="color:var(--ink-2);text-decoration:line-through"' : '') + '>' + esc(it.name) + '</span>' +
             I(kind === 'day' ? 'sunrise' : 'moon', 16) + '</div>';
         });
       });
       h += '</div>';
+      if (futuro) h += '<p class="tiny">Este día aún no ha llegado: los hábitos se marcan cuando toque.</p>';
     }
 
     if (evs.length) {
@@ -95,7 +97,7 @@
     }
 
     if (note || ui.noteOpen) {
-      h += '<textarea class="ta" data-f="note" placeholder="Nota de este día">' + esc(note) + '</textarea>';
+      h += '<textarea class="ta" data-f="note" data-day="' + k + '" placeholder="Nota de este día">' + esc(note) + '</textarea>';
     } else {
       h += '<button class="btn ghost sm" data-a="openNote" style="align-self:flex-start">' +
         I('pencil', 15) + (isToday ? 'Escribir la nota de hoy' : 'Escribir una nota de este día') + '</button>';

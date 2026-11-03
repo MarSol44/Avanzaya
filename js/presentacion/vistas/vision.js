@@ -191,7 +191,7 @@
     }
 
     var h = V.cabecera({ kicker: '¿Estoy avanzando?', titulo: 'Progreso', perfil: profileBtn(),
-      sub: st ? 'Llevas ' + Fmt.plural(st, 'día seguido', 'días seguidos') + ' cumpliendo tus rutinas.' : 'Marca una rutina hoy y tu racha empieza.',
+      sub: st ? 'Tu racha: ' + Fmt.plural(st, 'día', 'días') + ' con algún hábito marcado. Un día suelto sin marcar no la rompe.' : 'Marca un hábito hoy y tu racha empieza.',
       lado: '<div class="hd-badge" role="img" aria-label="Racha: ' + Fmt.plural(st, 'día', 'días') + '">' + I('flame', 30) + st + '</div>' });
     h += '<div class="scroll"><div class="page">';
 

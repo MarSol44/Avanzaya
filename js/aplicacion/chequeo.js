@@ -12,6 +12,12 @@ var Chequeo = (function () {
   function adjetivos(v) { borrador().adjectives = v; Store.save(); }
   function nota(clave, v) { borrador().notes[clave] = v; Store.save(); }
   function guardarAvance() { Store.save(); }
+  // Seguir adelante da por bueno el valor que se ve, aunque no se haya movido.
+  function aceptarPaso(claves, valor) {
+    var d = borrador();
+    claves.forEach(function (k) { if (d.scores[k] == null) d.scores[k] = valor; });
+    Store.save();
+  }
 
   // Pasa el borrador al historial si tiene al menos una puntuación.
   function confirmar() {
@@ -50,7 +56,7 @@ var Chequeo = (function () {
   }
 
   return {
-    empezar: empezar, puntuar: puntuar, adjetivos: adjetivos, nota: nota, guardarAvance: guardarAvance,
+    empezar: empezar, puntuar: puntuar, adjetivos: adjetivos, nota: nota, guardarAvance: guardarAvance, aceptarPaso: aceptarPaso,
     terminar: terminar, salir: salir, borrar: borrar, terminarBienvenida: terminarBienvenida
   };
 })();

@@ -7,7 +7,7 @@ var UIState = {
   screen: 'splash',
   tab: 'hoy',
   subMetas: 'goals',
-  subVision: 'board',
+  subVision: 'five',
   rcStep: 0,
   selDay: Dates.today(),
   calMonth: Dates.today().slice(0, 7),

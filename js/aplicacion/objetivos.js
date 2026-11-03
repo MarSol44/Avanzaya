@@ -105,7 +105,7 @@ var Objetivos = (function () {
       S.events[day].push({ id: Util.uid(), title: title, goalId: g.id, sid: sid });
       n++;
     }
-    (g.steps || []).forEach(function (s) { put(s.due, (g.name || 'Meta') + ' · ' + (s.name || 'paso'), s.id); });
+    (g.steps || []).forEach(function (s) { put(s.due, s.name || 'Paso', s.id); });
     put(g.due, 'Fecha límite · ' + (g.name || 'meta'), '__due');
     Store.save();
     return { ok: true, n: n };

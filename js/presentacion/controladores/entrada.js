@@ -18,22 +18,10 @@
   }
 
   /* --- entrar --- */
-  action('guest', function () { Cuentas.entrarSinCuenta(); entrar(); });
   action('enterApp', function () { Cuentas.entrarApp(); entrar(); });
   action('google', function () { Cuentas.google(); });
   action('facebook', function () { Cuentas.facebook(); });
 
-  // Con qué se crea la cuenta: se cambia el campo sin repintar (no se pierde lo escrito).
-  action('regTipo', function (c) {
-    var d = V.REG_TIPOS[c.v]; if (!d) return;
-    ui.regTipo = c.v;
-    var tabs = document.querySelectorAll('[data-a="regTipo"]');
-    for (var i = 0; i < tabs.length; i++) tabs[i].setAttribute('aria-selected', tabs[i].getAttribute('data-v') === c.v);
-    var inp = document.getElementById('rgMail'), lab = document.getElementById('rgIdLabel'), hint = document.getElementById('rgIdHint');
-    if (lab) lab.textContent = d.label;
-    if (inp) { inp.type = d.type; inp.setAttribute('autocomplete', d.auto); inp.setAttribute('inputmode', d.mode); inp.placeholder = d.ph; inp.value = ''; inp.focus(); }
-    if (hint) { hint.textContent = d.hint; hint.hidden = !d.hint; }
-  });
   action('dologin', function (c) { c.e.preventDefault(); doLogin(); });
   action('doregister', function (c) { c.e.preventDefault(); doRegister(); });
 
@@ -47,16 +35,78 @@
     r.espera.then(function (res) {
       setBusy(false); busyBtn('[data-a="dologin"]', false);
       err.style.color = 'var(--bad)';
+      var reenviar = document.getElementById('liReenviar');
+      if (reenviar) reenviar.hidden = res.codigo !== 'sin-confirmar';
       if (!res.ok) { err.textContent = res.msg; return; }
       entrar();
     });
   }
 
+  /* --- confirmar el correo --- */
+  action('cfLogin', function () { ui.loginEmail = ui.confirmEmail || ''; ui.screen = 'login'; top(); });
+  action('reenviar', function () {
+    if (isBusy()) return;
+    var msg = document.getElementById('cfMsg') || document.getElementById('liErr');
+    var r = Cuentas.reenviarConfirmacion(ui.screen === 'confirmar' ? ui.confirmEmail : val('liMail'));
+    msg.style.color = 'var(--bad)';
+    if (!r.espera) { msg.textContent = r.msg; return; }
+    setBusy(true); msg.style.color = 'var(--ink-2)'; msg.textContent = 'Enviando…';
+    r.espera.then(function (res) {
+      setBusy(false);
+      msg.style.color = res.ok ? 'var(--ink-2)' : 'var(--bad)';
+      msg.textContent = res.msg;
+    });
+  });
+  // El enlace del correo trae aquí: ya está confirmado, falta entrar con la contraseña.
+  Bus.on('auth:confirmado', function (correo) {
+    ui.loginEmail = correo || ui.loginEmail || '';
+    ui.screen = 'login'; top();
+    Pantalla.toast('Correo confirmado. Inicia sesión para empezar.');
+  });
+
+  action('forgot', function (c) {
+    c.e.preventDefault();
+    if (isBusy()) return;
+    var err = document.getElementById('liErr');
+    var r = Cuentas.recuperar(val('liMail'));
+    err.style.color = 'var(--bad)';
+    if (!r.espera) { err.textContent = r.msg; return; }
+    setBusy(true); err.style.color = 'var(--ink-2)'; err.textContent = 'Enviando…';
+    r.espera.then(function (res) {
+      setBusy(false);
+      err.style.color = res.ok ? 'var(--ink-2)' : 'var(--bad)';
+      err.textContent = res.msg;
+    });
+  });
+
+  /* --- el enlace de recuperación trae aquí: solo se pide la nueva contraseña --- */
+  Bus.on('auth:recuperar', function () { closeSheetSilent(); ui.screen = 'nuevaClave'; top(); });
+  function guardarNuevaClave() {
+    if (isBusy()) return;
+    var err = document.getElementById('ncErr');
+    var r = Cuentas.nuevaClave(val('ncPass'), val('ncPass2'));
+    err.style.color = 'var(--bad)';
+    if (!r.espera) { err.textContent = r.msg; return; }
+    setBusy(true); busyBtn('[data-a="doNuevaClave"]', true, 'Guardando…');
+    r.espera.then(function (res) {
+      setBusy(false); busyBtn('[data-a="doNuevaClave"]', false);
+      if (!res.ok) { err.textContent = res.msg; return; }
+      ui.screen = 'login'; top();
+      Pantalla.toast('Contraseña cambiada. Entra con la nueva.');
+    });
+  }
+  action('doNuevaClave', function (c) { c.e.preventDefault(); guardarNuevaClave(); });
+  action('cancelarClave', function () {
+    Cuentas.cancelarRecuperacion();
+    ui.screen = Datos.estado().session ? 'app' : 'splash'; top();
+  });
+  UI.onSubmit('claveForm', guardarNuevaClave);
+
   function doRegister() {
     if (isBusy()) return;                     // antes de llamar: el servicio ya empieza a trabajar
     var err = document.getElementById('rgErr'), terms = document.getElementById('rgTerms');
     var r = Cuentas.registrar({
-      nombre: val('rgName'), tipo: ui.regTipo || 'email', identificador: val('rgMail'), pass: val('rgPass'), pass2: val('rgPass2'),
+      nombre: val('rgName'), correo: val('rgMail'), pass: val('rgPass'), pass2: val('rgPass2'),
       terminos: !!(terms && terms.checked), zona: V.guessTz()
     });
     if (!r.espera) { err.textContent = r.msg; return; }
@@ -65,6 +115,7 @@
     r.espera.then(function (res) {
       setBusy(false); busyBtn('[data-a="doregister"]', false);
       if (!res.ok) { err.style.color = 'var(--bad)'; err.textContent = res.msg; return; }
+      if (res.confirmar) { ui.confirmEmail = res.correo; ui.screen = 'confirmar'; top(); return; }
       ui.regStep = 2; top();
     });
   }
@@ -92,6 +143,7 @@
   });
   action('rcBack', function () { ui.rcStep = Math.max(0, ui.rcStep - 1); ui.rcOpen = false; top(); });
   action('rcNext', function () {
+    Chequeo.aceptarPaso((Revision.AREAS[ui.rcStep].sliders || []).map(function (s) { return s.k; }), V.RC_INICIAL);
     if (ui.rcStep < Revision.AREAS.length - 1) { ui.rcStep++; ui.rcOpen = false; Chequeo.guardarAvance(); top(); return; }
     if (!Chequeo.terminar()) { Pantalla.toast('Mueve al menos un deslizador para guardar tu check.'); return; }
     ui.viewRC = null; ui.screen = 'rcsum'; top();

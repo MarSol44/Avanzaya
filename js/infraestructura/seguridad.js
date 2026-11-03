@@ -195,7 +195,12 @@ var Sec = (function () {
       done: d.welcome ? !!wc.done : !wcNueva, pospuesta: !!wc.pospuesta, paso: n(wc.paso, 0, 4, 0),
       area: /^[A-Za-z0-9_-]{1,40}$/.test(String(wc.area || '')) ? String(wc.area) : '',
       cambio: s(wc.cambio, 400), meta: s(wc.meta, 120), vision: s(wc.vision, 400),
-      freno: /^[a-z]{1,20}$/.test(String(wc.freno || '')) ? String(wc.freno) : ''
+      freno: /^[a-z]{1,20}$/.test(String(wc.freno || '')) ? String(wc.freno) : '',
+      borrador: wc.borrador ? {
+        nombre: s(objOf(wc.borrador).nombre, 120),
+        pasos: arrOf(objOf(wc.borrador).pasos, 6, function (x) { x = objOf(x); return { name: s(x.name, 200), due: dateOf(x.due) }; })
+      } : null,
+      realista: ['si', 'justo', 'no'].indexOf(wc.realista) >= 0 ? wc.realista : ''
     };
     out.session = !!d.session;
     out.guest = !!d.guest;
@@ -273,9 +278,22 @@ var Sec = (function () {
     keysOf(hid, L.list).forEach(function (k) { if (/^[A-Za-z0-9_-]{1,40}$/.test(k) && hid[k]) out.hidden[k] = true; });
 
     var rt = objOf(d.routines);
-    function rItem(x) { x = objOf(x); return { id: idOf(x.id), name: s(x.name, L.name) }; }
+    function diasOf(v) {
+      return Array.isArray(v) ? v.filter(function (d, i) { return [0, 1, 2, 3, 4, 5, 6].indexOf(d) >= 0 && v.indexOf(d) === i; }) : [];
+    }
+    function rItem(x) {
+      x = objOf(x);
+      var it = { id: idOf(x.id), name: s(x.name, L.name) }, dias = diasOf(x.days);
+      if (dias.length && dias.length < 7) it.days = dias;
+      if (dateOf(x.paused)) it.paused = dateOf(x.paused);
+      return it;
+    }
     var rd = arrOf(rt.day, 60, rItem), rn = arrOf(rt.night, 60, rItem);
     if (rd.length || rn.length) out.routines = { day: rd, night: rn };
+
+    var rs = objOf(d.rest);
+    out.rest = { week: diasOf(rs.week), dates: {} };
+    keysOf(rs.dates, L.keys).forEach(function (k) { if (dateOf(k) && rs.dates[k]) out.rest.dates[k] = true; });
 
     var rl = objOf(d.rlog); out.rlog = {};
     keysOf(rl, L.keys).forEach(function (k) {

@@ -11,6 +11,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3';
 
+const PUSH_OK = /^https:\/\/(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|web\.push\.apple\.com|[a-z0-9.-]+\.push\.apple\.com|[a-z0-9.-]+\.notify\.windows\.com)\//;
+
 Deno.serve(async (req) => {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -30,12 +32,22 @@ Deno.serve(async (req) => {
     Deno.env.get('VAPID_PRIVATE_KEY')!
   );
 
-  const { data: subs, error } = await supabase.from('push_subscriptions').select('*');
-  if (error) return new Response(error.message, { status: 500 });
+  // De mil en mil: la API no devuelve más de una vez y nadie debe quedarse sin aviso.
+  const subs: any[] = [];
+  for (let desde = 0; ; desde += 1000) {
+    const { data, error } = await supabase.from('push_subscriptions')
+      .select('id, endpoint, p256dh, auth, reminder_hour, tz, last_sent_on').order('id').range(desde, desde + 999);
+    if (error) return new Response('error al leer las suscripciones', { status: 500 });
+    subs.push(...(data || []));
+    if (!data || data.length < 1000) break;
+  }
 
-  let sent = 0, deleted = 0;
+  let sent = 0, deleted = 0, skipped = 0;
 
-  for (const sub of subs || []) {
+  for (const sub of subs) {
+    // Solo servicios de notificaciones de verdad (la base de datos ya lo exige;
+    // esto protege también filas antiguas).
+    if (!PUSH_OK.test(String(sub.endpoint || ''))) { skipped++; continue; }
     let localHour = 20, localDate = '';
     try {
       const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -63,7 +75,8 @@ Deno.serve(async (req) => {
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        payload
+        payload,
+        { TTL: 3600, timeout: 8000 }   // un servicio lento no frena el envío a los demás
       );
       sent++;
       await supabase.from('push_subscriptions').update({ last_sent_on: localDate }).eq('id', sub.id);
@@ -75,7 +88,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ sent, deleted, checked: (subs || []).length }), {
+  return new Response(JSON.stringify({ sent, deleted, skipped, checked: subs.length }), {
     headers: { 'Content-Type': 'application/json' }
   });
 });

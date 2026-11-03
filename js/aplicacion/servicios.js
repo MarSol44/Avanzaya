@@ -35,7 +35,8 @@ var TaskQueries, TaskCommands, Goals, Routines, Areas, Revision, Plan;
     log: function (k) { return S.rlog[k] || null; },
     ensureLog: function (k) { if (!S.rlog[k]) S.rlog[k] = { day: [], night: [] }; return S.rlog[k]; },
     routines: function () { return S.routines; },
-    start: function () { return S.start; }
+    start: function () { return S.start; },
+    rest: function () { return S.rest; }
   };
 
   /* ------------------------------------------------ servicios de dominio */

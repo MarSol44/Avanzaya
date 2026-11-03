@@ -121,7 +121,14 @@
     }
 
     function remove(day, id) {
+      var e = find(day, id);
       repo.setDay(day, without(repo.day(day), id));
+      return { ok: true, event: e };
+    }
+    // «Deshacer» de lo anterior.
+    function restore(day, e) {
+      if (!e) return { ok: false, reason: 'missing' };
+      repo.ensureDay(day).push(e);
       return { ok: true };
     }
 
@@ -147,7 +154,7 @@
       if (!s) return { ok: false, reason: 'missing' };
       var day = s.due || fallbackDay;
       if (!hasRoom(day)) return { ok: false, reason: 'full' };
-      var e = { id: uid(), title: (g.name || 'Meta') + ' · ' + (s.name || 'paso'), goalId: g.id, sid: s.id, time: '', done: !!s.done, kind: 'task' };
+      var e = { id: uid(), title: s.name || 'Paso', goalId: g.id, sid: s.id, time: '', done: !!s.done, kind: 'task' };
       repo.ensureDay(day).push(e);
       return { ok: true, event: e };
     }
@@ -191,7 +198,13 @@
     }
 
     function removeTodo(id) {
+      var x = byId(repo.todo(), id);
       repo.setTodo(without(repo.todo(), id));
+      return { ok: true, todo: x };
+    }
+    function restoreTodo(x) {
+      if (!x) return { ok: false, reason: 'missing' };
+      repo.setTodo([x].concat(repo.todo()));
       return { ok: true };
     }
 
@@ -217,9 +230,9 @@
         goalsForDay: goalsForDay, overdue: overdue, pending: pending
       },
       commands: {
-        add: add, addTodo: addTodo, remove: remove, toggle: toggle, toggleStep: toggleStep,
+        add: add, addTodo: addTodo, remove: remove, restore: restore, toggle: toggle, toggleStep: toggleStep,
         materializeStep: materializeStep, move: move, setTime: setTime,
-        pullTodo: pullTodo, removeTodo: removeTodo, moveOverdue: moveOverdue
+        pullTodo: pullTodo, removeTodo: removeTodo, restoreTodo: restoreTodo, moveOverdue: moveOverdue
       }
     };
   }

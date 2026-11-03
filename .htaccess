@@ -19,8 +19,9 @@ AddType text/javascript .js
 
 # ─────────────────────────────────────────────── cabeceras de seguridad
 <IfModule mod_headers.c>
-  # nadie puede meter la app dentro de un iframe suyo
-  Header always set Content-Security-Policy "frame-ancestors 'none'"
+  # La misma política que _headers (Cloudflare) e index.html: solo scripts del
+  # propio sitio, y nadie puede meter la app dentro de un iframe suyo.
+  Header always set Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://fgpwhdfvqtlvfmmzhxsy.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'"
   Header always set X-Frame-Options "DENY"
   # el navegador no adivina tipos de archivo
   Header always set X-Content-Type-Options "nosniff"
@@ -40,7 +41,7 @@ AddType text/javascript .js
     Header set Cache-Control "no-cache, must-revalidate"
   </FilesMatch>
   # el código: se revalida, pero se reutiliza si no cambió
-  <FilesMatch "^(app\.js|app\.css|pwa\.js|sync\.js)$">
+  <FilesMatch "\.(js|css)$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
   # los iconos y la librería vendorizada no cambian salvo que se suba a mano

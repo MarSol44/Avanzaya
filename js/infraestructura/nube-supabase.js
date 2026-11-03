@@ -18,6 +18,15 @@
   // Clave pública VAPID (la privada solo vive en los secretos de Supabase, nunca aquí).
   var VAPID_PUBLIC_KEY = 'BG73dIlubuUs02IG16JYuMSNmmeLUXmzdYnymoB8c6oPJtsngZJalWDCq8mL2MoMI7L8osz-qNjIVsMomwestds';
 
+  // Mientras se abre una cuenta (alta, entrada desde otro dispositivo o cambio de
+  // una contraseña olvidada) no se sincroniza: el estado local aún no es el de esa
+  // cuenta y no debe subirse a la nube ni sustituirse con lo que llegue de ella.
+  var enEntrada = /(^|[#&])type=recovery(&|$)/.test(location.hash || '');
+  // Vuelve del enlace con el que se confirma el correo: hay que entrar con la contraseña.
+  var vieneDeConfirmar = /(^|[#&])type=signup(&|$)/.test(location.hash || '');
+  if (vieneDeConfirmar) enEntrada = true;
+  var volverA = location.origin + location.pathname;
+
   var CLOCK_KEY = 'brujula.sync.clock';
   var HOUR_KEY = 'bdv.push.hour';
   var $ = function (id) { return document.getElementById(id); };
@@ -40,18 +49,88 @@
   function repaint() { bus.emit('sync:changed'); }
 
   /* ------------------------------------------------------- alta y entrada */
-  function signUp(email, password) {
-    if (!sb || !email || !password) return;
-    sb.auth.signUp({ email: email, password: password }).then(function (res) {
-      // las cuentas de usuario o teléfono usan un correo interno que nadie recibe:
-      // a ellas no se les pide confirmar nada (en Supabase, «Confirm email» va apagado)
-      if (!res.error && (!res.data || !res.data.session) && !BdvIdentidad.esInterno(email)) {
-        bus.emit('aviso', 'Cuenta creada. Confirma tu correo para sincronizar en otros dispositivos.');
-      }
-      // Después de crear la cuenta, haz push inmediato del estado local para que el
-      // reloj se establezca correctamente y no sea sobrescrito por copias viejas de la nube.
-      if (!res.error && currentUser) pushNow();
-    });
+  // Qué fue mal, en palabras de la app: las capas de arriba eligen el mensaje.
+  function codigoError(err) {
+    var c = String(err && err.code || ''), m = String(err && err.message || '').toLowerCase();
+    if (c === 'user_already_exists' || /already registered/.test(m)) return 'existe';
+    if (c === 'invalid_credentials' || /invalid login credentials/.test(m)) return 'credenciales';
+    if (c === 'email_not_confirmed' || /email not confirmed/.test(m)) return 'sin-confirmar';
+    if (c === 'email_address_invalid' || /email address.*invalid|unable to validate email/.test(m)) return 'correo';
+    if (c === 'weak_password') return 'debil';
+    if (c === 'same_password') return 'misma';
+    return 'red';
+  }
+  function fallo() { return { ok: false, codigo: 'red' }; }
+
+  // Crea la cuenta en la nube y espera a que se abra en local (entradaLista).
+  // Con «Confirm email» activo, la cuenta no tiene sesión hasta confirmar el correo.
+  function alta(email, password, nombre) {
+    if (!sb || !email || !password) return Promise.resolve({ ok: false, codigo: 'sin-nube' });
+    enEntrada = true;
+    return sb.auth.signUp({
+      email: email, password: password,
+      options: { emailRedirectTo: volverA, data: { name: String(nombre || '').slice(0, 80) } }
+    }).then(function (res) {
+      if (res.error) return { ok: false, codigo: codigoError(res.error) };
+      var u = res.data && res.data.user;
+      // con «Confirm email» activo, Supabase responde sin error a un correo ya registrado
+      if (u && u.identities && !u.identities.length) return { ok: false, codigo: 'existe' };
+      return { ok: true, conSesion: !!(res.data && res.data.session), interno: BdvIdentidad.esInterno(email) };
+    }, fallo);
+  }
+
+  // Comprueba la contraseña en la nube y trae su copia, sin tocar nada local.
+  function entrada(email, password) {
+    if (!sb || !email || !password) return Promise.resolve({ ok: false, codigo: 'sin-nube' });
+    enEntrada = true;
+    return sb.auth.signInWithPassword({ email: email, password: password }).then(function (res) {
+      if (res.error) { enEntrada = false; return { ok: false, codigo: codigoError(res.error) }; }
+      currentUser = res.data.user;
+      var nombre = currentUser.user_metadata && currentUser.user_metadata.name;
+      return sb.from('states').select('state, updated_at').eq('user_id', currentUser.id).maybeSingle().then(function (r) {
+        // sin poder leer la copia no se abre la cuenta: se subiría vacía encima de la buena
+        if (r.error) { entradaCancelada(); return fallo(); }
+        return { ok: true, estado: r.data ? r.data.state : null, hora: r.data ? new Date(r.data.updated_at).getTime() : 0,
+          nombre: typeof nombre === 'string' ? nombre : '' };
+      }, function () { entradaCancelada(); return fallo(); });
+    }, function () { enEntrada = false; return fallo(); });
+  }
+  // La cuenta ya está abierta en local: empieza a sincronizar.
+  function entradaLista(hora) {
+    enEntrada = false;
+    if (hora) setClock(hora);
+    refreshReminderState();
+    if (currentUser) { pullThenMaybePush(); maybeOfferReminder(); }
+    repaint();
+  }
+  function entradaCancelada() {
+    enEntrada = false;
+    currentUser = null;
+    if (sb) sb.auth.signOut();
+  }
+
+  // Otro correo de confirmación, por si el primero no llegó o caducó.
+  function reenviar(email) {
+    if (!sb || !email) return Promise.resolve({ ok: false, codigo: 'sin-nube' });
+    return sb.auth.resend({ type: 'signup', email: email, options: { emailRedirectTo: volverA } }).then(function (res) {
+      return res.error ? { ok: false, codigo: codigoError(res.error) } : { ok: true };
+    }, fallo);
+  }
+
+  // El enlace vuelve a la app y Supabase avisa con PASSWORD_RECOVERY.
+  function recuperar(email) {
+    if (!sb || !email) return Promise.resolve({ ok: false, codigo: 'sin-nube' });
+    return sb.auth.resetPasswordForEmail(email, { redirectTo: volverA }).then(function (res) {
+      return res.error ? { ok: false, codigo: codigoError(res.error) } : { ok: true };
+    }, fallo);
+  }
+  function claveRecuperada(password) {
+    if (!sb || !password) return Promise.resolve({ ok: false, codigo: 'sin-nube' });
+    return sb.auth.updateUser({ password: password }).then(function (res) {
+      if (res.error) return { ok: false, codigo: codigoError(res.error) };
+      entradaCancelada();   // se vuelve a entrar con la nueva, y así se actualiza la de este dispositivo
+      return { ok: true };
+    }, fallo);
   }
 
   function signIn(email, password) {
@@ -95,6 +174,7 @@
   var currentUser = null;
   function onAuthChange(session) {
     currentUser = session ? session.user : null;
+    if (enEntrada) return;
     // Entrada con Google: primero se abre la cuenta local de ese correo y
     // solo después se sincroniza, para no mezclar datos de dos cuentas.
     var prov = currentUser && currentUser.app_metadata && currentUser.app_metadata.provider;
@@ -107,10 +187,18 @@
   }
 
   /* --------------------------------------------------------------- estado */
+  // La sesión de la nube tiene que ser la de la cuenta abierta en este
+  // dispositivo: si no (por ejemplo, se abrió aquí el enlace de confirmación de
+  // otra persona), no se lee ni se sube nada.
+  function mismaCuenta() {
+    var local = String(state.accountEmail() || '').toLowerCase();
+    return !!(currentUser && local && String(currentUser.email || '').toLowerCase() === local);
+  }
   function pullThenMaybePush() {
-    if (!sb || !currentUser) return;
+    if (!sb || !currentUser || enEntrada || !mismaCuenta()) return;
     sb.from('states').select('state, updated_at').eq('user_id', currentUser.id).maybeSingle().then(function (res) {
-      if (res.error || !res.data) { pushNow(); return; }
+      if (res.error) return;   // no se pudo leer: subir ahora podría pisar una copia más nueva
+      if (!res.data) { pushNow(); return; }
       var row = res.data, remoteTime = new Date(row.updated_at).getTime();
       if (remoteTime > clock()) {
         // Por si el dispositivo tenía datos locales propios sin sincronizar,
@@ -127,13 +215,13 @@
 
   var pushTimer = null, pushBusy = false, pushAgain = false;
   function schedulePush() {
-    if (!sb) return;
+    if (!sb || enEntrada) return;
     if (!state.accountEmail()) return;
     clearTimeout(pushTimer);
     pushTimer = setTimeout(pushNow, 1500);
   }
   function pushNow() {
-    if (!sb || !currentUser) return;
+    if (!sb || !currentUser || enEntrada || !mismaCuenta()) return;
     if (pushBusy) { pushAgain = true; return; }
     pushBusy = true;
     sb.from('states').upsert({ user_id: currentUser.id, state: state.snapshot(), updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
@@ -256,14 +344,17 @@
 
   /* -------------------------------------------------------------- arranque */
   Nube.provide({
-    signUp: signUp, signIn: signIn, signOut: signOut, google: google, facebook: facebook, updatePassword: updatePassword,
+    alta: alta, entrada: entrada, entradaLista: entradaLista, entradaCancelada: entradaCancelada,
+    reenviar: reenviar, recuperar: recuperar, claveRecuperada: claveRecuperada,
+    conectada: function () { return !!currentUser; },
+    signIn: signIn, signOut: signOut, google: google, facebook: facebook, updatePassword: updatePassword,
     pullNow: pullThenMaybePush,
     reminderState: function () { return reminderState; },
     enableReminder: enableReminder, disableReminder: disableReminder
   });
   // Lo que pasa en la app y le interesa a la sincronización.
   bus.on('saved', schedulePush);
-  bus.on('account:switched', signOut);
+  bus.on('account:switched', function () { if (!enEntrada) signOut(); });
 
   document.addEventListener('DOMContentLoaded', function () {
     var bar = $('remindbar');
@@ -283,9 +374,43 @@
 
   refreshReminderState();
 
+  // Un enlace de recuperación caducado o ya usado vuelve con el error en la dirección.
+  if (/(^|[#&])error(_code)?=/.test(location.hash || '')) {
+    bus.emit('aviso', 'Ese enlace ya no sirve. Pide otro desde «¿Olvidaste tu contraseña?».');
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
+  }
+
   if (sb) {
-    sb.auth.onAuthStateChange(function (_event, session) { onAuthChange(session); });
-    sb.auth.getSession().then(function (r) { onAuthChange(r.data && r.data.session); });
+    sb.auth.onAuthStateChange(function (event, session) {
+      // Viene del enlace de «¿Olvidaste tu contraseña?»: solo se pide la nueva.
+      if (vieneDeConfirmar) return;   // lo atiende getSession, más abajo
+      if (event === 'PASSWORD_RECOVERY') {
+        enEntrada = true;
+        currentUser = session ? session.user : null;
+        bus.emit('auth:recuperar');
+        return;
+      }
+      onAuthChange(session);
+    });
+    sb.auth.getSession().then(function (r) {
+      var s = r.data && r.data.session;
+      // Correo confirmado: se cierra esa sesión y se pide entrar con la contraseña,
+      // que es la que protege la cuenta en este dispositivo.
+      if (vieneDeConfirmar) {
+        vieneDeConfirmar = false;
+        try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
+        if (s) {
+          var correo = s.user && s.user.email;
+          entradaCancelada();
+          bus.emit('auth:confirmado', correo || '');
+          return;
+        }
+      }
+      // «type=recovery» en la dirección sin una sesión de recuperación detrás: no
+      // era un enlace de verdad, así que la sincronización sigue con normalidad
+      if (enEntrada && !s) enEntrada = false;
+      onAuthChange(s);
+    });
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') pullThenMaybePush();
     });

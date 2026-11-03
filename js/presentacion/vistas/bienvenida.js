@@ -7,8 +7,8 @@
 (function () {
   'use strict';
   var esc = Fmt.esc;
-  var PASOS = ['Qué quieres mejorar', 'Tu yo del futuro', 'Tu primer paso'];
-  var CUANDO = ['Hoy', 'En 3 días', 'En una semana'];
+  var PASOS = ['Qué quieres mejorar', 'Qué quieres conseguir', 'Qué te frena'];
+  var REALISTA = [['si', 'Lo veo realista'], ['justo', 'Algo justo'], ['no', 'Es demasiado']];
   // Ejemplos para «¿qué quieres conseguir?», según el área elegida.
   var EJEMPLOS = {
     c1: 'Terminar el curso que tengo a medias', c2: 'Ver más a mis amigos',
@@ -55,7 +55,7 @@
       '<label class="field"><span>Este mes quiero…</span>' +
       '<input class="inp" data-f="bvMeta" maxlength="120" value="' + esc(w.meta || '') + '" placeholder="' +
       esc('Ej. ' + (EJEMPLOS[w.area] || 'Dedicarme un rato al día a mí')) + '"></label>' +
-      '<label class="field"><span>' + (a ? 'Y dentro de 5 años, ¿cómo te gustaría que fuera ' + esc(corto(a).toLowerCase()) + '?' : 'Y dentro de 5 años, ¿cómo te gustaría que fuera tu vida?') +
+      '<label class="field"><span>' + (a ? 'Y dentro de 5 años, ¿cómo te gustaría que fuera esta parte de tu vida?' : 'Y dentro de 5 años, ¿cómo te gustaría que fuera tu vida?') +
       ' <em style="font-weight:400">(opcional)</em></span>' +
       '<textarea class="ta" data-f="bvVision" maxlength="400" placeholder="Una frase, en presente. Ej. Vivo con calma y tengo tiempo para lo que me importa.">' + esc(w.vision || '') + '</textarea></label>' +
       (a ? '' : '<p class="tiny">La frase de 5 años se guarda en Mi Yo del Futuro cuando eliges un área.</p>');
@@ -71,24 +71,36 @@
   }
 
   function plan() {
-    var p = Bienvenida.propuesta(), a = Bienvenida.area();
-    var h = '<p class="muted" style="text-align:center">Hecho con lo que nos contaste. Puedes cambiar lo que quieras.</p>' +
+    var p = Bienvenida.propuesta(), a = Bienvenida.area(), b = Bienvenida.borrador(), w = Bienvenida.datos(), t = Dates.today();
+    var h = '<p class="muted" style="text-align:center">Tu meta, con pasos pensados para lo que te frena. Es un punto de partida: cámbialo hasta que te encaje.</p>' +
       '<div class="card"><div class="stack">' +
       '<div class="label">Tu meta para este mes</div>' +
-      '<input class="inp bv-meta" id="bvNombre" maxlength="120" value="' + esc(p.meta.name) + '" aria-label="Nombre de la meta">' +
+      '<input class="inp bv-meta" data-f="bvPlanNombre" maxlength="120" value="' + esc(b.nombre) + '" aria-label="Nombre de la meta">' +
       '<div class="row" style="gap:8px;flex-wrap:wrap">' +
       (a ? '<span class="pill">' + esc(a.emoji + ' ' + corto(a)) + '</span>' : '') +
       '<span class="pill num">' + I('calendar', 13) + esc(Fmt.fmt(p.meta.due)) + '</span>' +
-      '<span class="pill bad">Prioridad alta</span></div></div></div>';
+      '<span class="pill accent">Prioridad alta</span></div></div></div>';
 
     h += '<div class="card"><div class="stack">' +
-      '<div class="label">Tres pasos para empezar</div>' +
-      '<p class="tiny">Si borras uno, no se añade.</p>' +
+      '<div class="label">Tus pasos para empezar</div>' +
       '<div class="steps">' +
-      p.pasos.map(function (s, i) {
-        return '<div class="step bv-step"><span class="pill num' + (i === 0 ? ' accent' : '') + '">' + CUANDO[i] + '</span>' +
-          '<textarea class="inp-plain bv-paso" rows="2" data-bvpaso="' + i + '" maxlength="200" aria-label="Paso ' + (i + 1) + '">' + esc(s.name) + '</textarea></div>';
-      }).join('') + '</div></div></div>';
+      b.pasos.map(function (s, i) {
+        return '<div class="step bv-step"><div class="bv-step-top">' +
+          '<input class="inp" type="date" data-f="bvPasoFecha" data-i="' + i + '" min="' + t + '" value="' + esc(s.due) + '" aria-label="Fecha del paso ' + (i + 1) + '">' +
+          (s.due === t ? '<span class="pill accent">Hoy</span>' : '') +
+          '<button class="delbtn" data-a="bvPasoQuitar" data-i="' + i + '" aria-label="Quitar el paso ' + (i + 1) + '">' + I('trash', 17) + '</button></div>' +
+          '<textarea class="inp-plain bv-paso" rows="2" data-f="bvPasoNombre" data-i="' + i + '" maxlength="' + Bienvenida.LIM.paso + '" placeholder="¿Qué vas a hacer?" aria-label="Paso ' + (i + 1) + '">' + esc(s.name) + '</textarea></div>';
+      }).join('') + '</div>' +
+      (b.pasos.length < Bienvenida.LIM.pasos ? '<button class="btn ghost sm" data-a="bvPasoNuevo" style="align-self:flex-start">' + I('plus', 15) + 'Añadir un paso</button>' : '') +
+      '</div></div>';
+
+    h += '<div class="card"><div class="stack sm"><div class="label">¿Qué tan realista lo ves?</div>' +
+      '<span class="seg" role="group" aria-label="Qué tan realista es el plan">' +
+      REALISTA.map(function (o) { return '<button type="button" data-a="bvRealista" data-v="' + o[0] + '" aria-pressed="' + (w.realista === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</span>' +
+      (w.realista === 'justo' ? '<p class="tiny">Prueba a separar más las fechas o a quitar un paso.</p>' : '') +
+      (w.realista === 'no' ? '<p class="tiny">Mejor empezar con poco. Siempre podrás añadir pasos desde Metas.</p>' +
+        (b.pasos.length > 1 ? '<button class="btn soft sm" data-a="bvAligerar" style="align-self:flex-start">Quedarme solo con el primer paso</button>' : '') : '') +
+      '</div></div>';
 
     h += '<p class="notice">' + esc(p.consejo) + '</p>';
     return h;
@@ -96,7 +108,7 @@
 
   // Al terminar: qué se guardó, dónde está y cómo cambiarlo.
   function hecho(w) {
-    var a = Bienvenida.area();
+    var a = Bienvenida.area(), meta = Datos.estado().goalsS[0], primero = meta && meta.steps[0], t = Dates.today();
     var fila = function (icono, titulo, texto, tab) {
       return '<div class="listrow" style="align-items:flex-start;gap:12px;padding:14px">' +
         '<span style="color:var(--accent);flex:none">' + I(icono, 20) + '</span>' +
@@ -106,10 +118,12 @@
     };
     var h = pregunta('Ya tienes por dónde empezar.', 'Esto es lo que hemos guardado:') +
       '<div class="list">' +
-      fila('sunrise', 'Tu primer paso, hoy', esc(Datos.estado().firstStep || 'Tu primer paso') + '. Aparece en tu plan de Hoy; márcalo cuando lo hagas.', 'hoy') +
+      (primero ? (primero.due === t
+        ? fila('sunrise', 'Tu primer paso, hoy', esc(primero.name) + '. Aparece en tu plan de Hoy; márcalo cuando lo hagas.', 'hoy')
+        : fila('sunrise', 'Tu primer paso, el ' + esc(Fmt.fmt(primero.due)), esc(primero.name) + '. Aparecerá en tu plan de Hoy ese día.', 'hoy')) : '') +
       fila('target', 'Tu meta: «' + esc(w.meta) + '»', 'En Metas, con sus pasos. Tócala para cambiar el nombre, las fechas o los pasos.', 'metas');
     if (String(w.vision || '').trim() && a) {
-      h += fila('sparkle', 'Tu yo del futuro', a.emoji + ' ' + esc(w.vision) + '. Está en Visión, en Mi Yo del Futuro.', 'vision');
+      h += fila('sparkle', 'Tu yo del futuro', esc(a.emoji) + ' ' + esc(w.vision) + '. Está en Visión, en Mi Yo del Futuro.', 'vision');
     }
     h += '</div>' +
       '<div class="card sunk"><div class="stack sm">' +

@@ -9,7 +9,7 @@
   var render = UI.render, paintChrome = UI.paintChrome, meta = UI.meta;
 
   document.documentElement.lang = 'es';
-  meta('description', 'Brújula de Vida: define quién quieres ser, mide si avanzas y ajusta cada semana. Úsala sin cuenta o crea una para sincronizar entre dispositivos.');
+  meta('description', 'Brújula de Vida: define quién quieres ser, mide si avanzas y ajusta cada semana. Crea tu cuenta o entra con Google o Facebook, y tenlo en todos tus dispositivos.');
   meta('color-scheme', 'light dark');
 
   // Cuando llegan datos de la nube o cambia el estado de la sincronización,
@@ -34,4 +34,14 @@
   // Con sesión abierta y la bienvenida a medias, se sigue donde se dejó.
   ui.screen = !sesion ? 'splash' : Bienvenida.pendiente() ? 'bienvenida' : 'app';
   render();
+  if (Cuentas.veniaSinCuenta()) Pantalla.toast('Ahora la app se usa con cuenta. Regístrate y lo que tenías aquí pasará a ella.');
+
+  // Si la app se queda abierta de un día para otro, al volver mira el día nuevo.
+  var diaPintado = Dates.today();
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible' || Dates.today() === diaPintado) return;
+    diaPintado = Dates.today();
+    ui.selDay = diaPintado; ui.planDay = diaPintado; ui.calMonth = diaPintado.slice(0, 7);
+    render();
+  });
 })();

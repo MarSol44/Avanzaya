@@ -60,11 +60,25 @@
   /* si dijo «ahora no», no se le vuelve a preguntar en 30 días */
   var callar = rechazada && (Date.now() - Number(rechazada)) < 30 * 864e5;
 
+  var sePuede = false;   // el navegador ya dejó claro que se puede instalar
+
   function esconder() { bar.hidden = true; }
-  function enseñar() { if (!instalada && !callar) bar.hidden = false; }
+  // Se sugiere en la app, a quien ya la ha probado: otro día, o tras marcar su primer hábito.
+  function buenMomento() {
+    var S = Datos.estado(), t = Dates.today();
+    var recordar = $('remindbar');
+    return UIState.screen === 'app' && !UIState.sheet && (!recordar || recordar.hidden) &&
+      (S.start !== t || Routines.dayTotals(t).done > 0);
+  }
+  function enseñar() { if (sePuede && !instalada && !callar && buenMomento()) bar.hidden = false; }
+
+  Bus.on('pintado', function (pantalla) {
+    if (pantalla !== 'app') esconder(); else enseñar();
+  });
 
   $('installbar-no').addEventListener('click', function () {
     Preferencias.set('instalar.no', Date.now());
+    callar = true;
     esconder();
   });
 
@@ -72,6 +86,7 @@
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault();
     prompt = e;
+    sePuede = true;
     enseñar();
   });
 
@@ -96,10 +111,10 @@
   var esSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(ua);
 
   if (esIOS && esSafari && !instalada && !callar) {
-    $('installbar-title').textContent = 'Ténla a un toque';
+    $('installbar-title').textContent = 'Tenla a un toque';
     $('installbar-sub').textContent = 'Toca Compartir y luego «Añadir a pantalla de inicio».';
     $('installbar-ok').hidden = true;
     /* se espera un poco: que primero vea la app, después la sugerencia */
-    setTimeout(enseñar, 25000);
+    setTimeout(function () { sePuede = true; enseñar(); }, 25000);
   }
 })();

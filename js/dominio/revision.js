@@ -12,19 +12,19 @@
 var BdvRevision = (function () {
   'use strict';
 
-  // Las siete áreas del chequeo, con sus preguntas.
+  // Las ocho áreas del chequeo, con sus preguntas. Todas se miden del 1 al 10.
   var AREAS = [
     {
       id: 'c1', title: 'Carrera o Estudios', emoji: '🎓',
       lead: 'Mira dónde estás hoy',
-      sliders: [{ k: 'c1', q: '¿Qué tan satisfecho estás?' }],
-      notes: ['¿Qué obstáculos enfrentas?', '¿Te sientes estancado o avanzando?']
+      sliders: [{ k: 'c1', q: '¿Qué tan a gusto estás con tu carrera o tus estudios?' }],
+      notes: ['¿Qué obstáculos enfrentas?', '¿Sientes que avanzas o que te has estancado?']
     },
     {
       id: 'c2', title: 'Relaciones Personales', emoji: '🤝',
       lead: 'Registra tu estado actual',
       sliders: [{ k: 'c2', q: '¿Cómo te sientes con tus amigos?' }, { k: 'c2b', q: '¿Cómo te sientes con tu familia?' }],
-      notes: ['¿Cómo describirías la calidad de tus relaciones ahora mismo?', '¿Quieres conocer gente, reforzar amistades o mejorar con tu familia?', '¿Te sientes valorado y respetado en tu círculo?']
+      notes: ['¿Cómo describirías la calidad de tus relaciones ahora mismo?', '¿Quieres conocer gente, reforzar amistades o mejorar con tu familia?', '¿Sientes que te valoran y respetan en tu círculo?']
     },
     {
       id: 'c3', title: 'Relaciones Románticas', emoji: '❤️',
@@ -35,25 +35,31 @@ var BdvRevision = (function () {
     {
       id: 'c4', title: 'Finanzas', emoji: '💰',
       lead: 'Mira dónde estás hoy',
-      three: { k: 'c4', q: '¿Te sientes cómodo con tu situación financiera?' },
+      sliders: [{ k: 'c4', q: '¿Qué tan a gusto estás con tu situación financiera?' }],
       notes: ['¿Quieres ahorrar más, invertir o buscar un trabajo a tiempo parcial?', '¿Qué mejorarías de tu gestión financiera?']
     },
     {
-      id: 'c5', title: 'Salud Física y Mental', emoji: '🧘',
+      id: 'c5', title: 'Salud Física', emoji: '💪',
       lead: 'Registra tu estado actual',
-      sliders: [{ k: 'c5', q: '¿Cómo calificarías tu salud física?' }, { k: 'c6', q: '¿Cómo calificarías tu salud mental?' }],
-      notes: ['¿Con qué frecuencia aparecen el estrés, la ansiedad o el agotamiento?', '¿Estás haciendo ejercicio, descansando y comiendo bien?']
+      sliders: [{ k: 'c5', q: '¿Cómo calificarías tu salud física?' }],
+      notes: ['¿Estás haciendo ejercicio, descansando y comiendo bien?']
+    },
+    {
+      id: 'c6', title: 'Salud Mental', emoji: '🧘',
+      lead: 'Conoce en qué momento de tu vida estás',
+      sliders: [{ k: 'c6', q: '¿Cómo calificarías tu salud mental?' }],
+      notes: ['¿Con qué frecuencia aparecen el estrés, la ansiedad o el agotamiento?']
     },
     {
       id: 'c7', title: 'Personalidad y Crecimiento', emoji: '🌱',
-      lead: 'Conoce en qué momento de tu vida estás',
+      lead: 'Mira dónde estás hoy',
       adjectives: true,
-      sliders: [{ k: 'c7', q: '¿Cómo te ves a ti mismo hoy?' }],
+      sliders: [{ k: 'c7', q: '¿Cómo te ves hoy?' }],
       notes: ['¿Qué aspectos de tu personalidad te gustan y cuáles cambiarías?', '¿Sientes que estás creciendo, o te falta algo para avanzar?']
     },
     {
       id: 'c8', title: 'Otros: ocio e intereses', emoji: '🎨',
-      lead: 'Mira dónde estás hoy',
+      lead: 'Registra tu estado actual',
       sliders: [{ k: 'c8', q: '¿Dedicas suficiente tiempo a lo que te gusta?' }],
       notes: ['¿Qué cosas nuevas te gustaría probar o aprender?', '¿Cuáles son tus pasatiempos más emocionantes?']
     }

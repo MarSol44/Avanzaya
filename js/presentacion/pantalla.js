@@ -7,13 +7,27 @@ var Pantalla = (function () {
   'use strict';
 
   var toastT = null;
-  function toast(msg) {
+  // deshacer (opcional): función que recupera lo que se acaba de hacer.
+  // Los mensajes largos duran más: hay que poder leerlos.
+  function toast(msg, deshacer) {
     var el = document.getElementById('toast');
     if (!el) return;
     el.textContent = msg;
+    el.classList.toggle('con-accion', !!deshacer);
+    if (deshacer) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'toast-btn'; b.textContent = 'Deshacer';
+      b.addEventListener('click', function () { quitarToast(); deshacer(); });
+      el.appendChild(b);
+    }
     el.classList.add('show');
     clearTimeout(toastT);
-    toastT = setTimeout(function () { el.classList.remove('show'); }, 2600);
+    toastT = setTimeout(quitarToast, deshacer ? 6000 : Math.max(2600, String(msg).length * 60));
+  }
+  function quitarToast() {
+    var el = document.getElementById('toast');
+    clearTimeout(toastT);
+    if (el) el.classList.remove('show', 'con-accion');
   }
 
   function applyTheme() {
@@ -37,5 +51,5 @@ var Pantalla = (function () {
   Bus.on('remote:applied', function () { applyTheme(); updateBadge(); });
   setTimeout(updateBadge, 800);
 
-  return { toast: toast, applyTheme: applyTheme, updateBadge: updateBadge };
+  return { toast: toast, quitarToast: quitarToast, applyTheme: applyTheme, updateBadge: updateBadge };
 })();

@@ -21,9 +21,11 @@
   action('addPlantilla', function (c) { Vision.frase(V.PLANTILLAS[idx(c)]); closeSheet(); Pantalla.toast('Frase añadida al tablero.'); });
   action('boardEdit', function (c) { openSheet({ t: 'tile', i: idx(c) }); });
   action('boardDel', function (c) {
-    Vision.borrarTarjeta(idx(c));
-    if (ui.sheet && ui.sheet.t === 'tile') closeSheet(); else render();
-    Pantalla.toast('Tarjeta eliminada.');
+    armedDelete(c.el, function () {
+      Vision.borrarTarjeta(idx(c));
+      if (ui.sheet && ui.sheet.t === 'tile') closeSheet(); else render();
+      Pantalla.toast('Tarjeta eliminada.');
+    });
   });
   action('boardMove', function (c) { if (Vision.moverTarjeta(idx(c), +c.el.getAttribute('data-d')).ok) render(); });
 

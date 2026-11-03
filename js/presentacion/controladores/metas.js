@@ -34,7 +34,9 @@
   action('gdel', function (c) {
     armedDelete(c.el, function () { Objetivos.borrar(c.k, c.id); render(); Pantalla.toast('Meta eliminada.'); });
   });
-  action('gdelSheet', function (c) { Objetivos.borrar(c.k, c.id); closeSheet(); Pantalla.toast('Meta eliminada.'); });
+  action('gdelSheet', function (c) {
+    armedDelete(c.el, function () { Objetivos.borrar(c.k, c.id); closeSheet(); Pantalla.toast('Meta eliminada.'); });
+  });
   action('gprio', function (c) { Objetivos.prioridad(c.id, c.v); both(); });
   action('clearQ', function () { ui.goalQ = ''; ui.refocus = 'goalSearch'; render(); });
   action('filter', function (c) { ui.goalFilter = c.v; render(); });

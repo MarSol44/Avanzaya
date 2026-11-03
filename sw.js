@@ -4,7 +4,7 @@
 
    Cuando cambies la app, sube VERSION un número. Eso basta. */
 
-var VERSION = 'brujula-v30';
+var VERSION = 'brujula-v37';
 var SHELL   = VERSION + '-shell';
 var FUENTES = VERSION + '-fuentes';
 
@@ -111,7 +111,11 @@ self.addEventListener('push', function (e) {
 
 self.addEventListener('notificationclick', function (e) {
   e.notification.close();
-  var url = (e.notification.data && e.notification.data.url) || '/';
+  var url = '/';
+  try {
+    var pedida = new URL((e.notification.data && e.notification.data.url) || '/', self.location.origin);
+    if (pedida.origin === self.location.origin) url = pedida.pathname + pedida.search;
+  } catch (err) { }
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
       for (var i = 0; i < list.length; i++) {

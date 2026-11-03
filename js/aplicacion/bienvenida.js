@@ -12,7 +12,7 @@ var Bienvenida = (function () {
   var PLAN = 3, HECHO = 4;   // 0 mejorar · 1 futuro · 2 freno · 3 plan · 4 lo que se guardó
 
   function datos() {
-    if (!S.welcome) S.welcome = { done: false, pospuesta: false, paso: 0, area: '', cambio: '', meta: '', vision: '', freno: '' };
+    if (!S.welcome) S.welcome = { done: false, pospuesta: false, paso: 0, area: '', cambio: '', meta: '', vision: '', freno: '', borrador: null, realista: '' };
     return S.welcome;
   }
   function area() { return Areas.get(datos().area); }
@@ -27,15 +27,19 @@ var Bienvenida = (function () {
   function paso() { return Math.max(0, Math.min(HECHO, datos().paso || 0)); }
   function irA(n) { datos().paso = Math.max(0, Math.min(PLAN, n)); Store.save(); }
 
+  // Si cambian las respuestas, el plan se vuelve a proponer con ellas.
+  function olvidarBorrador() { var w = datos(); w.borrador = null; w.realista = ''; }
+
   function elegirArea(id) {
     var w = datos();
     w.area = w.area === id ? '' : (Areas.get(id) ? id : '');   // tocar otra vez la quita
+    olvidarBorrador();
     Store.save();
   }
   function cambio(v) { datos().cambio = String(v || '').slice(0, B.LIM.texto); Store.save(); }
-  function meta(v) { datos().meta = String(v || '').slice(0, B.LIM.meta); Store.save(); }
+  function meta(v) { datos().meta = String(v || '').slice(0, B.LIM.meta); olvidarBorrador(); Store.save(); }
   function vision(v) { datos().vision = String(v || '').slice(0, B.LIM.texto); Store.save(); }
-  function freno(id) { datos().freno = B.freno(id).id; Store.save(); }
+  function freno(id) { datos().freno = B.freno(id).id; olvidarBorrador(); Store.save(); }
 
   // ¿La pregunta actual tiene respuesta? Si no, se puede saltar igualmente.
   function respondida() {
@@ -48,16 +52,49 @@ var Bienvenida = (function () {
 
   function propuesta() { return B.plan(datos(), area(), Dates.inDays); }
 
-  // Convierte la propuesta en una meta de corto plazo. `nombres` son los
-  // pasos tal como la persona los dejó (vacíos = se quitan).
-  function aceptar(nombre, nombres) {
-    var p = propuesta(), w = datos(), a = area();
-    var titulo = String(nombre || '').trim().slice(0, B.LIM.meta) || p.meta.name;
+  // La propuesta es un borrador: se puede cambiar y se guarda según se edita.
+  // Si se retoma otro día, ningún paso queda con una fecha ya pasada.
+  function borrador() {
+    var w = datos(), hoy = Dates.today();
+    if (!w.borrador) {
+      var p = propuesta();
+      w.borrador = { nombre: p.meta.name, pasos: p.pasos.map(function (s) { return { name: s.name, due: s.due }; }) };
+    }
+    w.borrador.pasos.forEach(function (s) { if (!s.due || s.due < hoy) s.due = hoy; });
+    return w.borrador;
+  }
+  function nombrePlan(v) { borrador().nombre = String(v || '').slice(0, B.LIM.meta); Store.save(); }
+  function pasoNombre(i, v) { var s = borrador().pasos[i]; if (s) { s.name = String(v || '').slice(0, B.LIM.paso); Store.save(); } }
+  function pasoFecha(i, v) {
+    var s = borrador().pasos[i];
+    if (!s || !/^\d{4}-\d\d-\d\d$/.test(v || '') || v < Dates.today()) return false;
+    s.due = v; Store.save();
+    return true;
+  }
+  function quitarPaso(i) { borrador().pasos.splice(i, 1); Store.save(); }
+  function anadirPaso() {
+    var b = borrador();
+    if (b.pasos.length >= B.LIM.pasos) return false;
+    var ult = b.pasos.length ? b.pasos[b.pasos.length - 1].due : Dates.today();
+    b.pasos.push({ name: '', due: ult });
+    Store.save();
+    return true;
+  }
+  function realista(v) { datos().realista = datos().realista === v ? '' : v; Store.save(); }
+  // «Es demasiado»: se queda solo el primer paso.
+  function aligerar() { var b = borrador(); b.pasos = b.pasos.slice(0, 1); datos().realista = ''; Store.save(); }
+
+  // Convierte el borrador en una meta de corto plazo. Los pasos sin texto no
+  // se añaden y quedan en orden de fecha; el primero es el «primer paso».
+  function aceptar() {
+    var p = propuesta(), w = datos(), a = area(), b = borrador();
+    var titulo = String(b.nombre || '').trim().slice(0, B.LIM.meta) || p.meta.name;
     var pasos = [];
-    p.pasos.forEach(function (s, i) {
-      var n = nombres && typeof nombres[i] === 'string' ? nombres[i].trim() : s.name;
-      if (n) pasos.push({ id: Util.uid(), name: n.slice(0, 200), desc: '', due: s.due, done: false, promoted: false });
+    b.pasos.forEach(function (s) {
+      var n = String(s.name || '').trim();
+      if (n) pasos.push({ id: Util.uid(), name: n.slice(0, B.LIM.paso), desc: '', due: s.due, done: false, promoted: false });
     });
+    pasos.sort(function (x, y) { return x.due < y.due ? -1 : x.due > y.due ? 1 : 0; });
     S.goalsS.unshift({
       id: Util.uid(), name: titulo, done: false, cat: p.meta.cat,
       motivation: p.meta.motivation, reward: '', priority: p.meta.priority, due: p.meta.due, steps: pasos
@@ -76,7 +113,7 @@ var Bienvenida = (function () {
       }
     }
 
-    w.done = true; w.pospuesta = false; w.meta = titulo; w.paso = HECHO;
+    w.done = true; w.pospuesta = false; w.meta = titulo; w.paso = HECHO; w.borrador = null;
     S.onboarded = true;
     Store.saveNow();
     return { ok: true, meta: titulo, hoy: pasos.length ? pasos[0].name : '', pasos: pasos.length, futuro: !!(vis && a), vision: visionNueva };
@@ -92,7 +129,9 @@ var Bienvenida = (function () {
     PLAN: PLAN, HECHO: HECHO, FRENOS: B.FRENOS, datos: datos, area: area,
     pendiente: pendiente, retomable: retomable, quedan: quedan,
     paso: paso, irA: irA, elegirArea: elegirArea, cambio: cambio, meta: meta, vision: vision, freno: freno,
-    respondida: respondida, propuesta: propuesta, aceptar: aceptar,
+    respondida: respondida, propuesta: propuesta, aceptar: aceptar, LIM: B.LIM,
+    borrador: borrador, nombrePlan: nombrePlan, pasoNombre: pasoNombre, pasoFecha: pasoFecha,
+    quitarPaso: quitarPaso, anadirPaso: anadirPaso, realista: realista, aligerar: aligerar,
     posponer: posponer, seguir: seguir, descartar: descartar
   };
 })();

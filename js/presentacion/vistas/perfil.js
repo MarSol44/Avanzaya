@@ -29,7 +29,7 @@
 
   V.perfil = function () {
     var a = S.account, p = S.profile;
-    var name = (a && a.name) ? a.name : 'Sin cuenta';
+    var name = (a && a.name) ? a.name : 'Tu cuenta';
     var av = p.photo
       ? '<img class="avatar" src="' + esc(p.photo) + '" alt="Tu foto">'
       : '<div class="avatar">' + ((a && a.name) ? esc(String(name).charAt(0).toUpperCase()) : I('user', 26)) + '</div>';
@@ -43,20 +43,19 @@
     h += '<div class="row" style="gap:16px;padding-top:4px">' + av +
       '<div class="grow" style="min-width:0">' +
       '<div style="font-family:var(--disp);font-size:1.5rem;font-weight:600;line-height:1.15;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(name) + '</div>' +
-      '<div class="tiny" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(Fmt.cuenta(a) || 'Estás usando la app sin cuenta') + '</div></div>' +
+      '<div class="tiny" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(Fmt.cuenta(a)) + '</div></div>' +
       '<label class="btn soft xs">' + I('image', 14) + 'Foto<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" id="pfPhoto2" style="display:none"></label>' +
       '</div>';
-
-    if (S.guest) {
-      h += '<div class="notice">Estás sin cuenta: todo funciona igual y se guarda solo en este navegador. Si creas una cuenta, tus datos actuales pasan a ella y se sincronizan en la nube.' +
-        '<div style="margin-top:11px"><button class="btn accent sm" data-a="go" data-s="register">Crear una cuenta</button></div></div>';
-    }
 
     /* --- cuenta --- */
     h += sect('Cuenta',
       '<div class="list"><div class="listpad">' +
       '<label class="field"><span>Nombre de usuario</span><input class="inp" data-f="acName" value="' + esc(a ? a.name : '') + '" placeholder="Tu nombre"></label>' +
-      '<label class="field" style="margin-top:12px"><span>' + (!a || !a.login || a.login === 'email' ? 'Correo' : 'Correo de contacto (opcional)') + '</span><input class="inp" type="email" data-f="acMail" value="' + esc(a ? a.email : '') + '" placeholder="tu@correo.com"></label>' +
+      (a && (a.login === 'tel' || a.login === 'usuario')
+        ? '<label class="field" style="margin-top:12px"><span>Correo de contacto (opcional)</span><input class="inp" type="email" data-f="acMail" value="' + esc(a.email) + '" placeholder="tu@correo.com"></label>'
+        // es con el que se entra y el que confirmó: cambiarlo aquí lo desconectaría de la nube
+        : '<label class="field" style="margin-top:12px"><span>Correo</span><input class="inp" type="email" value="' + esc(a ? a.email : '') + '" readonly aria-readonly="true"></label>' +
+          '<p class="tiny">Es el correo con el que entras. Para cambiarlo, escríbenos a avanzayaapp@gmail.com.</p>') +
       '<button class="btn sm" data-a="saveAccount" style="margin-top:14px">Guardar cambios</button>' +
       '</div></div>');
 
@@ -111,7 +110,7 @@
 
     /* --- áreas de vida --- */
     h += sect('Áreas de vida',
-      '<p class="muted">Se usan en el Reality Check, en las metas y en el progreso. El emoji lo eliges tú.</p>' +
+      '<p class="muted">Se usan en el chequeo de vida, en las metas y en el progreso. El emoji lo eliges tú.</p>' +
       '<div class="list">' +
       S.cats.map(function (c) {
         return '<div class="listrow" style="padding:8px 10px 8px 12px">' +
@@ -138,9 +137,13 @@
       link('lock', 'Política de privacidad', 'sheetDoc', ' data-doc="privacidad"') +
       '</div>');
 
+    // dice lo que de verdad pasa: tener cuenta no significa estar conectada a la nube
+    var dondeEsta = !a || !(a.nube || a.email) ? 'de momento se guarda en este dispositivo'
+      : Nube.sync().conectada() ? 'sincronizado con tu cuenta en la nube'
+      : 'sin conexión con la nube: de momento se guarda en este dispositivo';
     h += '<div class="sect">' +
       '<button class="btn danger block" data-a="logout">' + I('logout', 18) + 'Cerrar sesión</button>' +
-      '<p class="tiny" style="text-align:center">Brújula de Vida · ' + (a && (a.nube || a.email) ? 'sincronizado con tu cuenta en la nube' : 'todo se guarda en este navegador') + '</p></div>';
+      '<p class="tiny" style="text-align:center">Brújula de Vida · ' + dondeEsta + '</p></div>';
 
     h += '</div></div>';
     return h;
