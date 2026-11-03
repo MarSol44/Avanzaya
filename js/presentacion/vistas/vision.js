@@ -92,9 +92,11 @@
       '<div class="tlist">';
     S.cats.forEach(function (c) {
       var f = S.future[c.id], on = !!(f && f.goal);
-      h += '<button class="frow" data-a="openFuture" data-c="' + esc(c.id) + '" aria-label="' + esc(c.name) + (on ? ': ' + esc(f.goal) : ', sin escribir') + '">' +
+      // cuántas metas en marcha empujan hacia esta área (se ven al abrirla)
+      var nm = S.goalsS.concat(S.goalsL).filter(function (g) { return g.cat === c.id && !g.done; }).length;
+      h += '<button class="frow" data-a="openFuture" data-c="' + esc(c.id) + '" aria-label="' + esc(c.name) + (on ? ': ' + esc(f.goal) : ', sin escribir') + (nm ? ', ' + Fmt.plural(nm, 'meta', 'metas') : '') + '">' +
         '<span class="gc-ic">' + esc(c.emoji) + '</span>' +
-        '<span class="grow"><span class="frow-n">' + esc(c.name.split(' (')[0]) + '</span>' +
+        '<span class="grow"><span class="frow-n">' + esc(c.name.split(' (')[0]) + (nm ? ' · ' + Fmt.plural(nm, 'meta', 'metas') : '') + '</span>' +
         '<span class="frow-t' + (on ? '' : ' vacio') + '">' + (on ? esc(f.goal) : 'Sin escribir') + '</span></span>' +
         I('right', 16) + '</button>';
     });
@@ -126,7 +128,6 @@
   }
 
   V.progreso = function () {
-    var doneS = S.goalsS.filter(function (g) { return g.done; }).length;
     var st = Routines.streak(), r = Revision.last(), sem = semanaHabitos();
     // a primeros de semana, la que hay que cerrar es la que acaba de terminar
     var wStart = V.semanaARevisar(), rv = S.reviews[wStart];
@@ -142,11 +143,14 @@
         : 'Marca un hábito hoy y empieza tu racha.' });
     h += '<div class="scroll"><div class="page">';
 
-    /* tres cifras, cada una en un solo sitio de la app */
+    /* tres cifras, cada una en un solo sitio de la app. La tercera es lo hecho
+       esta semana (tareas y pasos de metas): las metas conseguidas ya se cuentan en
+       Metas, y un «0 de 5» cada semana no dice nada de lo que se avanzó */
+    var hechas = Revision.weekStats(Dates.weekStart(Dates.today())).done;
     h += '<div class="stats">' +
       '<div class="stat"><b class="num">' + st + '</b><span>' + (st === 1 ? 'día de racha' : 'días de racha') + '</span></div>' +
       '<div class="stat"><b class="num">' + sem.hechos + '<small>/' + sem.tocaban + '</small></b><span>hábitos esta semana</span></div>' +
-      '<div class="stat"><b class="num">' + doneS + '<small>/' + S.goalsS.length + '</small></b><span>metas cortas conseguidas</span></div></div>';
+      '<div class="stat"><b class="num">' + hechas + '</b><span>' + (hechas === 1 ? 'tarea o paso hecho' : 'tareas y pasos hechos') + ' esta semana</span></div></div>';
 
     /* lo que se revisa cada cierto tiempo */
     function fila(icono, titulo, sub, valor, cls, accion) {

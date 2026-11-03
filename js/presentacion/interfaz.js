@@ -93,7 +93,9 @@
     if (f) f.focus();
   }
   function closeSheetCore() {
-    var back = lastFocus; lastFocus = null;
+    var back = lastFocus, prev = ui.sheet; lastFocus = null;
+    // una meta nueva que se cierra sin nada escrito no deja una «Meta sin nombre»
+    if (prev && prev.t === 'goal') Objetivos.descartarVacia(prev.k, prev.id);
     ui.sheet = null; renderSheet(); render();
     if (back) {
       var t = document.querySelector(back);

@@ -6,6 +6,7 @@
      repo     — rc() → historial de chequeos · notes() → notas por día
                 reviews() → revisiones por semana
      routines — servicio de rutinas (para saber qué se hizo cada día)
+     tasks    — (opcional) doneOn(d) → tareas y pasos de metas hechos ese día
      dates    — today, diff, weekDays
      uid      — generar identificadores
    ========================================================================== */
@@ -66,7 +67,7 @@ var BdvRevision = (function () {
   ];
 
   function create(deps) {
-    var repo = deps.repo, routines = deps.routines, dates = deps.dates, uid = deps.uid;
+    var repo = deps.repo, routines = deps.routines, dates = deps.dates, uid = deps.uid, tasks = deps.tasks;
 
     /* ---------------------------------------------------- chequeo de vida */
     function newDraft() { return { id: uid(), date: dates.today(), scores: {}, notes: {}, adjectives: '' }; }
@@ -91,10 +92,11 @@ var BdvRevision = (function () {
     }
 
     /* ----------------------------------------------------------- semana */
-    // Lo que de verdad pasó esa semana, sin pedirle nada a la persona.
+    // Lo que de verdad pasó esa semana, sin pedirle nada a la persona: lo hecho
+    // (tareas y pasos de metas), los hábitos y las notas.
     function weekStats(start) {
       var days = dates.weekDays(start), t = dates.today(), notes = repo.notes();
-      var full = 0, partial = 0, marks = 0, written = 0, elapsed = 0;
+      var full = 0, partial = 0, marks = 0, written = 0, elapsed = 0, done = 0;
       days.forEach(function (d) {
         if (dates.diff(t, d) > 0) return;          // los días que aún no han llegado no cuentan
         elapsed++;
@@ -103,8 +105,9 @@ var BdvRevision = (function () {
         if (x.total && x.done >= x.total) full++;
         else if (x.done > 0) partial++;
         if ((notes[d] || '').trim()) written++;
+        if (tasks) done += tasks.doneOn(d);
       });
-      return { full: full, partial: partial, marks: marks, notes: written, elapsed: elapsed, days: days };
+      return { full: full, partial: partial, marks: marks, notes: written, elapsed: elapsed, days: days, done: done };
     }
     function review(start) {
       var r = repo.reviews();

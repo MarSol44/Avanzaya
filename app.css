@@ -809,9 +809,9 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 .trow.add .trow-t{ color:var(--ink-2); font-weight:500; }
 .trow.add .trow-ic{ color:var(--accent); }
 .descanso{ display:flex; flex-direction:column; gap:10px; padding:14px; background:var(--surface-2); border-radius:var(--r); }
-.descanso-oferta{ display:flex; align-items:center; gap:10px; }
-.descanso-oferta .tiny{ flex:1; }
-.descanso-oferta .btn{ flex:none; }
+.descanso-oferta, .oferta{ display:flex; align-items:center; gap:10px; }
+.descanso-oferta .tiny, .oferta .tiny{ flex:1; }
+.descanso-oferta .btn, .oferta .btn{ flex:none; }
 #rutinas .sect-head{ align-items:center; }
 #rutinas .fold-head{ flex:1; }
 

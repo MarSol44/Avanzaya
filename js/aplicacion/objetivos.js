@@ -25,6 +25,14 @@ var Objetivos = (function () {
     Store.save();
     return g;
   }
+  // Una meta que se abrió y se cerró sin escribir nada no se queda como «Meta sin nombre».
+  function descartarVacia(kind, id) {
+    var g = Goals.find(kind, id);
+    if (!g || String(g.name || '').trim() || (g.steps || []).length || String(g.motivation || '').trim()) return false;
+    quitar(kind, id);
+    Store.save();
+    return true;
+  }
   // Una idea sugerida por la app pasa a ser meta.
   function sugerida(kind, nombre, area) {
     var g = {
@@ -65,9 +73,19 @@ var Objetivos = (function () {
     return { ok: true };
   }
   function pasoHecho(kind, id, sid) { var s = paso(kind, id, sid); if (s) s.done = !s.done; Store.save(); }
+  // Devuelve lo necesario para deshacerlo: el paso y su sitio en la meta.
   function pasoBorrar(kind, id, sid) {
-    var g = Goals.find(kind, id); if (!g) return;
+    var g = Goals.find(kind, id); if (!g) return null;
+    var pos = -1, st = null;
+    (g.steps || []).forEach(function (x, i) { if (x.id === sid) { pos = i; st = x; } });
     g.steps = (g.steps || []).filter(function (x) { return x.id !== sid; });
+    Store.save();
+    return st ? { kind: kind, id: id, paso: st, pos: pos } : null;
+  }
+  function pasoRestaurar(copia) {
+    var g = copia && Goals.find(copia.kind, copia.id);
+    if (!g || Util.byId(g.steps || [], copia.paso.id)) return;
+    (g.steps = g.steps || []).splice(Math.max(0, copia.pos), 0, copia.paso);
     Store.save();
   }
   function pasoNombre(kind, id, sid, v) { var s = paso(kind, id, sid); if (s) s.name = v; Store.save(); }
@@ -114,8 +132,8 @@ var Objetivos = (function () {
   }
 
   return {
-    crear: crear, sugerida: sugerida, alternar: alternar, borrar: borrar, prioridad: prioridad, campo: campo,
-    pasoNuevo: pasoNuevo, pasoHecho: pasoHecho, pasoBorrar: pasoBorrar, pasoNombre: pasoNombre,
+    crear: crear, descartarVacia: descartarVacia, sugerida: sugerida, alternar: alternar, borrar: borrar, prioridad: prioridad, campo: campo,
+    pasoNuevo: pasoNuevo, pasoHecho: pasoHecho, pasoBorrar: pasoBorrar, pasoRestaurar: pasoRestaurar, pasoNombre: pasoNombre,
     pasoDesc: pasoDesc, pasoFecha: pasoFecha, ascender: ascender, alCalendario: alCalendario
   };
 })();

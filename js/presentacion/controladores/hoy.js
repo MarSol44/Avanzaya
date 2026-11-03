@@ -51,11 +51,23 @@
   action('evdel', function (c) {
     var day = c.el.getAttribute('data-day'), r = Tasks.remove(day, c.id);
     ui.moveId = null;
+    // si era un paso de una meta, se quita también de la meta: si no, volvería
+    // a salir en el plan en su día (con «Deshacer» se recuperan los dos)
+    var e = r.event, x = e && e.goalId && e.sid && e.sid !== '__due' && TaskQueries.goalById(e.goalId);
+    var paso = x ? Objetivos.pasoBorrar(x.k, x.g.id, e.sid) : null;
     commit();
-    Pantalla.toast('Tarea quitada.', function () { Tasks.restore(day, r.event); commit(); });
+    Pantalla.toast(paso ? 'Paso quitado de «' + (x.g.name || 'la meta') + '».' : 'Tarea quitada.', function () {
+      if (paso) Objetivos.pasoRestaurar(paso);
+      Tasks.restore(day, r.event); commit();
+    });
   });
   action('evmove', function (c) { ui.moveId = ui.moveId === c.id ? null : c.id; render(); });
   action('evto', function (c) { moveTask(c.el.getAttribute('data-day'), c.id, c.el.getAttribute('data-to')); });
+  action('postponeAll', function () {
+    var r = Tasks.postpone(Dates.today(), Dates.shift(Dates.today(), 1));
+    commit();
+    Pantalla.toast(r.moved ? Fmt.plural(r.moved, 'pendiente pasado', 'pendientes pasados') + ' a mañana.' : 'No queda nada por pasar.');
+  });
   action('overdueAll', function () {
     var r = Tasks.moveOverdue(Dates.today());
     commit();
@@ -64,6 +76,12 @@
 
   /* --- Hoy: pasos de metas dentro del plan ---------------------------- */
   action('gsDone', function (c) { if (Tasks.toggleStep(c.k, c.id, c.sid).ok) commit(); });
+  // poner día al siguiente paso de una meta corta (desde «Siguiente paso de tus metas»)
+  action('pasoDia', function (c) {
+    Objetivos.pasoFecha('S', c.id, c.sid, c.v);
+    commit();
+    Pantalla.toast(c.v === Dates.today() ? 'En tu plan de hoy.' : 'En tu plan de ' + Fmt.cuando(c.v) + '.');
+  });
   action('gsEdit', function (c) {
     // el paso pasa a ser una tarea enlazada en su día, para ponerle hora o moverlo
     var r = Tasks.materializeStep(c.k, c.id, c.sid, Dates.today());

@@ -90,6 +90,23 @@
       return out;
     }
 
+    // Pasos de metas sin hacer cuyo día ya pasó (dos semanas). Sin esto, un paso
+    // que no se hizo a tiempo desaparecía de Hoy y solo quedaba dentro de su meta.
+    function overdueSteps(today) {
+      var out = [];
+      for (var i = LIMITS.overdueDays; i >= 1; i--) {
+        var k = shift(today, -i);
+        goalsForDay(k).forEach(function (x) { if (x.s && !x.s.done && !x.g.done) out.push({ k: x.k, g: x.g, s: x.s, day: k }); });
+      }
+      return out;
+    }
+
+    // Lo que se hizo ese día: tareas y pasos de metas (para la revisión de la semana).
+    function doneOn(day) {
+      return repo.day(day).filter(isDone).length +
+        goalsForDay(day).filter(function (x) { return x.s && x.s.done; }).length;
+    }
+
     // Lo que queda por hacer ese día: tareas y pasos de metas.
     function pending(day) {
       return repo.day(day).filter(function (e) { return !isDone(e); }).length +
@@ -208,9 +225,11 @@
       return { ok: true };
     }
 
-    // Trae a hoy todas las atrasadas sin hacer; las hechas se quedan en su día.
+    // Trae a hoy todas las atrasadas sin hacer (tareas y pasos de metas); las
+    // hechas se quedan en su día.
     function moveOverdue(today) {
       var moved = 0;
+      overdueSteps(today).forEach(function (x) { x.s.due = today; moved++; });
       for (var i = LIMITS.overdueDays; i >= 1; i--) {
         var day = shift(today, -i), keep = [];
         repo.day(day).forEach(function (x) {
@@ -224,15 +243,34 @@
       return { ok: moved > 0, moved: moved, reason: moved ? '' : 'full' };
     }
 
+    // Al final de un día que no dio para todo: lo atrasado y lo que queda de hoy
+    // pasa a `to`. Lo de hoy con hora no se mueve: seguramente ya pasó (una cita).
+    function postpone(today, to) {
+      var moved = 0;
+      var steps = overdueSteps(today).concat(goalsForDay(today).filter(function (x) { return x.s && !x.s.done && !x.g.done; }));
+      for (var i = LIMITS.overdueDays; i >= 0; i--) {
+        var day = shift(today, -i), keep = [];
+        repo.day(day).forEach(function (x) {
+          if (!isDone(x) && !(i === 0 && x.time) && hasRoom(to)) {
+            repo.ensureDay(to).push(x); moved++;
+            var st = stepLink(x); if (st) st.due = to;
+          } else keep.push(x);
+        });
+        if (repo.day(day).length) repo.setDay(day, keep);
+      }
+      steps.forEach(function (x) { x.s.due = to; moved++; });
+      return { ok: moved > 0, moved: moved, reason: moved ? '' : 'none' };
+    }
+
     return {
       queries: {
         find: find, goalById: goalById, stepLink: stepLink, isDone: isDone, linked: linked,
-        goalsForDay: goalsForDay, overdue: overdue, pending: pending
+        goalsForDay: goalsForDay, overdue: overdue, overdueSteps: overdueSteps, doneOn: doneOn, pending: pending
       },
       commands: {
         add: add, addTodo: addTodo, remove: remove, restore: restore, toggle: toggle, toggleStep: toggleStep,
         materializeStep: materializeStep, move: move, setTime: setTime,
-        pullTodo: pullTodo, removeTodo: removeTodo, restoreTodo: restoreTodo, moveOverdue: moveOverdue
+        pullTodo: pullTodo, removeTodo: removeTodo, restoreTodo: restoreTodo, moveOverdue: moveOverdue, postpone: postpone
       }
     };
   }

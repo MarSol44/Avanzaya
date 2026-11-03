@@ -13,6 +13,16 @@
   action('openFuture', function (c) { openSheet({ t: 'future', c: c.el.getAttribute('data-c') }); });
   action('saveFuture', function () { Vision.guardar(); closeSheet(); Pantalla.toast('Guardado.'); });
   action('clearFuture', function (c) { Vision.borrarFuturo(c.el.getAttribute('data-c')); closeSheet(); });
+  // de la visión a la acción: una meta corta nueva, ya en su área
+  action('metaDeArea', function (c) {
+    var cid = c.el.getAttribute('data-c');
+    Vision.guardar();
+    var g = Objetivos.crear('S');
+    Objetivos.campo('S', g.id, 'cat', cid);
+    ui.sheetTab = 'desc';
+    openSheet({ t: 'goal', k: 'S', id: g.id });
+    setTimeout(function () { var el = document.querySelector('#sheet [data-f="gname"]'); if (el) el.focus(); }, 60);
+  });
   action('saveFutureOnly', function () { Vision.guardar(); goApp('vision'); });
 
   /* --- imágenes y frases --- */

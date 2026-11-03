@@ -175,8 +175,24 @@
       '<label class="field"><span>¿Por qué esto importa? (opcional)</span>' +
       '<textarea class="ta" data-f="fwhy" data-c="' + esc(cid) + '" placeholder="Lo que te vas a decir el día que te dé pereza.">' + esc(f.why || '') + '</textarea></label>' +
       '<button class="btn block" data-a="saveFuture">Guardar</button>' +
+      metasDeArea(cid) +
       (f.goal ? '<button class="btn danger block" data-a="clearFuture" data-c="' + esc(cid) + '">Borrar esta área</button>' : '') +
       '</div>';
+  }
+  // Lo que se escribe aquí es para dentro de 5 años; las metas, lo que se hace
+  // ahora para llegar. Se ven juntas y se puede pasar de una a otra.
+  function metasDeArea(cid) {
+    var h = '<div class="divider"></div><span class="label">Tus metas en esta área</span>', n = 0;
+    [['S', S.goalsS], ['L', S.goalsL]].forEach(function (x) {
+      x[1].forEach(function (g) {
+        if (g.cat !== cid || g.done) return;
+        n++;
+        h += '<button class="listrow" data-a="openGoal" data-k="' + x[0] + '" data-id="' + esc(g.id) + '">' +
+          '<span class="grow">' + esc(g.name || 'Meta sin nombre') + '</span>' + I('right', 16) + '</button>';
+      });
+    });
+    if (!n) h += '<p class="tiny">Ninguna todavía. Una meta corta es lo que haces este mes para acercarte a esto.</p>';
+    return h + '<button class="btn ghost sm" data-a="metaDeArea" data-c="' + esc(cid) + '" style="align-self:flex-start">' + I('plus', 15) + 'Crear una meta en esta área</button>';
   }
 
   /* --------------------------------------------- imágenes y frases: una pieza */
@@ -294,7 +310,9 @@
     var wStart = ui.reviewWeek || Dates.weekStart(Dates.today());
     var w = Revision.weekStats(wStart), rv = Revision.review(wStart);
     var prev = Revision.weekStats(Dates.shift(wStart, -7));
-    var dFull = w.full - prev.full;
+    // la cifra grande es lo hecho (tareas y pasos de metas): una semana de trabajo
+    // con pocos hábitos no es una semana perdida; los hábitos van al lado
+    var dFull = w.done - prev.done;
     var isThis = wStart === Dates.weekStart(Dates.today());
     var comparable = prev.elapsed && S.start && Dates.diff(S.start, Dates.shift(wStart, -7)) >= 0;
 
@@ -309,11 +327,11 @@
     var h = head('rotate', 'Revisión semanal', nav) + '<div class="sheet-body">';
 
     h += '<div class="row" style="gap:16px;align-items:flex-start">' +
-      '<div><div class="display" style="font-size:2.6rem">' + w.full + '</div>' +
-      '<div class="tiny">' + (w.full === 1 ? 'día completo' : 'días completos') + ' de ' + w.elapsed + '</div></div>' +
+      '<div><div class="display" style="font-size:2.6rem">' + w.done + '</div>' +
+      '<div class="tiny">' + (w.done === 1 ? 'tarea o paso hecho' : 'tareas y pasos hechos') + '</div></div>' +
       '<div class="grow" style="padding-top:5px"><p class="tiny num" style="line-height:1.9">' +
-      '<strong style="color:var(--warn)">' + w.partial + '</strong> ' + (w.partial === 1 ? 'día a medias' : 'días a medias') + '<br>' +
       '<strong>' + w.marks + '</strong> ' + (w.marks === 1 ? 'hábito marcado' : 'hábitos marcados') + '<br>' +
+      '<strong>' + w.full + '</strong> ' + (w.full === 1 ? 'día con todos los hábitos' : 'días con todos los hábitos') + '<br>' +
       '<strong>' + w.notes + '</strong> ' + (w.notes === 1 ? 'nota escrita' : 'notas escritas') + '</p></div>' +
       (comparable ? '<span class="pill num ' + (dFull > 0 ? 'good' : dFull < 0 ? 'bad' : '') + '">' +
         (dFull > 0 ? I('up', 13) + '+' + dFull : dFull < 0 ? I('down', 13) + Math.abs(dFull) : '=') + '</span>' : '') +

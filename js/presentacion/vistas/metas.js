@@ -141,7 +141,13 @@
 
   function goalSection(kind, title, sub, icon) {
     var all = kind === 'S' ? S.goalsS : S.goalsL;
-    var list = all.filter(matches);
+    // primero lo que importa: en marcha antes que conseguidas, por prioridad y por
+    // fecha (la más cercana arriba); a igualdad, como se crearon
+    var PRIO = { Alta: 0, Media: 1, Baja: 2 };
+    var list = all.filter(matches).map(function (g, i) { return { g: g, i: i }; }).sort(function (a, b) {
+      return (a.g.done - b.g.done) || ((PRIO[a.g.priority] === undefined ? 1 : PRIO[a.g.priority]) - (PRIO[b.g.priority] === undefined ? 1 : PRIO[b.g.priority])) ||
+        ((a.g.due || '9999') < (b.g.due || '9999') ? -1 : (a.g.due || '9999') > (b.g.due || '9999') ? 1 : 0) || (a.i - b.i);
+    }).map(function (x) { return x.g; });
     var doneN = all.filter(function (g) { return g.done; }).length;
 
     var h = '<div class="sect">' +

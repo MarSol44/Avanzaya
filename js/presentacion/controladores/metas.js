@@ -57,7 +57,10 @@
   });
   action('stepDone', function (c) { Objetivos.pasoHecho(c.k, c.id, c.sid); both(); });
   action('stepDel', function (c) {
-    armedDelete(c.el, function () { Objetivos.pasoBorrar(c.k, c.id, c.sid); both(); Pantalla.toast('Paso eliminado.'); });
+    armedDelete(c.el, function () {
+      var copia = Objetivos.pasoBorrar(c.k, c.id, c.sid); both();
+      Pantalla.toast('Paso eliminado.', function () { Objetivos.pasoRestaurar(copia); both(); });
+    });
   });
   action('promote', function (c) { avisarAscenso(Objetivos.ascender(c.id, c.sid)); both(); });
   action('sync', function (c) {

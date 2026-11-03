@@ -48,7 +48,7 @@ var TaskQueries, TaskCommands, Goals, Routines, Areas, Revision, Plan;
   Areas = BdvAreas.create({ repo: { cats: function () { return S.cats; } } });
   Revision = BdvRevision.create({
     repo: { rc: function () { return S.rc; }, notes: function () { return S.notes; }, reviews: function () { return S.reviews; } },
-    routines: Routines, dates: Dates, uid: Util.uid
+    routines: Routines, tasks: TaskQueries, dates: Dates, uid: Util.uid
   });
 
   /* ------------------------------------------------- casos de uso: plan */
