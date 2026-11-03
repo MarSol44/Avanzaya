@@ -78,7 +78,7 @@ npx supabase secrets set RESEND_FROM="Brújula de Vida <hola@tudominio.com>"
 
 `RESEND_FROM` tiene que usar el dominio que verificaste en el paso 4.
 
-## 6. Despliega las dos funciones
+## 6. Despliega las funciones
 
 ```bash
 npx supabase functions deploy send-reminders --no-verify-jwt
@@ -88,6 +88,13 @@ npx supabase functions deploy send-weekly-email --no-verify-jwt
 `--no-verify-jwt` es correcto aquí: la protección la hace la propia función
 comprobando la cabecera `x-cron-secret`, no el JWT de Supabase (pg_cron no
 sabe generar uno).
+
+La tercera, la de eliminar la cuenta, se despliega **con** verificación de JWT:
+la llama la app con la sesión de la persona y solo borra esa cuenta.
+
+```bash
+npx supabase functions deploy delete-account
+```
 
 ## 7. Obligatorio: activa la confirmación de correo en Supabase Auth
 
@@ -129,7 +136,7 @@ No se pueden poner desde el código: hazlo una vez en el panel de Supabase.
   (mandar el token del CAPTCHA al registrarse) y añadir
   `https://challenges.cloudflare.com` a la política de seguridad (`_headers`,
   `index.html` y `.htaccess`).
-- **Edge Functions**: deja publicadas solo `send-reminders` y `send-weekly-email`.
+- **Edge Functions**: deja publicadas solo `send-reminders`, `send-weekly-email` y `delete-account`.
   Cualquier otra que aparezca ahí y no esté en `supabase/functions/` sobra.
 
 ## 7a. Recuperar la contraseña

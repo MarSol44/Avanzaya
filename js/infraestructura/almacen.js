@@ -140,6 +140,7 @@ var Store = (function () {
     var f = defaults(), k;
     for (k in f) if (Object.prototype.hasOwnProperty.call(f, k)) S[k] = f[k];
     try { localStorage.removeItem(curKey); } catch (e) { }
+    indexUser();   // la cuenta borrada deja de encontrarse al entrar
   }
   function rawLocal() { try { return localStorage.getItem(curKey) || ''; } catch (e) { return ''; } }
 

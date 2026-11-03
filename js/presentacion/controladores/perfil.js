@@ -34,6 +34,24 @@
     Pantalla.toast('Sesión cerrada. Tus datos siguen en este dispositivo.');
   });
 
+  /* --- eliminar la cuenta --- */
+  action('sheetEliminar', function () { openSheet({ t: 'eliminar' }); });
+  action('doEliminar', function () {
+    if (isBusy()) return;
+    var msg = document.getElementById('elMsg');
+    var r = Cuentas.eliminarCuenta(val('elPass'), val('elConfirma'));
+    if (!r.espera) { msg.textContent = r.msg; return; }
+    setBusy(true); msg.style.color = 'var(--ink-2)'; msg.textContent = 'Eliminando…';
+    busyBtn('#sheet [data-a="doEliminar"]', true, 'Eliminando…');
+    r.espera.then(function (res) {
+      setBusy(false); busyBtn('#sheet [data-a="doEliminar"]', false);
+      if (!res.ok) { msg.style.color = 'var(--bad)'; msg.textContent = res.msg; return; }
+      ui.sheet = null; renderSheet(); popNav('sheet');
+      ui.screen = 'splash'; ui.tab = 'hoy'; render(); window.scrollTo(0, 0);
+      Pantalla.toast('Tu cuenta se ha eliminado.');
+    });
+  });
+
   /* --- áreas de vida --- */
   action('newCat', function () { ui.newCatColor = '#5b6ee1'; openSheet({ t: 'cat' }); });
   action('ncColor', function (c) {

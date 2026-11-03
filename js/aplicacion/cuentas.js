@@ -172,6 +172,33 @@ var Cuentas = (function () {
   }
   function cancelarRecuperacion() { Nube.sync().entradaCancelada(); }
 
+  // Eliminar la cuenta: en la nube (cuenta, copia y recordatorios) y en este
+  // dispositivo. Con contraseña se pide otra vez; con Google o Facebook, que se
+  // escriba ELIMINAR. Devuelve { msg } o { espera }.
+  function conContrasena() { return !!(S.account && S.account.login !== 'red' && S.account.pass); }
+  function eliminarCuenta(pass, confirmacion) {
+    if (!S.account || !S.session) return { msg: 'Inicia sesión para eliminar tu cuenta.' };
+    if (conContrasena() && !pass) return { msg: 'Escribe tu contraseña para confirmar.' };
+    if (!conContrasena() && String(confirmacion || '').trim().toUpperCase() !== 'ELIMINAR') return { msg: 'Escribe ELIMINAR para confirmar.' };
+    function borrarAqui() { cerrar(); Store.wipe(); return { ok: true }; }
+    var correo = correoNube(S.account);
+    // cuentas antiguas que nunca llegaron a la nube: solo hay datos aquí
+    if (!correo) {
+      return { espera: Sec.verifyPass(pass, S.account.pass).then(function (ok) {
+        return ok ? borrarAqui() : { ok: false, msg: 'La contraseña no es correcta.' };
+      }) };
+    }
+    return {
+      espera: Nube.sync().eliminarCuenta(correo, conContrasena() ? pass : '').then(function (r) {
+        if (r.ok) return borrarAqui();
+        return { ok: false, msg: r.codigo === 'credenciales' ? 'La contraseña no es correcta.'
+          : r.codigo === 'sin-sesion' ? 'Tu sesión en la nube caducó. Cierra sesión, vuelve a entrar y repítelo.'
+          : r.codigo === 'sin-nube' ? 'Necesitas conexión a internet para eliminar la cuenta.'
+          : 'No se pudo eliminar la cuenta. Revisa la conexión e inténtalo otra vez.' };
+      })
+    };
+  }
+
   function reenviarConfirmacion(correo) {
     var id = Id.parse(correo, 'email');
     if (!id.ok) return { msg: 'Escribe arriba el correo con el que te registraste.' };
@@ -331,7 +358,7 @@ var Cuentas = (function () {
     entrarConRed: entrarConRed, entrarConGoogle: entrarConGoogle,
     cerrarSesion: cerrarSesion, cambiarContrasena: cambiarContrasena,
     recuperar: recuperar, nuevaClave: nuevaClave, cancelarRecuperacion: cancelarRecuperacion,
-    reenviarConfirmacion: reenviarConfirmacion,
+    reenviarConfirmacion: reenviarConfirmacion, eliminarCuenta: eliminarCuenta, conContrasena: conContrasena,
     nombre: nombre, correo: correo, guardarAhora: guardarAhora, arrancar: arrancar
   };
 })();

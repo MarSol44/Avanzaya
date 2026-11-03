@@ -143,6 +143,7 @@
       : 'sin conexión con la nube: de momento se guarda en este dispositivo';
     h += '<div class="sect">' +
       '<button class="btn danger block" data-a="logout">' + I('logout', 18) + 'Cerrar sesión</button>' +
+      '<button class="btn ghost block" data-a="sheetEliminar" style="color:var(--bad)">' + I('trash', 17) + 'Eliminar cuenta</button>' +
       '<p class="tiny" style="text-align:center">Brújula de Vida · ' + dondeEsta + '</p></div>';
 
     h += '</div></div>';

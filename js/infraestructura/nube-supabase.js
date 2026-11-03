@@ -159,6 +159,50 @@
   function google() { red('google'); }
   function facebook() { red('facebook'); }
 
+  // Elimina la cuenta en la nube. Con contraseña, se comprueba otra vez antes; sin
+  // ella (Google o Facebook), vale la sesión abierta si es la de esa cuenta. Nada
+  // se sincroniza mientras tanto, para no volver a subir lo que se está borrando.
+  function eliminarCuenta(email, password) {
+    if (!sb || !email) return Promise.resolve({ ok: false, codigo: 'sin-nube' });
+    enEntrada = true;
+    clearTimeout(pushTimer); pushAgain = false;
+    var sesion = password
+      ? sb.auth.signInWithPassword({ email: email, password: password }).then(function (res) {
+          if (res.error) throw { codigo: codigoError(res.error) };
+          return res.data.session;
+        })
+      : sb.auth.getSession().then(function (r) {
+          var s = r.data && r.data.session;
+          if (!s || String(s.user.email || '').toLowerCase() !== String(email).toLowerCase()) throw { codigo: 'sin-sesion' };
+          return s;
+        });
+    return sesion.then(function (s) {
+      return fetch(SUPABASE_URL + '/functions/v1/delete-account', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + s.access_token, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+        body: '{}'
+      });
+    }).then(function (res) {
+      if (!res.ok) throw { codigo: res.status === 401 ? 'sin-sesion' : 'red' };
+      try { localStorage.removeItem(clockKey()); } catch (e) { }
+      quitarSuscripcionLocal();
+      currentUser = null;
+      enEntrada = false;
+      return sb.auth.signOut({ scope: 'local' }).then(function () { return { ok: true }; }, function () { return { ok: true }; });
+    }).catch(function (e) {
+      enEntrada = false;
+      return { ok: false, codigo: (e && e.codigo) || 'red' };
+    });
+  }
+  // La suscripción push de este navegador ya no lleva a ninguna cuenta.
+  function quitarSuscripcionLocal() {
+    if (!pushSupported()) return;
+    navigator.serviceWorker.getRegistration().then(function (reg) {
+      if (reg) reg.pushManager.getSubscription().then(function (sub) { if (sub) sub.unsubscribe(); });
+    }).catch(function () { });
+    reminderState.active = false;
+  }
+
   function signOut() {
     clearTimeout(pushTimer); pushAgain = false;
     if (sb) sb.auth.signOut();
@@ -345,7 +389,7 @@
   /* -------------------------------------------------------------- arranque */
   Nube.provide({
     alta: alta, entrada: entrada, entradaLista: entradaLista, entradaCancelada: entradaCancelada,
-    reenviar: reenviar, recuperar: recuperar, claveRecuperada: claveRecuperada,
+    reenviar: reenviar, recuperar: recuperar, claveRecuperada: claveRecuperada, eliminarCuenta: eliminarCuenta,
     conectada: function () { return !!currentUser; },
     signIn: signIn, signOut: signOut, google: google, facebook: facebook, updatePassword: updatePassword,
     pullNow: pullThenMaybePush,

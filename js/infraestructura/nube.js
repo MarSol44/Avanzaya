@@ -16,7 +16,7 @@ var Nube = (function () {
   var NULL_SYNC = {
     signIn: noop, signOut: noop, updatePassword: noop, pullNow: noop,
     alta: sinNube, entrada: sinNube, entradaLista: noop, entradaCancelada: noop,
-    reenviar: sinNube, recuperar: sinNube, claveRecuperada: sinNube,
+    reenviar: sinNube, recuperar: sinNube, claveRecuperada: sinNube, eliminarCuenta: sinNube,
     conectada: function () { return false; },
     google: function () { Bus.emit('aviso', 'El acceso con Google no está disponible ahora mismo.'); },
     facebook: function () { Bus.emit('aviso', 'El acceso con Facebook no está disponible ahora mismo.'); },

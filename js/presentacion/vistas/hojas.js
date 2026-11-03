@@ -18,7 +18,7 @@
       '4. La contraseña de la app protege el acceso a la app, no cifra tus datos. Lee «Cómo se protege tu cuenta» en Perfil.\n' +
       '5. La app es gratuita y se ofrece tal cual, sin garantía de disponibilidad ni de conservación de tus datos. Haz copias de seguridad desde Perfil.\n' +
       '6. No es asesoramiento médico, psicológico ni financiero. Es un cuaderno con estructura.\n' +
-      '7. Puedes dejar de usarla cuando quieras. «Borrar todo» (Perfil › Copia de seguridad) borra los datos de este navegador; para borrar también tu copia en la nube y tu cuenta, escríbenos.\n' +
+      '7. Puedes dejar de usarla cuando quieras. En Perfil › Eliminar cuenta se borran tu cuenta, tu copia en la nube y los datos de este dispositivo. «Borrar todo» (Perfil › Copia de seguridad) borra solo los datos de este navegador.\n' +
       '8. Contacto: ' + CONTACTO + '.'],
     privacidad: ['lock', 'Política de privacidad',
       'Responsable: Brújula de Vida (Avanzaya). Contacto: ' + CONTACTO + '.\n\n' +
@@ -37,7 +37,7 @@
       '• Tu copia de seguridad (Perfil › Copia de seguridad) es un texto con todos tus datos, incluida la versión protegida de tu contraseña: guárdala en un sitio seguro.\n\n' +
       'TUS DERECHOS\n' +
       '• Puedes ver y exportar todo desde Perfil › Copia de seguridad, y corregirlo desde la propia app.\n' +
-      '• «Borrar todo» borra solo los datos de este navegador. Tu copia en la nube y tu cuenta siguen guardadas: para borrarlas, escribe a ' + CONTACTO + ' desde el correo de tu cuenta.'],
+      '• Perfil › Eliminar cuenta borra para siempre tu cuenta, tu copia en la nube, tus recordatorios y los datos de este dispositivo. «Borrar todo» borra solo los datos de este navegador.'],
     seguridad: ['shield', 'Cómo se protege tu cuenta',
       'Lo primero, con claridad: la contraseña de la app NO cifra tus datos. Sirve para que no se pueda entrar en tu cuenta desde la pantalla de inicio sin saberla, pero lo que escribes se guarda tal cual, sin cifrar, en el almacenamiento de este navegador. Quien tenga acceso a este dispositivo y sepa usar las herramientas del navegador puede leerlo, como un cuaderno sobre la mesa. Si tienes cuenta, la copia en la nube va cifrada en la conexión, pero tampoco está cifrada de extremo a extremo.\n\n' +
       'Por eso: usa una contraseña distinta de la de tu correo, bloquea tu teléfono con PIN o huella, y no guardes aquí datos muy sensibles (contraseñas, datos bancarios, detalles médicos).\n\n' +
@@ -251,6 +251,24 @@
       '</div>';
   }
 
+  /* -------------------------------------------------------- eliminar cuenta */
+  function eliminarSheet() {
+    var pass = Cuentas.conContrasena();
+    return head('trash', 'Eliminar tu cuenta') +
+      '<div class="sheet-body">' +
+      '<p style="font-size:14px;line-height:1.6">Se borra <strong>para siempre</strong>: tu cuenta, tu copia en la nube (metas, rutinas, notas, fotos del tablero…), tus recordatorios y los datos de este dispositivo. <strong>No se puede deshacer.</strong></p>' +
+      '<p class="muted">Si quieres conservar algo, haz antes una copia de seguridad.</p>' +
+      '<button class="btn soft sm" data-a="sheetBackup" style="align-self:flex-start">' + I('save', 15) + 'Hacer copia de seguridad</button>' +
+      '<p class="tiny">En otros dispositivos donde la usaste, lo guardado allí sigue hasta que cierres sesión y pulses «Borrar todo» en Copia de seguridad.</p>' +
+      (pass
+        ? '<label class="field"><span>Tu contraseña, para confirmar</span><input class="inp" type="password" id="elPass" autocomplete="current-password"></label>'
+        : '<label class="field"><span>Escribe ELIMINAR para confirmar</span><input class="inp" id="elConfirma" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>') +
+      '<p class="tiny" id="elMsg" style="color:var(--bad);min-height:16px"></p>' +
+      '<button class="btn danger block" data-a="doEliminar">' + I('trash', 17) + 'Eliminar mi cuenta para siempre</button>' +
+      '<button class="btn ghost block" data-a="closeSheet">Cancelar</button>' +
+      '</div>';
+  }
+
   /* ------------------------------------------------------------- documentos */
   function docSheet(key) {
     var d = DOCS[key] || ['info', 'Documento', ''];
@@ -452,6 +470,7 @@
     if (s.t === 'wins') return winsSheet();
     if (s.t === 'rc') return rcSheet();
     if (s.t === 'quick') return quickSheet();
+    if (s.t === 'eliminar') return eliminarSheet();
     return '';
   };
   V.DOCS = DOCS;
