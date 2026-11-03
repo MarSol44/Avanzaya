@@ -4,23 +4,18 @@ Esto es una guía de un solo uso, para desplegar las piezas que necesitan
 infraestructura fuera del sitio estático. Una vez hecho, no hay que repetirlo
 salvo que cambies las funciones o las claves.
 
-## 0. Qué cambió en el código
+## 0. Qué hay en el proyecto
 
-- `vendor/supabase.js` — librería cliente de Supabase (vendorizada, sin CDN externo).
-- `sync.js` — sincroniza el estado, activa el recordatorio push y pone el
-  badge de racha en el icono. Se carga después de `app.js`. La primera vez
-  se ofrece con una barra abajo; después se activa, desactiva o cambia de
-  hora desde **Perfil → Recordatorio diario**.
-- `app.js`, `index.html`, `sw.js`, `app.css`, `.htaccess` — enganches mínimos
-  para que lo anterior funcione (login/registro también dan de alta en
-  Supabase, el service worker atiende notificaciones push, CSP permite
-  hablar con tu proyecto de Supabase).
-- `supabase/schema.sql` y `supabase/functions/*` — solo para desplegar desde
-  tu máquina con el CLI de Supabase. **No subas la carpeta `supabase/` a
-  Hostinger**, no la necesita el sitio público.
-
-Todo es aditivo: si algo de esto falla, la app sigue funcionando 100% local
-como antes.
+- **La web** (lo único que se publica): `index.html`, `app.css`, `sw.js`,
+  `manifest.webmanifest`, `robots.txt`, `sitemap.xml`, `_headers` y las
+  carpetas `js/`, `icons/` y `vendor/` (la librería de Supabase, incluida en
+  el proyecto, sin CDN externo).
+- **La publicación**: `build.sh` copia esos archivos a `dist/` y
+  `wrangler.jsonc` le dice a Cloudflare que publique solo esa carpeta (ver 8).
+- **Solo para ti** (nunca se publican): `supabase/` (esquema, funciones y
+  scripts para desplegar desde tu máquina con el CLI), este documento,
+  `build.sh`, `wrangler.jsonc`, `.vscode/` y `.htaccess` (solo sirve si algún
+  día vuelves a Hostinger).
 
 ## 1. Ejecuta el esquema en Supabase
 
@@ -64,7 +59,7 @@ en el gestor de secretos de Supabase.
 1. Ve a resend.com y crea una cuenta gratuita.
 2. **Domains** → añade tu dominio real (el mismo que pongas en `index.html`
    en vez de `TUDOMINIO.com`) → te da 2-3 registros DNS (TXT/CNAME/MX) →
-   añádelos en el panel de DNS de Hostinger → espera a que Resend lo marque
+   añádelos en el panel de DNS de tu dominio → espera a que Resend lo marque
    como verificado (puede tardar unos minutos).
    - Mientras no verifiques un dominio, Resend solo deja enviar correos a tu
      propia cuenta de prueba: suficiente para probar, no para usuarios reales.
@@ -156,7 +151,7 @@ https://fgpwhdfvqtlvfmmzhxsy.supabase.co/auth/v1/callback
 ```
 
 Y en Supabase → **Authentication → URL Configuration** pon tu dirección
-publicada (p. ej. `https://avanzaya.pages.dev`) como **Site URL** y añádela en
+publicada (la que ves en Cloudflare → tu Worker → **Domains**) como **Site URL** y añádela en
 **Redirect URLs** (para probar en local, añade también `http://localhost:8765`).
 
 **Google**
@@ -183,24 +178,32 @@ publicada (p. ej. `https://avanzaya.pages.dev`) como **Site URL** y añádela en
 Si alguien entra con Facebook sin compartir su correo, la app crea igualmente
 su cuenta (identificada por su id de Facebook en Supabase).
 
-## 8. Sube los archivos nuevos/cambiados a Hostinger
+## 8. Publicar la web (Cloudflare Workers)
 
-Por FTP o el Administrador de archivos, a `public_html`:
+La web se publica sola cada vez que subes cambios a GitHub. En Cloudflare →
+tu Worker `avanzaya` → **Settings → Builds** comprueba:
+
+- **Git repository**: `MarSol44/Avanzaya`.
+- **Production branch**: `master` (es la rama con la app actual).
+- **Build command**: `bash build.sh`.
+- **Deploy command**: `npx wrangler deploy`.
+
+Al publicar, `build.sh` copia a `dist/` solo esto, y solo eso sale al sitio:
 
 ```
-index.html      (cambiado)
-app.js          (cambiado)
-app.css         (cambiado)
-sw.js           (cambiado)
-.htaccess       (cambiado)
-sync.js         (nuevo)
-vendor/supabase.js   (nuevo)
+index.html  app.css  sw.js  manifest.webmanifest  robots.txt  sitemap.xml  _headers
+js/   icons/   vendor/
 ```
 
-No subas `supabase/` ni `SUPABASE_SETUP.md`: son solo para ti, no para el sitio.
+No se publican `supabase/`, `SUPABASE_SETUP.md`, `build.sh`, `wrangler.jsonc`,
+`.htaccess` ni `.vscode/`. Si algún día la web necesita un archivo nuevo en la
+raíz, añádelo a la lista de `build.sh`; si no, no se publicará.
 
-Como `sw.js` cambió de versión (`brujula-v2`), los navegadores que ya tenían
-la app instalada verán el aviso de "Hay una versión nueva" automáticamente.
+Para comprobarlo tras publicar, abre `https://<tu dirección>/SUPABASE_SETUP.md`:
+tiene que mostrar la app (la dirección no existe), no el documento.
+
+Cada vez que cambies la app, sube un número `VERSION` en `sw.js`: así los
+navegadores que ya la tenían instalada ven el aviso de «Hay una versión nueva».
 
 ## 9. Probar sin esperar al cron
 
@@ -250,8 +253,8 @@ Entre el paso 1 y el 2 puede fallar algún recordatorio; son un par de minutos.
 1. **Secreto de cron:** SQL Editor → pega `supabase/rotar-cron-secret.sql` → Run.
    Genera uno nuevo en Vault y el cambio es inmediato para pg_cron y para las
    funciones; no hay que copiar nada.
-2. **Claves VAPID:** `node supabase/rotar-vapid.mjs`, después sube `js/infraestructura/nube-supabase.js` y
-   `sw.js` al hosting. Los móviles con el recordatorio activo se vuelven a
+2. **Claves VAPID:** `node supabase/rotar-vapid.mjs`, sube el `VERSION` de `sw.js` y
+   sube los cambios a GitHub (se publican solos). Los móviles con el recordatorio activo se vuelven a
    suscribir solos con la clave nueva al abrir la app, y conservan su hora.
 3. Nunca escribas valores de secretos en este documento ni en el repositorio:
    solo en el gestor de secretos de Supabase (Vault y los secretos de las
@@ -259,7 +262,7 @@ Entre el paso 1 y el 2 puede fallar algún recordatorio; son un par de minutos.
 
 ## 10. Lista de comprobación
 
-- [ ] Registrar una cuenta en la app → aparece una fila en la tabla `states` de Supabase.
+- [ ] Registrar una cuenta, abrir el enlace del correo e iniciar sesión → aparece una fila en la tabla `states` de Supabase.
 - [ ] Iniciar sesión con la misma cuenta en otro navegador/incógnito → llegan los mismos datos.
 - [ ] Activar el recordatorio en la barra inferior → aparece una fila en `push_subscriptions`.
 - [ ] `curl` de prueba del paso 9 → llega la notificación push al dispositivo con el recordatorio activado.

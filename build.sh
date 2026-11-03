@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Brújula de Vida — prepara la carpeta que publica Cloudflare Pages.
+# Brújula de Vida — prepara la carpeta que se publica.
 # No compila nada: solo copia los archivos de la web a dist/, para que no se
 # publiquen la carpeta supabase/, la guía de configuración ni otros archivos
-# que son solo para ti.
+# que son solo para ti. Si añades un archivo que la web necesita, añádelo aquí.
 #
-# En Cloudflare Pages:  Build command = bash build.sh   ·   Build output directory = dist
+# Cloudflare Workers: lo ejecuta «npx wrangler deploy» (ver wrangler.jsonc) y
+# publica dist/. En el panel, Build command = bash build.sh.
 set -euo pipefail
 
 rm -rf dist

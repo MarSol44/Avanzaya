@@ -1,0 +1,17 @@
+// Brújula de Vida — publicación en Cloudflare Workers (solo archivos estáticos).
+//
+// Antes de subir nada se ejecuta build.sh, que copia a dist/ únicamente los
+// archivos de la web, y solo se publica esa carpeta. Así nunca salen al sitio
+// supabase/, SUPABASE_SETUP.md, este archivo ni nada que sea solo para ti.
+// Si dist/ no existe (porque no se ejecutó build.sh), el despliegue falla en
+// vez de publicar la carpeta entera.
+{
+  "name": "avanzaya",
+  "compatibility_date": "2026-11-01",
+  "build": { "command": "bash build.sh" },
+  "assets": {
+    "directory": "./dist",
+    // una dirección que no existe muestra la app (como hacía Cloudflare Pages)
+    "not_found_handling": "single-page-application"
+  }
+}
