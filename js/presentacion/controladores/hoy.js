@@ -33,7 +33,7 @@
     if (!r.ok) { explain(r); return; }
     ui.moveId = null;
     commit();
-    Pantalla.toast(to ? 'Pasada al ' + Fmt.fmt(to) + '.' : 'Guardada en pendientes sin fecha.');
+    Pantalla.toast(to ? 'Pasada ' + Fmt.aDia(to) + '.' : 'Guardada en pendientes sin fecha.');
   }
 
   /* --- Hoy: elegir día ----------------------------------------------- */
@@ -73,15 +73,23 @@
   });
 
   /* --- Hoy: añadir ----------------------------------------------------- */
-  action('ntMore', function () { ui.ntMore = !ui.ntMore; render(); });
-  action('ntAdd', function () {
+  function anadirTarea() {
     var day = /^\d{4}-\d\d-\d\d$/.test(ui.ntDate || '') ? ui.ntDate : targetDay();
     var r = Tasks.add(day, { title: ui.ntTitle, time: ui.ntTime });
     if (!r.ok) { explain(r); return; }
     ui.ntTitle = ''; ui.ntTime = ''; ui.ntDate = ''; ui.ntMore = false;
     commit();
     // si no es el día que se está mirando, no aparece en la lista: se avisa de dónde quedó
-    if (day !== (ui.planDay || Dates.today())) Pantalla.toast('Añadida al ' + Fmt.fmt(day) + '.');
+    if (day !== (ui.planDay || Dates.today())) Pantalla.toast('Añadida para ' + Fmt.cuando(day) + '.');
+  }
+  action('ntMore', function () { ui.ntMore = !ui.ntMore; render(); });
+  action('ntDia', function (c) { ui.ntDate = c.v; render(); });
+  action('ntAdd', anadirTarea);
+  // «Guardar» en el panel del día: con algo escrito, la tarea se añade ya;
+  // sin nada, se cierra el panel y se vuelve al campo para escribirla.
+  action('ntListo', function () {
+    if (String(ui.ntTitle || '').trim()) { anadirTarea(); return; }
+    ui.ntMore = false; render(); focusAdd('task');
   });
 
   /* --- el «+» de la barra: apuntar algo desde cualquier pantalla ---------- */
@@ -132,7 +140,7 @@
     if (!apuntar()) return;
     UI.closeSheet(); render();
     Pantalla.toast(when === 'sin' ? 'Guardada en pendientes sin fecha.' : when === 'repite' ? 'Hábito añadido a tu rutina ' + (q.rutina === 'night' ? 'de noche.' : 'de día.') :
-      when === 'fecha' ? 'Apuntada para el ' + Fmt.fmt(q.date) + '.' : when === 'manana' ? 'Apuntada para mañana.' : 'Apuntada en el plan de hoy.');
+      when === 'fecha' ? 'Apuntada para ' + Fmt.cuando(q.date) + '.' : when === 'manana' ? 'Apuntada para mañana.' : 'Apuntada en el plan de hoy.');
   });
   action('qMore', function () {
     var q = quick();
@@ -175,15 +183,18 @@
     ui.noteOpen = true; render();
     var na = document.querySelector('[data-f="note"]'); if (na) na.focus();
   });
+  // la meta sugerida se abre ya por sus pasos: es lo siguiente que hay que hacer con ella
   action('suggest', function (c) {
-    Objetivos.sugerida(c.k, c.v, c.el.getAttribute('data-c'));
+    var g = Objetivos.sugerida(c.k, c.v, c.el.getAttribute('data-c'));
+    ui.sheetTab = 'steps';
     render();
-    Pantalla.toast('«' + c.v + '» añadida. Ábrela para ponerle pasos.');
+    UI.openSheet({ t: 'goal', k: c.k, id: g.id });
+    setTimeout(function () { UI.focusAdd('step'); }, 60);
   });
 
   /* --- rutinas --- */
   action('rtoggle', function (c) { Habitos.marcar(c.el.getAttribute('data-day'), c.k, c.id); render(); });
-  action('rSugerir', function (c) { Habitos.nuevo(c.k, c.v); render(); });
+  action('rSugerir', function (c) { Habitos.nuevo(c.k, c.v); render(); Pantalla.toast('Hábito añadido.'); });
   action('radd', function (c) {
     var inp = document.querySelector('[data-add="r' + c.k + '"]');
     var r = Habitos.nuevo(c.k, inp && inp.value);
@@ -192,7 +203,13 @@
     render(); focusAdd('r' + c.k);
     Pantalla.toast('Hábito añadido.');
   });
-  action('rdel', function (c) { armedDelete(c.el, function () { Habitos.borrar(c.k, c.id); render(); }); });
+  action('rdel', function (c) {
+    armedDelete(c.el, function () {
+      var copia = Habitos.borrar(c.k, c.id);
+      render();
+      Pantalla.toast('Hábito eliminado.', function () { Habitos.restaurar(copia); render(); });
+    });
+  });
 
   action('rDia', function (c) {
     if (!Habitos.dia(c.k, c.id, +c.v).ok) { Pantalla.toast('Deja al menos un día, o ponlo en pausa.'); return; }
@@ -200,7 +217,10 @@
   });
   action('rPausa', function (c) { Habitos.pausar(c.k, c.id); render(); });
   action('restDia', function (c) { Habitos.descansoSemanal(+c.v); render(); });
-  action('restHoy', function () { Habitos.descansarHoy(); render(); });
+  action('restHoy', function () {
+    Habitos.descansarHoy(); render();
+    if (Routines.isRest(Dates.today())) Pantalla.toast('Hoy descansas. Tu racha sigue igual.', function () { Habitos.descansarHoy(); render(); });
+  });
 
   UI.onInput('ntTitle', function (c) {
     var el = c.el, id = c.id, k = c.k, sid = c.sid, g;
@@ -214,6 +234,8 @@
     var el = c.el, id = c.id, k = c.k, sid = c.sid, g;
     ui.ntDate = el.value; return;
   });
+  // elegido en el calendario: «Hoy» y «Mañana» dejan de verse marcados
+  UI.onChange('ntDate', function (c) { ui.ntDate = c.el.value; render(); });
   UI.onInput('note', function (c) { Habitos.nota(c.el.getAttribute('data-day'), c.el.value); grow(c.el); });
   UI.onInput('rname', function (c) { Habitos.nombre(c.k, c.id, c.el.value); });
   UI.onChange('evdate', function (c) {

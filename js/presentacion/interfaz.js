@@ -26,10 +26,11 @@
     }).join('') + '</nav>';
   }
 
+  // Un campo de una línea (rows="1") crece desde ahí; el resto, desde 60px.
   function grow(el) {
     if (!el || el.tagName !== 'TEXTAREA') return;
     el.style.height = 'auto';
-    el.style.height = Math.max(el.scrollHeight, 60) + 'px';
+    el.style.height = Math.max(el.scrollHeight, el.getAttribute('rows') === '1' ? 0 : 60) + 'px';
   }
   function growAll(scope) {
     var t = scope.querySelectorAll('textarea');

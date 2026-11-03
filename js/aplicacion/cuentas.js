@@ -13,7 +13,7 @@ var Cuentas = (function () {
   'use strict';
   var S = Store.S, Id = BdvIdentidad;
   var NO_EXISTE = 'No encontramos esa cuenta. Revisa los datos o regístrate.';
-  var NO_COINCIDEN = 'Los datos de acceso o la contraseña no coinciden.';
+  var NO_COINCIDEN = 'El correo o la contraseña no son correctos.';
   var SIN_CONEXION = 'No se pudo comprobar tu cuenta en la nube. Revisa la conexión e inténtalo otra vez.';
   function mensajeEntrada(codigo) {
     if (codigo === 'credenciales') return NO_COINCIDEN;
@@ -106,19 +106,21 @@ var Cuentas = (function () {
     var left = Sec.lockLeft(S.auth);
     if (left) return { msg: 'Demasiados intentos seguidos. Espera ' + left + ' segundos antes de volver a probar.' };
 
-    function rechazar() {
+    function rechazar(extra) {
       // El identificador y la contraseña se comprueban juntos y con el mismo
       // mensaje: así no se puede averiguar cuál de los dos era el correcto.
       Sec.noteFail(S.auth); Store.saveNow();
       var l2 = Sec.lockLeft(S.auth);
-      return { ok: false, msg: NO_COINCIDEN +
+      return { ok: false, msg: NO_COINCIDEN + (extra || '') +
         (l2 ? ' Espera ' + l2 + ' segundos.' : (S.auth.fails >= 3 ? ' Tras cinco fallos habrá que esperar.' : '')) };
     }
     function enNube() {
       return comprobarEnNube(pass, recordar).then(function (r) {
         if (r.ok) return r;
-        // sin conexión, una contraseña local errónea también cuenta como intento fallido
-        return S.account.pass ? rechazar() : { ok: false, msg: mensajeEntrada(r.codigo) };
+        // sin conexión, una contraseña local errónea también cuenta como intento fallido;
+        // se avisa por si la cambió en otro dispositivo y aquí aún no se sabe
+        if (S.account.pass) return rechazar(r.codigo === 'credenciales' ? '' : ' Si la cambiaste hace poco, conéctate a internet y vuelve a probar.');
+        return { ok: false, msg: mensajeEntrada(r.codigo) };
       });
     }
     if (!S.account.pass) {

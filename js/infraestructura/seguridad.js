@@ -286,6 +286,7 @@ var Sec = (function () {
       var it = { id: idOf(x.id), name: s(x.name, L.name) }, dias = diasOf(x.days);
       if (dias.length && dias.length < 7) it.days = dias;
       if (dateOf(x.paused)) it.paused = dateOf(x.paused);
+      if (dateOf(x.since)) it.since = dateOf(x.since);
       return it;
     }
     var rd = arrOf(rt.day, 60, rItem), rn = arrOf(rt.night, 60, rItem);

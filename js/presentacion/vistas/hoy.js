@@ -29,19 +29,20 @@
       return d && Dates.diff(d, t) < days;
     }
 
+    // Cerrar la semana va primero: solo tiene su momento el fin de semana y los
+    // dos primeros días de la siguiente; el chequeo puede esperar.
+    var wStart = Dates.weekStart(t), wRev = V.semanaARevisar();
+    var rv = S.reviews[wRev];
+    if ((wRev !== wStart || Dates.diff(t, Dates.shift(wStart, 6)) <= 1) && (!rv || !rv.focus) && !off('revision', 3)) {
+      return { id: 'revision', icon: 'rotate', title: wRev === wStart ? 'Cierra tu semana' : 'Cierra la semana pasada',
+        body: 'Dos minutos: qué funcionó, qué ajustas y tu foco para la semana que viene.',
+        cta: 'Revisar la semana', act: 'goReview' };
+    }
+
     if (!S.rc.length && !off('chequeo', 5)) {
       return { id: 'chequeo', icon: 'compass', title: 'Descubre cómo estás hoy',
         body: 'Ocho pantallas cortas, unos tres minutos. Al terminar verás qué área de tu vida pide atención.',
         cta: 'Hacer el chequeo', act: 'newRC' };
-    }
-
-    var wStart = Dates.weekStart(t);
-    var last = Dates.shift(wStart, 6);
-    var rv = S.reviews[wStart];
-    if (Dates.diff(t, last) <= 1 && (!rv || !rv.focus) && !off('revision', 3)) {
-      return { id: 'revision', icon: 'rotate', title: 'Cierra tu semana',
-        body: 'Dos minutos: qué funcionó, qué ajustas y tu foco para la semana que viene.',
-        cta: 'Revisar la semana', act: 'goReview' };
     }
 
     if (S.rc.length) {
@@ -54,7 +55,8 @@
       }
     }
 
-    if (used >= 10 && !S.lastBackup && !off('respaldo', 14)) {
+    // con la cuenta en la nube los datos ya están a salvo: no se pide copia
+    if (used >= 10 && !S.lastBackup && !Nube.sync().conectada() && !off('respaldo', 14)) {
       return { id: 'respaldo', icon: 'save', title: 'Guarda una copia de lo que llevas',
         body: 'Lo que hay en este navegador se pierde si lo borras. Copiar tu respaldo tarda diez segundos.',
         cta: 'Hacer copia', act: 'sheetBackup' };
@@ -148,12 +150,18 @@
       (rOpen && nDia + nNoche ? '<button class="btn ghost xs" data-a="editRoutine">' + (editing ? 'Listo' : 'Editar') + '</button>' : '') + '</div>';
     if (!rOpen) return h + '</div>';
 
+    // Ideas para empezar: siguen a mano hasta tener tres hábitos (sin repetir los ya puestos).
+    var nombres = S.routines.day.concat(S.routines.night).map(function (it) { return it.name; });
+    var ideas = SUGERENCIAS.day.concat(SUGERENCIAS.night.slice(0, 1)).map(function (n, i) { return { n: n, k: i < 3 ? 'day' : 'night' }; })
+      .filter(function (x) { return nombres.indexOf(x.n) < 0; });
+    function chipsIdeas() {
+      return '<div class="chips">' + ideas.map(function (x) {
+        return '<button class="chipbtn" data-a="rSugerir" data-k="' + x.k + '" data-v="' + esc(x.n) + '">' + I('plus', 13) + esc(x.n) + '</button>';
+      }).join('') + '</div>';
+    }
     if (!nDia && !nNoche) {
       return h + '<p class="muted">Pequeñas cosas que quieres hacer cada día. Prueba con una de estas o escribe la tuya:</p>' +
-        '<div class="chips">' + SUGERENCIAS.day.concat(SUGERENCIAS.night.slice(0, 1)).map(function (n, i) {
-          return '<button class="chipbtn" data-a="rSugerir" data-k="' + (i < 3 ? 'day' : 'night') + '" data-v="' + esc(n) + '">' + I('plus', 13) + esc(n) + '</button>';
-        }).join('') + '</div>' +
-        '<div class="tlist">' + filaAnadir(hora) + '</div></div>';
+        chipsIdeas() + '<div class="tlist">' + filaAnadir(hora) + '</div></div>';
     }
     if (Routines.isRest(t) && !editing) {
       return h + '<p class="notice">Hoy es día de descanso: no toca ningún hábito y tu racha sigue igual.</p></div>';
@@ -181,11 +189,32 @@
       }
     }
     h += filaAnadir(hora) + '</div>';
+    if (!editing && nDia + nNoche < 3 && ideas.length) h += chipsIdeas();
 
     var ocultos = nDia + nNoche - dayDue.length - nightDue.length;
     if (!editing && ocultos > 0) h += '<p class="tiny">' + (ocultos === 1 ? 'Otro no toca hoy' : 'Otros ' + ocultos + ' no tocan hoy') + '. Lo cambias en «Editar».</p>';
+    // De noche y sin nada marcado: el descanso se ofrece aquí, no escondido en «Editar».
+    if (!editing && (hora >= 20 || hora < 6) && tot.total && !tot.done) {
+      h += '<div class="descanso-oferta"><p class="tiny">¿Día difícil? Puedes tomarlo de descanso: tu racha sigue igual.</p>' +
+        '<button class="btn ghost xs" data-a="restHoy">' + I('moon', 14) + 'Descansar hoy</button></div>';
+    }
     if (editing) h += descanso(t);
     return h + '</div>';
+  }
+
+  // El reto en curso, para marcarlo cada día donde se marca lo demás: si solo
+  // viviera en Progreso, se olvidaría.
+  function retoHoy(t) {
+    var c = S.challenge;
+    if (!c || !c.start) return '';
+    var days = +c.days || 30, n = Dates.diff(c.start, t) + 1, doneN = Object.keys(c.done || {}).length;
+    if (n < 1 || n > days || doneN >= days) return '';
+    var on = !!(c.done || {})[t];
+    return '<div class="sect"><div class="tlist reto-hoy">' +
+      '<div class="tl-head">' + I('zap', 14) + 'Reto<span class="num">Día ' + n + ' de ' + days + '</span></div>' +
+      '<div class="trow' + (on ? ' is-done' : '') + '">' +
+      '<button class="chk" role="checkbox" aria-checked="' + on + '" data-a="chDay" data-day="' + t + '" aria-label="' + esc(c.name || 'Reto') + ', hoy">' + I('check', 15) + '</button>' +
+      '<span class="trow-t grow">' + esc(c.name || 'Tu reto') + '</span></div></div></div>';
   }
 
   /* ------------------------------------------------- tareas de hoy y plan */
@@ -242,7 +271,7 @@
       '<button class="trow-body" data-a="evmove" data-id="' + esc(e.id) + '" aria-expanded="' + open + '" aria-label="Cambiar día u hora de «' + esc(e.title) + '»">' +
       '<span class="trow-t">' + esc(titulo(e)) + '</span>' +
       metaLinea([
-        opt.showDate ? '<span class="bad">' + esc(Fmt.fmt(day)) + '</span>' : '',
+        opt.showDate ? '<span class="bad">' + esc(Fmt.cap(Fmt.cuando(day))) + '</span>' : '',
         e.time ? '<span class="num">' + I('clock', 13) + esc(e.time) + '</span>' : '',
         deMeta(e.goalId)
       ]) + '</button></div>';
@@ -295,12 +324,16 @@
       I('calendar', 14) + '<span>' + esc(ntWhen) + '</span></button>' +
       '<button class="addbar-go" data-a="ntAdd" aria-label="Añadir al plan">' + I('plus', 18) + '</button></div>';
     if (ui.ntMore) {
+      // hoy y mañana a un toque; cualquier otro día, con el calendario
+      var man = Dates.shift(t, 1);
       h += '<div class="plan-move plan-when-panel">' +
-        '<span class="tiny">Día</span>' +
-        '<input class="inp" type="date" data-f="ntDate" value="' + esc(ntDay) + '" min="' + t + '" aria-label="Día de la nueva tarea">' +
+        '<span class="seg mini" role="group" aria-label="Día de la nueva tarea">' +
+        '<button type="button" data-a="ntDia" data-v="' + t + '" aria-pressed="' + (ntDay === t) + '">Hoy</button>' +
+        '<button type="button" data-a="ntDia" data-v="' + man + '" aria-pressed="' + (ntDay === man) + '">Mañana</button></span>' +
+        '<input class="inp" type="date" data-f="ntDate" value="' + esc(ntDay) + '" min="' + t + '" aria-label="Otro día">' +
         '<span class="tiny">Hora</span>' +
         '<input class="inp" type="time" data-f="ntTime" value="' + esc(ui.ntTime || '') + '" aria-label="Hora (opcional)">' +
-        '<button class="btn accent xs" data-a="ntMore">Guardar</button></div>';
+        '<button class="btn accent xs" data-a="ntListo">Guardar</button></div>';
     }
     h += '</div>';
 
@@ -366,16 +399,23 @@
   /* ------------------------------------------------------- ahora */
   var nextCardId = '', nextStepId = '';
 
-  // Lo siguiente que hacer hoy: la próxima tarea con hora (o la última con hora
-  // que quedó atrás), después las que no tienen hora y, al final, los pasos de metas.
+  function mins(hm) { var p = hm.split(':'); return +p[0] * 60 + +p[1]; }
+
+  // Lo siguiente que hacer hoy. Una cita en las próximas dos horas manda; si no,
+  // lo que acerca a una meta (sus pasos y las tareas enlazadas), que es lo que la
+  // persona dijo que le importa; después las tareas sueltas, y al final lo que
+  // tiene hora más tarde o la que ya pasó sin marcar.
   function nextItem(t) {
     var now = nowHM();
     var pend = (S.events[t] || []).filter(function (e) { return !isDone(e); });
     var timed = pend.filter(function (e) { return e.time; }).sort(function (x, y) { return x.time < y.time ? -1 : x.time > y.time ? 1 : 0; });
-    var nx = timed.filter(function (e) { return e.time >= now; })[0] || timed[0] || pend.filter(function (e) { return !e.time; })[0];
-    if (nx) return { e: nx };
+    var proxima = timed.filter(function (e) { return e.time >= now; })[0];
+    if (proxima && mins(proxima.time) - mins(now) <= 120) return { e: proxima };
     var st = goalsToday(t).filter(function (x) { return x.s && !x.s.done; })[0];
-    return st ? { step: st } : null;
+    if (st) return { step: st };
+    var libres = pend.filter(function (e) { return !e.time; });
+    var nx = libres.filter(function (e) { return e.goalId; })[0] || libres[0] || proxima || timed[0];
+    return nx ? { e: nx } : null;
   }
 
   function nextCard(t) {
@@ -450,7 +490,7 @@
     if (d === t) h += nextCard(t);
     h += weekStrip(t, d) + planSection(t, d);
 
-    h += rutinas(t, hora);
+    h += rutinas(t, hora) + retoHoy(t);
 
     /* la nota del día */
     var note = S.notes[t] || '';

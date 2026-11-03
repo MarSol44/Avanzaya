@@ -128,7 +128,9 @@
   V.progreso = function () {
     var doneS = S.goalsS.filter(function (g) { return g.done; }).length;
     var st = Routines.streak(), r = Revision.last(), sem = semanaHabitos();
-    var wStart = Dates.weekStart(Dates.today()), rv = S.reviews[wStart];
+    // a primeros de semana, la que hay que cerrar es la que acaba de terminar
+    var wStart = V.semanaARevisar(), rv = S.reviews[wStart];
+    var revSub = wStart === Dates.weekStart(Dates.today()) ? 'Qué funcionó, qué ajustas y tu foco' : 'La semana pasada: qué funcionó y tu foco';
     var c = S.challenge, chTxt = 'Sin empezar';
     if (c) {
       var days = +c.days || 30, doneN = Object.keys(c.done || {}).length;
@@ -155,7 +157,7 @@
     h += '<div class="sect">' +
       '<div class="sect-head"><span class="sect-title">Para mirar atrás</span></div>' +
       '<div class="list">' +
-      fila('rotate', 'Revisión de la semana', 'Qué funcionó, qué ajustas y tu foco', rv && rv.focus ? 'Hecha' : 'Pendiente', rv && rv.focus ? 'good' : 'accent', 'goReview') +
+      fila('rotate', 'Revisión de la semana', revSub, rv && rv.focus ? 'Hecha' : 'Pendiente', rv && rv.focus ? 'good' : 'accent', 'goReview') +
       fila('compass', 'Chequeo de vida', r ? 'Último, ' + haceDias(r.date) : 'Cómo estás en cada área de tu vida', r ? Revision.avg(r) + '/10' : 'Hacerlo', r ? '' : 'accent', 'sheetRC') +
       fila('zap', 'Reto de 30 días', c ? esc(c.name || 'Tu reto') : 'Elige una cosa y sostenla un mes', esc(chTxt), '', 'sheetChallenge') +
       fila('trophy', 'Lo que has logrado', 'Tu lista de victorias', String(S.wins.length), '', 'sheetWins') +

@@ -139,8 +139,9 @@
           h += '<div class="step' + (s.done ? ' done' : '') + '">' +
             '<button class="chk sm" role="checkbox" aria-checked="' + !!s.done + '" data-a="stepDone" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" aria-label="Marcar paso">' + I('check', 15) + '</button>' +
             '<span class="sfields">' +
-            '<input class="inp-plain" style="font-weight:600" data-f="sname" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" value="' + esc(s.name || '') + '" placeholder="Nombre del paso">' +
-            '<input class="inp-plain" style="font-size:12.5px;color:var(--ink-2)" data-f="sdesc" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" value="' + esc(s.desc || '') + '" placeholder="Añadir una nota">' +
+            // el nombre se lee entero: crece en líneas en vez de cortarse
+            '<textarea class="inp-plain sname" rows="1" style="font-weight:600" data-f="sname" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" placeholder="Nombre del paso" aria-label="Nombre del paso">' + esc(s.name || '') + '</textarea>' +
+            '<input class="inp-plain" style="font-size:12.5px;color:var(--ink-2)" data-f="sdesc" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" value="' + esc(s.desc || '') + '" placeholder="Añadir una nota" aria-label="Nota del paso">' +
             '<span class="row" style="gap:8px;margin-top:5px">' +
             '<input class="inp-plain fecha" type="date" data-f="sdue" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" value="' + esc(s.due || '') + '" aria-label="Fecha del paso">' +
             (!isS && near ? '<button class="btn ghost xs" data-a="promote" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '">' + I('upRight', 14) + 'A corto plazo</button>' : '') +
@@ -339,7 +340,7 @@
     var h = head('zap', 'Reto de 30 días') + '<div class="sheet-body">';
     if (!c) {
       h += '<p class="muted">Elige una sola cosa y sostenla 30 días: suficiente para saber si te sirve, corto para no rendirte.</p>' +
-        '<div class="row" style="gap:8px"><input class="inp grow" data-add="challenge" placeholder="Ej. 30 días sin azúcar">' +
+        '<div class="row" style="gap:8px"><input class="inp grow" data-add="challenge" placeholder="Ej. 30 días sin azúcar" aria-label="Tu reto">' +
         '<input class="inp num" id="chDays" type="number" min="3" max="365" value="30" style="width:72px" aria-label="Días"></div>' +
         '<button class="btn accent block" data-a="addChallenge">Empezar el reto</button></div>';
       return h;
@@ -349,7 +350,7 @@
     var status = doneN >= days ? 'good' : (Dates.diff(c.start, Dates.today()) + 1 > days ? 'bad' : 'warn');
     var label = status === 'good' ? I('trophy', 13) + 'Completado' : status === 'bad' ? I('sleep', 13) + 'Fallido' : I('zap', 13) + 'Activo';
 
-    h += '<div class="spread"><input class="inp-plain" style="font-weight:650;font-size:15px" data-f="chName" value="' + esc(c.name) + '">' +
+    h += '<div class="spread"><input class="inp-plain grow" style="font-weight:650;font-size:15px" data-f="chName" value="' + esc(c.name) + '" placeholder="¿Qué vas a sostener?" aria-label="Nombre del reto">' +
       '<span class="pill ' + status + '">' + label + '</span></div>' +
       '<div class="row" style="gap:11px"><span class="bar grow"><span style="width:' + (doneN / days * 100).toFixed(1) + '%;background:var(--warn)"></span></span>' +
       '<span class="bv num">' + Math.round(doneN / days * 100) + '%</span></div>' +

@@ -16,18 +16,31 @@ var Habitos = (function () {
   function nuevo(kind, nombre, dias) {
     nombre = String(nombre || '').trim();
     if (!nombre) return { ok: false, reason: 'empty' };
-    var it = { id: Util.uid(), name: nombre };
+    // since: desde cuándo existe. Los días de antes no le tocaban y no cuentan como fallo.
+    var it = { id: Util.uid(), name: nombre, since: Dates.today() };
     if (dias && dias.length && dias.length < 7) it.days = dias.slice();
     S.routines[kind].push(it);
     Store.save();
     return { ok: true };
   }
   // Al borrar un hábito se quita también de lo marcado en días anteriores.
+  // Devuelve lo necesario para deshacerlo: el hábito, su sitio y sus días marcados.
   function borrar(kind, id) {
-    S.routines[kind] = S.routines[kind].filter(function (x) { return x.id !== id; });
+    var lista = S.routines[kind], pos = -1, dias = [];
+    lista.forEach(function (x, i) { if (x.id === id) pos = i; });
+    var item = pos >= 0 ? lista[pos] : null;
+    S.routines[kind] = lista.filter(function (x) { return x.id !== id; });
     Object.keys(S.rlog).forEach(function (d) {
-      if (S.rlog[d] && S.rlog[d][kind]) S.rlog[d][kind] = S.rlog[d][kind].filter(function (x) { return x !== id; });
+      var l = S.rlog[d] && S.rlog[d][kind];
+      if (l && l.indexOf(id) >= 0) { dias.push(d); S.rlog[d][kind] = l.filter(function (x) { return x !== id; }); }
     });
+    Store.save();
+    return { kind: kind, item: item, pos: pos, dias: dias };
+  }
+  function restaurar(copia) {
+    if (!copia || !copia.item || Util.byId(S.routines[copia.kind], copia.item.id)) return;
+    S.routines[copia.kind].splice(Math.max(0, copia.pos), 0, copia.item);
+    copia.dias.forEach(function (d) { Routines.log(d)[copia.kind].push(copia.item.id); });
     Store.save();
   }
   function nombre(kind, id, v) { var it = Util.byId(S.routines[kind], id); if (it) it.name = v; Store.save(); }
@@ -67,5 +80,5 @@ var Habitos = (function () {
   // Un aviso que la persona quitó no vuelve ese día.
   function descartarAviso(id) { S.dismissed[id] = Dates.today(); Store.save(); }
 
-  return { marcar: marcar, nuevo: nuevo, borrar: borrar, nombre: nombre, dia: dia, pausar: pausar, descansoSemanal: descansoSemanal, descansarHoy: descansarHoy, nota: nota, descartarAviso: descartarAviso };
+  return { marcar: marcar, nuevo: nuevo, borrar: borrar, restaurar: restaurar, nombre: nombre, dia: dia, pausar: pausar, descansoSemanal: descansoSemanal, descansarHoy: descansarHoy, nota: nota, descartarAviso: descartarAviso };
 })();

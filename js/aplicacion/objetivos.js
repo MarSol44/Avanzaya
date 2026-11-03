@@ -27,12 +27,14 @@ var Objetivos = (function () {
   }
   // Una idea sugerida por la app pasa a ser meta.
   function sugerida(kind, nombre, area) {
-    lista(kind).unshift({
+    var g = {
       id: Util.uid(), name: nombre, done: false, cat: area || '',
       motivation: '', reward: '', priority: 'Media',
       due: Dates.inDays(kind === 'S' ? 90 : 730), steps: []
-    });
+    };
+    lista(kind).unshift(g);
     Store.save();
+    return g;
   }
   // Completar una meta completa también sus pasos.
   function alternar(kind, id) {

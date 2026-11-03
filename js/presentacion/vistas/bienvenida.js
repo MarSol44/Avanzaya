@@ -123,7 +123,9 @@
         : fila('sunrise', 'Tu primer paso, el ' + esc(Fmt.fmt(primero.due)), esc(primero.name) + '. Aparecerá en tu plan de Hoy ese día.', 'hoy')) : '') +
       fila('target', 'Tu meta: «' + esc(w.meta) + '»', 'En Metas, con sus pasos. Tócala para cambiar el nombre, las fechas o los pasos.', 'metas');
     if (String(w.vision || '').trim() && a) {
-      h += fila('sparkle', 'Tu yo del futuro', esc(a.emoji) + ' ' + esc(w.vision) + '. Está en Visión, en Mi Yo del Futuro.', 'vision');
+      // la frase ya suele acabar en punto: no se le añade otro
+      var fv = String(w.vision).trim();
+      h += fila('sparkle', 'Tu yo del futuro', esc(a.emoji) + ' ' + esc(fv) + (/[.!?…]$/.test(fv) ? '' : '.') + ' Está en Visión, en Mi Yo del Futuro.', 'vision');
     }
     h += '</div>' +
       '<div class="card sunk"><div class="stack sm">' +

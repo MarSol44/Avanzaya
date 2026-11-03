@@ -29,6 +29,9 @@
   action('pushReminder', function () { Recordatorio.alternar(); });
   action('saveAccount', function () { Cuentas.guardarAhora(); Pantalla.toast('Cambios guardados.'); });
   action('logout', function () {
+    // al volver a entrar, el correo ya está escrito: solo falta la contraseña
+    var a = Datos.estado().account;
+    ui.loginEmail = a && a.login === 'email' ? a.email || '' : '';
     Cuentas.cerrarSesion();
     ui.screen = 'splash'; render(); window.scrollTo(0, 0);
     Pantalla.toast('Sesión cerrada. Tus datos siguen en este dispositivo.');

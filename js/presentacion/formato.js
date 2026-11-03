@@ -23,6 +23,22 @@ var Fmt = (function () {
     try { return Dates.parseK(k).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }); }
     catch (e) { return k; }
   }
+  // Un día dicho como se dice: «hoy», «mañana», «ayer», «el jueves 12» si cae
+  // esta semana, «hace 3 días» si ya pasó, y si no «el 23 nov».
+  function cuando(k) {
+    var n = Dates.diff(Dates.today(), k), d = Dates.parseK(k);
+    if (n === 0) return 'hoy';
+    if (n === 1) return 'mañana';
+    if (n === -1) return 'ayer';
+    if (n < 0 && n > -7) return 'hace ' + -n + ' días';
+    try {
+      if (n > 1 && n < 7) return 'el ' + d.toLocaleDateString('es-ES', { weekday: 'long' }) + ' ' + d.getDate();
+      return 'el ' + d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short',
+        year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+    } catch (e) { return 'el ' + k; }
+  }
+  // «a mañana», «al jueves 12»: para decir adónde se movió algo.
+  function aDia(k) { var c = cuando(k); return c.slice(0, 3) === 'el ' ? 'al ' + c.slice(3) : 'a ' + c; }
   function weekLabel(start) {
     var end = Dates.shift(start, 6);
     var a = Dates.parseK(start), b = Dates.parseK(end);
@@ -124,7 +140,7 @@ var Fmt = (function () {
   }
 
   return {
-    esc: esc, plural: plural, cap: cap, fmt: fmt, fmtLong: fmtLong, weekLabel: weekLabel, cuenta: cuenta,
+    esc: esc, plural: plural, cap: cap, fmt: fmt, fmtLong: fmtLong, cuando: cuando, aDia: aDia, weekLabel: weekLabel, cuenta: cuenta,
     due: due, catOptions: catOptions, ring: ring, radar: radar
   };
 })();

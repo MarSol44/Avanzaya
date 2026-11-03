@@ -12,8 +12,9 @@
      shift  — sumar días a una fecha
      diff   — días entre dos fechas (a, b) → b - a
 
-   Un hábito puede llevar days (días de la semana en que toca; sin él, todos)
-   y paused (fecha desde la que está en pausa; los días anteriores no cambian). */
+   Un hábito puede llevar days (días de la semana en que toca; sin él, todos),
+   paused (fecha desde la que está en pausa; los días anteriores no cambian)
+   y since (fecha en que se creó; antes no tocaba). */
 (function (root) {
   'use strict';
 
@@ -37,6 +38,7 @@
     }
     function isDue(it, k) {
       if (it.paused && k >= it.paused) return false;
+      if (it.since && k < it.since) return false;
       return !it.days || it.days.indexOf(weekday(k)) >= 0;
     }
     // Los hábitos de una rutina que tocan ese día.

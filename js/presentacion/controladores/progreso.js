@@ -10,7 +10,7 @@
 
   /* --- revisión semanal --- */
   action('goReview', function () {
-    ui.reviewWeek = null; ui.tab = 'progreso'; ui.screen = 'app';
+    ui.reviewWeek = V.semanaARevisar(); ui.tab = 'progreso'; ui.screen = 'app';
     render(); openSheet({ t: 'review' });
   });
   action('revWeek', function (c) {
@@ -23,7 +23,15 @@
 
   /* --- reto --- */
   action('sheetChallenge', function () { openSheet({ t: 'challenge' }); });
-  action('addChallenge', function () { Progreso.reto(val('[data-add="challenge"]'), val('#chDays')); refresh(); });
+  // un reto sin nombre no se puede sostener: primero, qué es
+  action('addChallenge', function () {
+    if (!val('[data-add="challenge"]').trim()) {
+      Pantalla.toast('Escribe qué vas a sostener estos días.');
+      UI.focusAdd('challenge');
+      return;
+    }
+    Progreso.reto(val('[data-add="challenge"]'), val('#chDays')); refresh();
+  });
   action('chDay', function (c) { Progreso.retoDia(c.el.getAttribute('data-day')); refresh(); });
   action('chRestart', function () { Progreso.retoReiniciar(); refresh(); });
   action('chDel', function () { Progreso.retoBorrar(); refresh(); });

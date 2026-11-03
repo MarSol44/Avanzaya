@@ -27,6 +27,14 @@ V.cabecera = function (o) {
   return '<div class="appbar cab">' + top +
     (o.sub ? '<p class="cab-sub' + (o.cita ? ' cita' : '') + '">' + Fmt.esc(o.sub) + '</p>' : '') + (o.extra || '') + '</div>';
 };
+// La semana que toca revisar. Los dos primeros días, la que acaba de terminar
+// (si ya se usaba la app entonces): la nueva aún no tiene nada que mirar.
+// El resto de días, la de ahora.
+V.semanaARevisar = function () {
+  var S = Datos.estado(), t = Dates.today(), w = Dates.weekStart(t), antes = Dates.shift(w, -7);
+  var usada = S.start && S.start <= Dates.shift(antes, 6);
+  return Dates.diff(w, t) <= 1 && usada ? antes : w;
+};
 // Los siete días como botones. `activo(d)` dice cuáles están marcados; `attrs`,
 // lo que lleva cada botón además del día (data-a, data-id…).
 V.diasSemana = function (etiqueta, attrs, activo) {

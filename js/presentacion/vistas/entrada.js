@@ -107,7 +107,7 @@
       redes() +
       '<button class="btn ghost block" type="button" data-a="forgot">¿Olvidaste tu contraseña?</button>' +
       '<button class="btn soft block" type="button" data-a="go" data-s="register">Crear una cuenta nueva</button>' +
-      '<p class="notice">Al entrar, tus datos se sincronizan con tu copia en la nube (Supabase). La contraseña protege el acceso a la app, pero no cifra lo guardado en este navegador. Más en la <a href="#" data-a="legal" data-doc="privacidad">Política de privacidad</a>.</p>' +
+      '<p class="tiny">Tus datos se guardan en tu cuenta y los tienes en todos tus dispositivos. Más en la <a href="#" data-a="legal" data-doc="privacidad">Política de privacidad</a>.</p>' +
       '</form></div>';
   };
 
@@ -150,8 +150,7 @@
     var t = ui.showPw ? 'text' : 'password';
     return '<div class="appbar"><div class="appbar-row">' +
       '<button class="iconbtn" data-a="go" data-s="splash" aria-label="Volver">' + I('left') + '</button>' +
-      '<h1>Crear cuenta</h1></div>' +
-      '<div class="stepper"><div class="track"><span style="width:50%"></span></div><span class="n">Paso 1 de 2</span></div></div>' +
+      '<h1>Crear cuenta</h1></div></div>' +
       '<div class="scroll nonav"><form class="stack" id="regForm" novalidate>' +
       '<label class="field"><span>Nombre</span>' +
       '<input class="inp" id="rgName" autocomplete="given-name" placeholder="Solo tu nombre"></label>' +
@@ -180,8 +179,7 @@
       : '<div class="avatar">' + esc((S.account && S.account.name ? S.account.name : '·').charAt(0).toUpperCase()) + '</div>';
     return '<div class="appbar"><div class="appbar-row">' +
       '<h1>Tu perfil</h1>' +
-      '<button class="iconbtn" data-a="enterApp" aria-label="Saltar este paso">' + I('x') + '</button></div>' +
-      '<div class="stepper"><div class="track"><span style="width:100%"></span></div><span class="n">Paso 2 de 2</span></div></div>' +
+      '<button class="iconbtn" data-a="enterApp" aria-label="Saltar este paso">' + I('x') + '</button></div></div>' +
       '<div class="scroll nonav"><div class="stack">' +
       '<p class="muted">Nada de esto bloquea el acceso. Puedes cambiarlo cuando quieras desde Perfil.</p>' +
       '<div class="row" style="gap:16px">' + av +

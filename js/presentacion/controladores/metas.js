@@ -28,10 +28,10 @@
     openSheet({ t: 'goal', k: c.k, id: g.id });
     setTimeout(function () { var el = document.querySelector('#sheet [data-f="gname"]'); if (el) el.focus(); }, 60);
   });
-  // Se abre por los pasos (lo que hay que hacer); una meta sin pasos, por sus detalles.
+  // Se abre por los pasos (lo que hay que hacer); una meta aún sin nombre, por sus detalles.
   action('openGoal', function (c) {
     var g = Goals.find(c.k, c.id);
-    ui.sheetTab = g && g.steps && g.steps.length ? 'steps' : 'desc';
+    ui.sheetTab = g && String(g.name || '').trim() ? 'steps' : 'desc';
     openSheet({ t: 'goal', k: c.k, id: c.id });
   });
   action('sheetTab', function (c) { ui.sheetTab = c.sid; renderSheet(); });
@@ -72,7 +72,11 @@
   UI.onInput('gname', function (c) { Objetivos.campo(c.k, c.id, 'name', c.el.value); render(); });
   UI.onInput('gmot', function (c) { Objetivos.campo(c.k, c.id, 'motivation', c.el.value); grow(c.el); });
   UI.onInput('grew', function (c) { Objetivos.campo('S', c.id, 'reward', c.el.value); });
-  UI.onInput('sname', function (c) { Objetivos.pasoNombre(c.k, c.id, c.sid, c.el.value); });
+  // el nombre de un paso es una línea: el salto de línea se quita al escribir
+  UI.onInput('sname', function (c) {
+    if (/\n/.test(c.el.value)) { c.el.value = c.el.value.replace(/\s*\n+\s*/g, ' '); c.el.blur(); }
+    Objetivos.pasoNombre(c.k, c.id, c.sid, c.el.value); grow(c.el);
+  });
   UI.onInput('sdesc', function (c) { Objetivos.pasoDesc(c.k, c.id, c.sid, c.el.value); });
   UI.onChange('gdue', function (c) { Objetivos.campo(c.k, c.id, 'due', c.el.value); both(); });
   UI.onChange('gcat', function (c) {
