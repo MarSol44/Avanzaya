@@ -151,7 +151,7 @@ https://fgpwhdfvqtlvfmmzhxsy.supabase.co/auth/v1/callback
 ```
 
 Y en Supabase → **Authentication → URL Configuration** pon tu dirección
-publicada (la que ves en Cloudflare → tu Worker → **Domains**) como **Site URL** y añádela en
+publicada (`https://avanzaya.marisolduran-eng.workers.dev`, la que ves en Cloudflare → tu Worker → **Domains**) como **Site URL** y añádela en
 **Redirect URLs** (para probar en local, añade también `http://localhost:8765`).
 
 **Google**

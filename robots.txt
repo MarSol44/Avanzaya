@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://avanzaya.pages.dev/sitemap.xml
+Sitemap: https://avanzaya.marisolduran-eng.workers.dev/sitemap.xml
