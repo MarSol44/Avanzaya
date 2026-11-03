@@ -1,6 +1,5 @@
 /* ==========================================================================
-   PRESENTACIÓN — controlador de Progreso: metas visibles, reto, logros y
-   revisión semanal. Llama a los casos de uso (Progreso, Objetivos) y repinta.
+   PRESENTACIÓN — controlador de Progreso: reto, logros y revisión semanal. Llama a los casos de uso (Progreso, Objetivos) y repinta.
    ========================================================================== */
 (function () {
   'use strict';
@@ -21,10 +20,6 @@
     if (Dates.diff(Dates.weekStart(Dates.today()), next) > 0) return;   // no se revisa el futuro
     ui.reviewWeek = next; refresh();
   });
-
-  /* --- metas visibles --- */
-  action('hideGoal', function (c) { Objetivos.ocultar(c.id); render(); Pantalla.toast('Meta oculta del progreso.'); });
-  action('showAll', function (c) { Objetivos.mostrar(c.k); render(); });
 
   /* --- reto --- */
   action('sheetChallenge', function () { openSheet({ t: 'challenge' }); });

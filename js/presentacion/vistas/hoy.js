@@ -1,8 +1,9 @@
 /* ==========================================================================
    Pestaña HOY — la pantalla de inicio.
-   Responde a una sola pregunta: ¿qué hago ahora? Todo lo demás está detrás.
-   Aquí se marca la rutina del día, se ve la racha y aparece —como mucho—
-   un aviso a la vez sugiriendo el siguiente paso.
+   Responde a una sola pregunta: ¿qué tengo que hacer hoy? Arriba, lo
+   siguiente; debajo, una sola lista con todo lo del día (atrasado, con hora,
+   cuando puedas, sin fecha); después las rutinas y la nota. La racha y las
+   cifras viven en Progreso: aquí solo se ve cuánto queda del día.
    ========================================================================== */
 (function () {
   'use strict';
@@ -64,7 +65,7 @@
   function nudgeCard() {
     var n = nudge();
     if (!n) return '';
-    return '<div class="nudge">' +
+    return '<div class="aviso">' +
       '<span class="nic">' + I(n.icon, 20) + '</span>' +
       '<div class="grow"><strong>' + esc(n.title) + '</strong>' +
       '<p class="tiny" style="margin-top:4px">' + esc(n.body) + '</p>' +
@@ -85,7 +86,7 @@
   // Días de descanso: no toca ningún hábito y la racha no se resiente.
   function restSection(t) {
     var r = S.rest, hoy = !!r.dates[t];
-    var h = '<div class="sect"><button class="btn ghost sm" data-a="restPanel" aria-expanded="' + !!ui.restOpen + '" style="align-self:flex-start">' +
+    var h = '<div class="sect"><button class="btn ghost xs" data-a="restPanel" aria-expanded="' + !!ui.restOpen + '" style="align-self:flex-start">' +
       I('moon', 15) + 'Días de descanso</button>';
     if (ui.restOpen) {
       h += '<div class="card sunk"><div class="stack sm">' +
@@ -110,11 +111,11 @@
     var list = editing ? all : due, hechos = due.filter(function (it) { return marks.indexOf(it.id) >= 0; }).length;
 
     var h = '<div class="sect">' +
-      '<div class="sect-head"><span class="sub-title">' + I(icon, 16) + label + '</span>' +
+      '<div class="sect-head sub"><span class="sub-title">' + I(icon, 16) + label + '</span>' +
       '<span class="row" style="gap:8px">' +
       (all.length ? '<button class="btn ghost xs" data-a="editRoutine" data-k="' + kind + '">' +
         (editing ? 'Listo' : 'Editar') + '</button>' : '') +
-      (due.length ? '<span class="pill num' + (hechos >= due.length ? ' good' : '') + '">' + hechos + ' de ' + due.length + '</span>' : '') +
+      (due.length ? '<span class="tiny num' + (hechos >= due.length ? ' ok' : '') + '">' + hechos + ' de ' + due.length + '</span>' : '') +
       '</span></div>';
 
     if (!list.length) {
@@ -179,11 +180,17 @@
       '</div>';
   }
 
-  // La meta de un paso o tarea, como contexto: el título queda para lo que hay que hacer.
-  function metaPill(gid) {
+  // Una línea de contexto bajo el título: hora, cita, fecha atrasada, meta.
+  // Solo lo que hay; si no hay nada, no se pinta.
+  function metaLinea(partes) {
+    partes = partes.filter(Boolean);
+    return partes.length ? '<span class="trow-m">' + partes.join('') + '</span>' : '';
+  }
+  function deMeta(gid) {
     var x = gid && goalById(gid);
     if (!x) return '';
-    return '<span class="pill meta-ctx">' + I('target', 13) + '<span>' + esc(x.g.name || 'Meta') + '</span></span>';
+    var c = Areas.get(x.g.cat);
+    return '<span>' + (c ? esc(c.emoji) + ' ' : I('target', 13)) + esc(x.g.name || 'Meta') + '</span>';
   }
   // Las tareas creadas antes llevan «Meta · paso» en el título: se enseña solo el paso.
   function titulo(e) {
@@ -191,24 +198,21 @@
     return n && e.title.indexOf(n + ' · ') === 0 ? e.title.slice(n.length + 3) : e.title;
   }
 
-  // Cada tarea es una tarjeta: se toca para cambiar día u hora (ahí también se
-  // quita) y el círculo de la derecha la marca como hecha.
+  // Una tarea: el círculo de la izquierda la marca como hecha; el resto se toca
+  // para cambiar día u hora (ahí también se quita).
   function planRow(e, day, opt) {
     opt = opt || {};
-    // el panel de la tarea que está en «Próximo paso» se abre dentro de esa tarjeta
-    var open = ui.moveId === e.id && e.id !== nextCardId, appt = e.kind === 'appt', done = isDone(e);
-    var h = '<div class="listrow plan' + (done ? ' is-done' : '') + '">' +
-      '<button class="plan-body" data-a="evmove" data-id="' + esc(e.id) + '" aria-expanded="' + open + '" aria-label="Cambiar día u hora de «' + esc(e.title) + '»">' +
-      '<span class="plan-ic">' + I(appt ? 'calendar' : 'leaf', 19) + '</span>' +
-      '<span class="grow plan-txt">' + esc(titulo(e)) +
-      '<span class="plan-meta">' +
-      (opt.next ? '<span class="pill accent">Próxima</span>' : '') +
-      (opt.showDate ? '<span class="pill bad">' + esc(Fmt.fmt(day)) + '</span>' : '') +
-      (e.time ? '<span class="pill num">' + I('clock', 13) + esc(e.time) + '</span>' : '') +
-      (appt ? '<span class="pill accent">Cita</span>' : '') +
-      metaPill(e.goalId) +
-      '</span></span></button>' +
-      '<button class="chk lg" role="checkbox" aria-checked="' + done + '" data-a="evdone" data-day="' + day + '" data-id="' + esc(e.id) + '" aria-label="Marcar «' + esc(e.title) + '» como hecha">' + I('check', 18) + '</button></div>';
+    var open = ui.moveId === e.id, appt = e.kind === 'appt', done = isDone(e);
+    var h = '<div class="trow' + (done ? ' is-done' : '') + '">' +
+      '<button class="chk round" role="checkbox" aria-checked="' + done + '" data-a="evdone" data-day="' + day + '" data-id="' + esc(e.id) + '" aria-label="Marcar «' + esc(e.title) + '» como hecha">' + I('check', 14) + '</button>' +
+      '<button class="trow-body" data-a="evmove" data-id="' + esc(e.id) + '" aria-expanded="' + open + '" aria-label="Cambiar día u hora de «' + esc(e.title) + '»">' +
+      '<span class="trow-t">' + esc(titulo(e)) + '</span>' +
+      metaLinea([
+        opt.showDate ? '<span class="bad">' + esc(Fmt.fmt(day)) + '</span>' : '',
+        e.time ? '<span class="num">' + I('clock', 13) + esc(e.time) + '</span>' : '',
+        appt ? '<span>' + I('calendar', 13) + 'Cita</span>' : '',
+        deMeta(e.goalId)
+      ]) + '</button></div>';
     if (open) h += movePanel(e, day);
     return h;
   }
@@ -216,68 +220,44 @@
   // Un paso de meta de hoy que aún no es tarea: se muestra en el plan y, al
   // editarlo, se convierte en tarea real (enlazada al paso, sin duplicarse).
   function goalRow(x) {
-    var c = Areas.get(x.g.cat);
     if (!x.s) {
-      return '<button class="listrow plan" data-a="openGoal" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '">' +
-        '<span class="plan-ic">' + (c ? esc(c.emoji) : I('target', 19)) + '</span>' +
-        '<span class="grow plan-txt">' + esc(x.g.name || 'Meta sin nombre') +
-        '<span class="plan-meta"><span class="pill bad">' + I('flame', 13) + 'Vence hoy</span></span></span>' +
-        I('right', 16) + '</button>';
+      return '<div class="trow"><span class="trow-ic">' + I('target', 16) + '</span>' +
+        '<button class="trow-body" data-a="openGoal" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '">' +
+        '<span class="trow-t">' + esc(x.g.name || 'Meta sin nombre') + '</span>' +
+        metaLinea(['<span class="bad">La meta vence hoy</span>']) + '</button></div>';
     }
     var done = !!x.s.done, title = x.s.name || 'Paso';
-    return '<div class="listrow plan' + (done ? ' is-done' : '') + '">' +
-      '<button class="plan-body" data-a="gsEdit" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '" aria-label="Cambiar día u hora de «' + esc(title) + '»">' +
-      '<span class="plan-ic">' + (c ? esc(c.emoji) : I('target', 19)) + '</span>' +
-      '<span class="grow plan-txt">' + esc(title) +
-      '<span class="plan-meta">' + metaPill(x.g.id) + '</span></span></button>' +
-      '<button class="chk lg" role="checkbox" aria-checked="' + done + '" data-a="gsDone" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '" aria-label="Marcar «' + esc(title) + '» como hecha">' + I('check', 18) + '</button></div>';
+    return '<div class="trow' + (done ? ' is-done' : '') + '">' +
+      '<button class="chk round" role="checkbox" aria-checked="' + done + '" data-a="gsDone" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '" aria-label="Marcar «' + esc(title) + '» como hecha">' + I('check', 14) + '</button>' +
+      '<button class="trow-body" data-a="gsEdit" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '" aria-label="Cambiar día u hora de «' + esc(title) + '»">' +
+      '<span class="trow-t">' + esc(title) + '</span>' + metaLinea([deMeta(x.g.id)]) + '</button></div>';
   }
 
-  function taskList(day, empty, extra) {
-    // el paso que ya está en «Próximo paso» no se repite en la lista
-    var list = S.events[day] || [], extraRows = (extra || []).filter(function (x) { return !x.s || x.s.id !== nextStepId; });
-    if (!list.length && !extraRows.length && nextStepId) return '';
-    if (!list.length && !extraRows.length) return '<p class="muted">' + empty + '</p>';
-    var timed = list.filter(function (e) { return e.time; }).sort(function (x, y) { return x.time < y.time ? -1 : x.time > y.time ? 1 : 0; });
-    var loose = list.filter(function (e) { return !e.time; });
-    // La siguiente con hora que aún no se ha hecho, solo en el día de hoy.
-    var nextId = '';
-    if (day === Dates.today()) {
-      var now = nowHM(), nx = timed.filter(function (e) { return !isDone(e) && e.time >= now; })[0];
-      if (nx) nextId = nx.id;
-    }
-    var h = '<div class="plan-list">';
-    timed.forEach(function (e) { h += planRow(e, day, { next: e.id === nextId }); });
-    if (loose.length || extraRows.length) h += '<div class="plan-group">' + (timed.length ? 'Cuando puedas' : 'Sin horario') + '</div>';
-    extraRows.forEach(function (x) { h += goalRow(x); });
-    loose.forEach(function (e) { h += planRow(e, day); });
-    return h + '</div>';
+  function grupo(titulo, filas, accion, cls) {
+    if (!filas) return '';
+    return '<div class="tgroup' + (cls ? ' ' + cls : '') + '"><span>' + titulo + '</span>' + (accion || '') + '</div>' +
+      '<div class="tlist">' + filas + '</div>';
   }
-
 
   /* «Plan»: el del día elegido en la tira de la semana (hoy por defecto).
-     Primero se añade, luego la lista: lo que más se usa, arriba. */
+     Primero se añade; luego una sola lista por grupos. Lo que ya está arriba,
+     en «Ahora», no se repite. */
   function planSection(t, d) {
     var isToday = d === t;
-    var evs = S.events[d] || [], gt = goalsToday(d), late = isToday ? Tasks.overdue(t) : [];
-    var steps = gt.filter(function (x) { return x.s; });
-    var total = evs.length + steps.length;
-    var doneN = evs.filter(isDone).length + steps.filter(function (x) { return x.s.done; }).length;
+    var evs = (S.events[d] || []).filter(function (e) { return e.id !== nextCardId; });
+    var gt = goalsToday(d).filter(function (x) { return !x.s || x.s.id !== nextStepId; });
+    var late = isToday ? Tasks.overdue(t).filter(function (x) { return x.e.id !== nextCardId; }) : [];
 
     var h = '<div class="sect" id="plan">' +
-      '<div class="sect-head"><span class="sect-title" style="font-size:1.05rem">' + I('list') +
-      (isToday ? 'Plan de hoy' : 'Plan · ' + esc(Fmt.cap(Fmt.fmtLong(d)))) + '</span>' +
-      (total ? '<span class="pill num' + (doneN === total ? ' good' : '') + '">' + doneN + ' de ' + total + '</span>' : '') + '</div>';
-    if (!isToday) {
-      h += '<button class="btn ghost xs" data-a="planDay" data-day="' + t + '" style="align-self:flex-start">' + I('left', 14) + 'Volver a hoy</button>';
-    }
+      '<div class="sect-head"><span class="sect-title">' + (isToday ? 'Tu plan de hoy' : esc(Fmt.cap(Fmt.fmtLong(d)))) + '</span>' +
+      (!isToday ? '<button class="btn ghost xs" data-a="planDay" data-day="' + t + '">' + I('left', 14) + 'Hoy</button>' : '') + '</div>';
 
     /* añadir: título, y junto al «+» el botón con el día y la hora de la nueva tarea */
     var base = d < t ? t : d;
     var ntDay = /^\d{4}-\d\d-\d\d$/.test(ui.ntDate || '') ? ui.ntDate : base;
     var ntWhen = (ntDay === t ? 'Hoy' : ntDay === Dates.shift(t, 1) ? 'Mañana' : Fmt.fmt(ntDay)) + (ui.ntTime ? ' · ' + ui.ntTime : '');
     h += '<div class="plan-add">' +
-      '<div class="row" style="gap:8px"><input class="inp grow" data-f="ntTitle" data-add="task" value="' + esc(ui.ntTitle || '') + '" placeholder="Añadir una tarea" aria-label="Nueva tarea" enterkeyhint="done">' +
+      '<div class="row" style="gap:8px"><input class="inp grow" data-f="ntTitle" data-add="task" value="' + esc(ui.ntTitle || '') + '" placeholder="Añadir tarea o cita" aria-label="Nueva tarea" enterkeyhint="done">' +
       '<button class="btn soft sm plan-when" data-a="ntMore" aria-expanded="' + !!ui.ntMore + '" aria-label="Día y hora de la nueva tarea: ' + esc(ntWhen) + '">' +
       I('calendar', 15) + '<span>' + esc(ntWhen) + '</span></button>' +
       '<button class="fab sm" data-a="ntAdd" aria-label="Añadir al plan">' + I('plus') + '</button></div>';
@@ -291,49 +271,48 @@
     }
     h += '</div>';
 
-    if (late.length) {
-      h += '<div class="plan-list"><div class="plan-group spread">Atrasadas' +
-        '<button class="btn ghost xs" data-a="overdueAll">Pasar todas a hoy</button></div>';
-      late.slice(0, 5).forEach(function (x) { h += planRow(x.e, x.day, { showDate: true }); });
-      if (late.length > 5) h += '<p class="tiny" style="padding:6px 14px 10px">Y ' + (late.length - 5) + ' más.</p>';
-      h += '</div>';
+    var conHora = evs.filter(function (e) { return e.time; }).sort(function (x, y) { return x.time < y.time ? -1 : x.time > y.time ? 1 : 0; });
+    var sinHora = evs.filter(function (e) { return !e.time; });
+    var filasLate = late.slice(0, 5).map(function (x) { return planRow(x.e, x.day, { showDate: true }); }).join('') +
+      (late.length > 5 ? '<p class="tiny" style="padding:10px 14px">Y ' + (late.length - 5) + ' más.</p>' : '');
+    var filasHora = conHora.map(function (e) { return planRow(e, d); }).join('');
+    var filasLibres = gt.map(goalRow).join('') + sinHora.map(function (e) { return planRow(e, d); }).join('');
+
+    if (filasLate) h += grupo('Atrasadas', filasLate, '<button class="btn ghost xs" data-a="overdueAll">Pasar a hoy</button>', 'bad');
+    // con un solo grupo no hace falta rótulo: la lista ya es «tu plan»
+    var dos = filasHora && filasLibres;
+    if (filasHora) h += dos || filasLate ? grupo('Con hora', filasHora) : '<div class="tlist">' + filasHora + '</div>';
+    if (filasLibres) h += dos || filasLate ? grupo('Cuando puedas', filasLibres) : '<div class="tlist">' + filasLibres + '</div>';
+    if (!filasLate && !filasHora && !filasLibres && !(isToday && nextCardId + nextStepId)) {
+      h += '<p class="muted">' + (isToday ? 'Nada planeado para hoy. Escribe arriba lo primero que quieras hacer.' : 'Nada planeado para este día.') + '</p>';
     }
 
-    h += taskList(d, isToday ? 'Nada planeado para hoy. Escribe arriba lo primero que quieras hacer.' : 'Nada planeado para este día.', gt);
-
     if (S.todo.length) {
-      h += '<div class="plan-list"><div class="plan-group">Pendientes sin fecha</div>';
-      S.todo.forEach(function (x) {
-        h += '<div class="listrow plan">' +
-          '<span class="grow plan-txt">' + esc(x.title) +
-          '<span class="plan-meta">' +
-            (x.kind === 'appt' ? '<span class="pill accent">' + I('calendar', 13) + 'Cita</span>' : '') +
-            (x.goalId && goalById(x.goalId) ? '<span class="pill">' + I('target', 13) + 'Meta</span>' : '') + '</span></span>' +
-          '<button class="btn soft xs" data-a="todoPull" data-id="' + esc(x.id) + '">' + I('plus', 13) + (base === t ? 'A hoy' : 'A este día') + '</button>' +
-          '<button class="delbtn" data-a="tododel" data-id="' + esc(x.id) + '" aria-label="Quitar pendiente">' + I('trash', 17) + '</button></div>';
-      });
-      h += '</div>';
+      h += grupo('Sin fecha', S.todo.map(function (x) {
+        return '<div class="trow"><span class="trow-ic">' + I(x.kind === 'appt' ? 'calendar' : 'note', 16) + '</span>' +
+          '<span class="trow-body" style="cursor:default"><span class="trow-t">' + esc(x.title) + '</span>' +
+          metaLinea([x.goalId ? deMeta(x.goalId) : '']) + '</span>' +
+          '<span class="trow-act"><button class="btn ghost xs" data-a="todoPull" data-id="' + esc(x.id) + '">' + (base === t ? 'A hoy' : 'A este día') + '</button>' +
+          '<button class="delbtn" data-a="tododel" data-id="' + esc(x.id) + '" aria-label="Quitar pendiente">' + I('trash', 17) + '</button></span></div>';
+      }).join(''));
     }
     return h + '</div>';
   }
 
-  /* metas que vencen pronto */
+  /* metas que vencen esta semana (o ya vencieron): el puente entre el día y los objetivos */
   function soonSection() {
-    var soon = Goals.upcoming(3);
+    var soon = Goals.upcoming(5).filter(function (x) { var n = Goals.daysLeft(x.g.due); return n !== null && n <= 7; });
     if (!soon.length) return '';
-    var h = '<div class="sect">' +
-      '<div class="sect-head"><span class="sect-title" style="font-size:1.05rem">' + I('target') + 'Vence pronto</span>' +
-      '<button class="btn ghost xs" data-a="tab" data-t="metas">Ver todas</button></div>' +
-      '<div class="list">';
-    soon.forEach(function (x) {
-      var d = Fmt.due(x.g.due, false), c = Areas.get(x.g.cat);
-      h += '<button class="listrow" data-a="openGoal" data-k="' + x.kind + '" data-id="' + esc(x.g.id) + '">' +
-        '<span class="thumb" style="width:34px;height:34px;border-radius:10px;font-size:16px;background:' +
-        (c ? esc(c.color) + '1f' : 'color-mix(in srgb,var(--ink) 6%,transparent)') + '">' + (c ? esc(c.emoji) : I('target', 17)) + '</span>' +
-        '<span class="grow" style="font-size:14px">' + esc(x.g.name || 'Meta sin nombre') + '</span>' +
-        '<span class="pill ' + d.cls + '">' + (d.cls === 'bad' ? I('flame', 13) : '') + esc(d.txt) + '</span></button>';
-    });
-    return h + '</div></div>';
+    return '<div class="sect"><div class="sect-head"><span class="sect-title">Metas que vencen</span>' +
+      '<button class="btn ghost xs" data-a="tab" data-t="metas">Ver metas</button></div>' +
+      '<div class="tlist">' + soon.map(function (x) {
+        var d = Fmt.due(x.g.due, false), c = Areas.get(x.g.cat);
+        return '<button class="trow trow-btn" data-a="openGoal" data-k="' + x.kind + '" data-id="' + esc(x.g.id) + '">' +
+          '<span class="trow-ic">' + (c ? esc(c.emoji) : I('target', 16)) + '</span>' +
+          '<span class="trow-body"><span class="trow-t">' + esc(x.g.name || 'Meta sin nombre') + '</span>' +
+          metaLinea(['<span class="' + (d.cls === 'bad' ? 'bad' : '') + '">' + esc(d.txt) + '</span>']) + '</span>' +
+          I('right', 16) + '</button>';
+      }).join('') + '</div></div>';
   }
 
   /* la semana en una tira: tocar un día cambia el plan de abajo a ese día */
@@ -346,12 +325,12 @@
       h += '<button class="wday" data-a="planDay" data-day="' + k + '" aria-pressed="' + (k === d) + '"' + (k === t ? ' data-today="1"' : '') +
         ' aria-label="' + esc(Fmt.cap(Fmt.fmtLong(k))) + (pend ? ', ' + pend + ' pendientes' : '') + '">' +
         '<span class="wd">' + WD[Dates.parseK(k).getDay()] + '</span><span class="wn">' + +k.slice(8) + '</span>' +
-        '<span class="wdot">' + (pend ? pend : '') + '</span></button>';
+        '<span class="wdot" aria-hidden="true">' + (pend ? '•' : '') + '</span></button>';
     });
     return h + '<button class="iconbtn" data-a="planWeek" data-v="7" aria-label="Semana siguiente">' + I('right', 17) + '</button></div>';
   }
 
-  /* ------------------------------------------------------- próximo paso */
+  /* ------------------------------------------------------- ahora */
   var nextCardId = '', nextStepId = '';
 
   // Lo siguiente que hacer hoy: la próxima tarea con hora (o la última con hora
@@ -370,32 +349,37 @@
     nextCardId = ''; nextStepId = '';
     var n = nextItem(t);
     if (!n) return '';
-    var title, when, hecho, mover, panel = '';
+    var title, contexto, hecho, mover, panel = '';
     if (n.e) {
       var e = n.e; nextCardId = e.id;
-      title = titulo(e); when = e.time ? 'A las ' + e.time : 'Sin hora';
+      title = titulo(e);
+      contexto = metaLinea([
+        e.time ? '<span class="num">' + I('clock', 14) + (e.time < nowHM() ? 'Era a las ' : 'A las ') + esc(e.time) + '</span>' : '',
+        e.kind === 'appt' ? '<span>' + I('calendar', 14) + 'Cita</span>' : '',
+        deMeta(e.goalId)
+      ]);
       hecho = 'data-a="evdone" data-day="' + t + '" data-id="' + esc(e.id) + '"';
       mover = 'data-a="evmove" data-id="' + esc(e.id) + '" aria-expanded="' + (ui.moveId === e.id) + '"';
       if (ui.moveId === e.id) panel = movePanel(e, t);
     } else {
       var x = n.step;
       nextStepId = x.s.id;
-      title = x.s.name || 'Paso'; when = 'De tu meta: ' + (x.g.name || 'sin nombre');
+      title = x.s.name || 'Paso';
+      contexto = metaLinea([deMeta(x.g.id)]);
       var ids = 'data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '"';
       hecho = 'data-a="gsDone" ' + ids; mover = 'data-a="gsEdit" ' + ids;
     }
-    return '<section class="nx" aria-label="Próximo paso"><span class="nx-leaf" aria-hidden="true">' + I('leaf', 150) + '</span>' +
-      '<div class="nx-kick">' + I('sparkle', 16) + 'Próximo paso</div>' +
-      '<h2 class="nx-title">' + esc(title) + '</h2>' +
-      '<p class="nx-when">' + I('clock', 17) + esc(when) + '</p>' +
-      '<div class="nx-btns"><button class="btn accent nx-btn" ' + hecho + '>' + I('check', 19) + 'Hecho</button>' +
-      '<button class="btn soft nx-btn" ' + mover + '>' + I('clock', 18) + 'Mover</button></div>' +
+    return '<section class="ahora" aria-label="Lo siguiente">' +
+      '<div class="ahora-k">Lo siguiente</div>' +
+      '<h2 class="ahora-t">' + esc(title) + '</h2>' + contexto +
+      '<div class="ahora-b"><button class="btn accent sm" ' + hecho + '>' + I('check', 16) + 'Hecho</button>' +
+      '<button class="btn ghost sm" ' + mover + '>Mover</button></div>' +
       panel + '</section>';
   }
 
   /* --------------------------------------------------------------- la vista */
   V.hoy = function () {
-    var t = Dates.today(), st = Routines.streak();
+    var t = Dates.today();
     var tot = Routines.dayTotals(t);
     var name = (S.account && S.account.name) ? S.account.name.split(' ')[0] : '';
     var hora = new Date().getHours();
@@ -405,67 +389,45 @@
     var d = ui.planDay;
     if (!d || !/^\d{4}-\d\d-\d\d$/.test(d)) d = ui.planDay = t;
 
+    // Cuánto queda del día: tareas, pasos de metas y hábitos. Una sola cifra.
     var evs = S.events[t] || [];
     var steps = goalsToday(t).filter(function (x) { return x.s; });
-
-    // Una frase motivadora por día. Sale de la fecha, así que no cambia al
-    // repintar la pantalla y recorre toda la lista antes de repetir.
-    var F = window.FRASES || [];
-    var dayN = Math.round(Dates.parseK(t).getTime() / 864e5);
-    var frase = F.length ? F[((dayN % F.length) + F.length) % F.length] : '';
-
-    // el anillo: lo hecho hoy entre tareas, pasos de metas y hábitos
-    var planTot = evs.length + steps.length;
-    var planDone = evs.filter(isDone).length + steps.filter(function (x) { return x.s.done; }).length;
-    var rTot = planTot + tot.total, rDone = planDone + tot.done, pct = rTot ? Math.round(rDone / rTot * 100) : 0;
-    var anillo = rTot
-      ? '<div class="hoy-ring" role="img" aria-label="Hoy llevas ' + rDone + ' de ' + rTot + ': ' + pct + '%">' +
-        Fmt.ring(pct, 98, 'var(--accent)', '<b>' + pct + '<small>%</small></b><small>' + rDone + '/' + rTot + '</small>') + '</div>'
+    var total = evs.length + steps.length + tot.total;
+    var hechas = evs.filter(isDone).length + steps.filter(function (x) { return x.s.done; }).length + tot.done;
+    var progreso = total
+      ? '<div class="dia-prog" role="img" aria-label="Hoy llevas ' + hechas + ' de ' + total + '">' +
+        '<span class="bar thin"><span style="width:' + Math.round(hechas / total * 100) + '%"></span></span>' +
+        '<span class="tiny num">' + (hechas >= total ? 'Todo hecho' : hechas + ' de ' + total + ' hechas') + '</span></div>'
       : '';
 
-    var h = '<div class="appbar hoy-head">' +
-      '<div class="hoy-top"><span class="hoy-date">' + esc(Fmt.fmtLong(t).toUpperCase()) + '</span>' + profileBtn() + '</div>' +
-      '<div class="hoy-hero"><div class="grow"><h1>' + esc(saludo) + (name ? ', ' + esc(name) : '') + '</h1>' +
-      (frase ? '<p class="hoy-frase">' + esc(frase) + '</p>' : '') + '</div>' + anillo + '</div></div>';
-
+    var h = V.cabecera({ kicker: Fmt.cap(Fmt.fmtLong(t)), titulo: saludo + (name ? ', ' + name : ''), perfil: profileBtn(), extra: progreso });
     h += '<div class="scroll"><div class="page">';
-
-    /* 1. el anillo ya resume el día: aquí solo la racha y lo que se quedó atrás */
-    var allDone = tot.total && tot.done >= tot.total, atrasadas = Tasks.overdue(t).length;
-    if (st > 0 || atrasadas) {
-      h += '<div class="chips">' +
-        (st > 0 ? '<span class="pill num">' + I('flame', 13) + Fmt.plural(st, 'día de racha', 'días de racha') + '</span>' : '') +
-        (atrasadas ? '<span class="pill warn num">' + Fmt.plural(atrasadas, 'atrasada', 'atrasadas') + '</span>' : '') +
-        '</div>';
-    }
 
     // Si dejó la bienvenida para luego, se le ofrece seguir donde iba.
     if (Bienvenida.retomable()) {
       var q = Bienvenida.quedan();
-      h += '<div class="card sunk"><div class="stack sm">' +
-        '<div class="sect-title">' + I('sparkle') + 'Tu primer plan está a medias</div>' +
-        '<p class="muted">' + (q === 1 ? 'Te queda una pregunta' : 'Te quedan ' + q + ' preguntas') + '. Lo que ya respondiste sigue guardado.</p>' +
-        '<div class="row" style="gap:8px;flex-wrap:wrap">' +
+      h += '<div class="aviso"><div class="grow"><strong>Tu primer plan está a medias</strong>' +
+        '<p class="tiny">' + (q === 1 ? 'Te queda una pregunta' : 'Te quedan ' + q + ' preguntas') + '. Lo que respondiste sigue guardado.</p>' +
+        '<div class="row" style="gap:8px;margin-top:10px">' +
         '<button class="btn accent sm" data-a="bvSeguir">Seguir</button>' +
         '<button class="btn ghost sm" data-a="bvDescartar">No, gracias</button></div></div></div>';
     }
 
-    /* 2. lo siguiente que hacer (solo si se mira hoy), la semana y el plan del día elegido */
+    /* lo siguiente (solo mirando hoy), la semana y el plan del día elegido */
     nextCardId = ''; nextStepId = '';
     if (d === t) h += nextCard(t);
-    h += '<div class="sect" style="gap:10px">' + weekStrip(t, d) + '</div>';
-    h += planSection(t, d);
+    h += weekStrip(t, d) + planSection(t, d);
 
-    /* 3. rutinas, plegables bajo un solo encabezado; dentro, la de día a la
-          vista y la de noche plegada hasta las 18:00 */
+    /* rutinas, plegables bajo un solo encabezado; dentro, la de día a la
+       vista y la de noche plegada de 6:00 a 18:00 */
     if (ui.routinesClosed === undefined) {
       ui.routinesClosed = !!Preferencias.get('rutinas.cerradas', false);   // admite el '1'/'0' antiguo
     }
-    var rOpen = !ui.routinesClosed;
+    var rOpen = !ui.routinesClosed, allDone = tot.total && tot.done >= tot.total;
     h += '<div class="sect" id="rutinas"><button class="fold-head" data-a="toggleRoutines" aria-expanded="' + rOpen + '">' +
-      '<span class="sect-title" style="font-size:1.05rem">' + I('rotate') + 'Rutinas</span>' +
-      '<span class="row" style="gap:8px">' + (tot.total ? '<span class="pill num' + (allDone ? ' good' : '') + '">' + tot.done + ' de ' + tot.total + '</span>' : '') +
-      I(rOpen ? 'down' : 'right', 18) + '</span></button></div>';
+      '<span class="sect-title">Rutinas</span>' +
+      '<span class="row" style="gap:8px">' + (tot.total ? '<span class="tiny num' + (allDone ? ' ok' : '') + '">' + tot.done + ' de ' + tot.total + '</span>' : '') +
+      I(rOpen ? 'down' : 'right', 18) + '</span></button>';
     if (rOpen && Routines.isRest(t) && !ui.editRoutine) {
       h += '<p class="notice">Hoy es día de descanso. Tu racha sigue igual.</p>' + restSection(t);
     } else if (rOpen) {
@@ -477,33 +439,33 @@
       if (hora >= 18 || hora < 6 || ui.nightOpen) {
         h += routine('night', 'De noche', 'moon');
       } else {
-        h += '<div class="sect"><button class="btn ghost block" data-a="toggleNight" style="justify-content:space-between">' +
-          '<span class="row" style="gap:8px">' + I('moon', 17) + 'De noche</span>' +
-          (nightList.length ? '<span class="pill num">' + nightMarks.length + ' de ' + nightList.length + '</span>' : '') + '</button></div>';
+        h += '<button class="fold-sub" data-a="toggleNight">' +
+          '<span class="sub-title">' + I('moon', 16) + 'De noche</span>' +
+          (nightList.length ? '<span class="tiny num">' + nightMarks.length + ' de ' + nightList.length + '</span>' : '') + '</button>';
       }
       if (S.routines.day.length || S.routines.night.length) h += restSection(t);
     }
+    h += '</div>';
 
-    /* 4. la nota del día */
+    /* la nota del día */
     var note = S.notes[t] || '';
     // plegable como Rutinas; se recuerda cómo la dejó la persona
     if (ui.noteClosed === undefined) ui.noteClosed = !!Preferencias.get('nota.cerrada', false);
     var nOpen = !ui.noteClosed;
     h += '<div class="sect" id="nota"><button class="fold-head" data-a="toggleNote" aria-expanded="' + nOpen + '">' +
-      '<span class="sect-title" style="font-size:1.05rem">' + I('note') + 'Nota de hoy</span>' +
-      '<span class="row" style="gap:8px">' + (note ? '<span class="pill good">Escrita</span>' : '') +
+      '<span class="sect-title">Nota del día</span>' +
+      '<span class="row" style="gap:8px">' + (note ? '<span class="tiny">Escrita</span>' : '') +
       I(nOpen ? 'down' : 'right', 18) + '</span></button>';
     if (nOpen) {
       if (note || ui.noteOpen) {
         h += '<textarea class="ta" data-f="note" data-day="' + t + '" placeholder="¿Qué te acercó hoy a donde quieres llegar, y qué te alejó?">' + esc(note) + '</textarea>';
       } else {
-        h += '<button class="btn soft block" data-a="openNote" style="justify-content:flex-start;color:var(--ink-2);font-weight:500">' +
-          I('pencil', 17) + 'Escribir cómo ha ido el día</button>';
+        h += '<button class="inp nota-btn" data-a="openNote">¿Qué te acercó hoy a donde quieres llegar?</button>';
       }
     }
     h += '</div>';
 
-    /* 5. lo secundario, al final: metas que vencen pronto y avisos de la app */
+    /* lo secundario, al final: metas que vencen esta semana y avisos de la app */
     h += soonSection();
     h += nudgeCard();
 

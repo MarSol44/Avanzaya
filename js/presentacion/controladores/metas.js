@@ -28,7 +28,12 @@
     openSheet({ t: 'goal', k: c.k, id: g.id });
     setTimeout(function () { var el = document.querySelector('#sheet [data-f="gname"]'); if (el) el.focus(); }, 60);
   });
-  action('openGoal', function (c) { ui.sheetTab = 'desc'; openSheet({ t: 'goal', k: c.k, id: c.id }); });
+  // Se abre por los pasos (lo que hay que hacer); una meta sin pasos, por sus detalles.
+  action('openGoal', function (c) {
+    var g = Goals.find(c.k, c.id);
+    ui.sheetTab = g && g.steps && g.steps.length ? 'steps' : 'desc';
+    openSheet({ t: 'goal', k: c.k, id: c.id });
+  });
   action('sheetTab', function (c) { ui.sheetTab = c.sid; renderSheet(); });
   action('gdone', function (c) { Objetivos.alternar(c.k, c.id); render(); });
   action('gdel', function (c) {

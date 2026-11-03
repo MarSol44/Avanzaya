@@ -88,10 +88,10 @@
     var isS = k === 'S';
 
     var tabs = '<div class="seg" role="tablist">' +
-      '<button role="tab" aria-selected="' + (ui.sheetTab === 'desc') + '" data-a="sheetTab" data-s="desc">Descripción</button>' +
-      '<button role="tab" aria-selected="' + (ui.sheetTab === 'steps') + '" data-a="sheetTab" data-s="steps">Pasos</button></div>';
+      '<button role="tab" aria-selected="' + (ui.sheetTab === 'steps') + '" data-a="sheetTab" data-s="steps">Pasos' + (g.steps && g.steps.length ? ' · ' + g.steps.filter(function (s) { return s.done; }).length + '/' + g.steps.length : '') + '</button>' +
+      '<button role="tab" aria-selected="' + (ui.sheetTab === 'desc') + '" data-a="sheetTab" data-s="desc">Detalles</button></div>';
 
-    var h = head(isS ? 'zap' : 'mountain', isS ? 'Meta a corto plazo' : 'Meta a largo plazo', tabs);
+    var h = head('', esc(g.name || (isS ? 'Meta a corto plazo' : 'Meta a largo plazo')), tabs);
     h += '<div class="sheet-body">';
 
     if (ui.sheetTab === 'desc') {

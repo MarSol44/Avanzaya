@@ -1,8 +1,8 @@
 /* ==========================================================================
    Pestañas VISIÓN y PROGRESO.
    Cada pantalla responde a una sola pregunta y cabe casi de una vez:
-     Visión   → ¿a dónde voy?
-     Progreso → ¿estoy avanzando?
+     Visión   → ¿a dónde voy?   (reflexiva: texto grande, poco adorno)
+     Progreso → ¿estoy avanzando?   (la racha, la semana, lo que se revisa)
    Lo que es una tarea (revisar la semana, llevar un reto, apuntar un logro)
    no vive aquí: se abre en su propia hoja cuando hace falta.
    ========================================================================== */
@@ -74,7 +74,7 @@
   function visionPage() {
     var h = '';
 
-    /* la visión: una tarjeta destacada; las demás, debajo */
+    /* la visión: el texto manda, sin tarjeta alrededor */
     if (!S.visions.length) {
       h += '<div class="sect"><div class="empty"><span class="ee">' + I('leaf', 30) + '</span>' +
         '<p>Aún no has escrito a dónde quieres llegar. Sin destino no hay forma de saber si avanzas.</p>' +
@@ -82,49 +82,50 @@
     } else {
       h += '<div class="sect">';
       S.visions.forEach(function (v, i) {
-        h += '<div class="' + (i ? 'card' : 'vcard') + '">' +
-          (i ? '' : '<span class="nx-leaf" aria-hidden="true">' + I('leaf', 150) + '</span><div class="nx-kick">' + I('sparkle', 16) + 'En 5 años</div>') +
-          '<textarea class="ta vc-text" data-f="vision" data-id="' + esc(v.id) + '" placeholder="En 5 años quiero…" aria-label="Tu visión a 5 años">' + esc(v.text) + '</textarea>' +
-          '<div class="vc-foot"><span class="tiny num">Escrita el ' + esc(Fmt.fmt(v.date)) + '</span>' +
-          '<button class="delbtn" data-a="visionDel" data-id="' + esc(v.id) + '" aria-label="Eliminar visión">' + I('trash', 18) + '</button></div></div>';
+        h += '<section class="vision' + (i ? ' otra' : '') + '">' +
+          (i ? '' : '<div class="label">Mi vida dentro de 5 años</div>') +
+          '<textarea class="vision-t" data-f="vision" data-id="' + esc(v.id) + '" placeholder="En 5 años quiero…" aria-label="Tu visión a 5 años">' + esc(v.text) + '</textarea>' +
+          '<div class="vision-f"><span class="tiny num">Escrita el ' + esc(Fmt.fmt(v.date)) + '</span>' +
+          '<button class="delbtn" data-a="visionDel" data-id="' + esc(v.id) + '" aria-label="Eliminar visión">' + I('trash', 17) + '</button></div></section>';
       });
-      h += '<button class="btn ghost sm" data-a="visionAdd" style="align-self:flex-start">' + I('plus', 15) + 'Escribir otra visión</button></div>';
+      h += '<button class="btn ghost xs" data-a="visionAdd" style="align-self:flex-start">' + I('plus', 14) + 'Escribir otra visión</button></div>';
     }
 
-    /* mi yo del futuro: una frase por área, directamente aquí */
+    /* mi yo del futuro: una frase por área, en lista */
     h += '<div class="sect">' +
-      '<div class="sect-head"><span class="sect-title">' + I('sparkle') + 'Mi Yo del Futuro</span>' +
-      '<span class="pill num">' + futureCount() + ' de ' + S.cats.length + '</span></div>' +
-      '<p class="muted" style="margin-top:-6px">Una frase por área sobre dónde quieres estar. Toca una para escribirla.</p>' +
-      '<div class="fgrid">';
+      '<div class="sect-head"><span class="sect-title">Mi Yo del Futuro</span>' +
+      '<span class="tiny num">' + futureCount() + ' de ' + S.cats.length + '</span></div>' +
+      '<p class="muted" style="margin-top:-6px">Una frase por área sobre dónde quieres estar.</p>' +
+      '<div class="tlist">';
     S.cats.forEach(function (c) {
       var f = S.future[c.id], on = !!(f && f.goal);
-      h += '<button class="ftile' + (on ? ' on' : '') + '" data-a="openFuture" data-c="' + esc(c.id) + '" aria-label="' + esc(c.name) + (on ? ': ' + esc(f.goal) : ', sin escribir') + '">' +
-        '<span class="gc-ic" style="background:' + esc(c.color) + '22">' + esc(c.emoji) + '</span>' +
-        (on ? '<span class="ft-ok" aria-hidden="true">' + I('check', 14) + '</span>' : '') +
-        '<span class="ft-name">' + esc(c.name.split(' (')[0]) + '</span>' +
-        (on ? '<span class="ft-txt">' + esc(f.goal) + '</span>' : '<span class="ft-txt ft-empty">Sin escribir</span>') + '</button>';
+      h += '<button class="frow" data-a="openFuture" data-c="' + esc(c.id) + '" aria-label="' + esc(c.name) + (on ? ': ' + esc(f.goal) : ', sin escribir') + '">' +
+        '<span class="gc-ic">' + esc(c.emoji) + '</span>' +
+        '<span class="grow"><span class="frow-n">' + esc(c.name.split(' (')[0]) + '</span>' +
+        '<span class="frow-t' + (on ? '' : ' vacio') + '">' + (on ? esc(f.goal) : 'Sin escribir') + '</span></span>' +
+        I('right', 16) + '</button>';
     });
     h += '</div></div>';
 
-    /* para saber por dónde vas */
-    var last = Revision.last();
-    h += '<div class="sect">' +
-      '<div class="sect-head"><span class="label">Para saber por dónde vas</span></div>' +
-      '<div class="list">' +
-      (last || futureCount() ? row('swap', 'Hoy frente a 5 años', '', 'go', ' data-s="vs"') : '') +
-      row('compass', 'Chequeos de vida', last ? 'último ' + Revision.avg(last) + '/10' : 'ninguno', 'sheetRC') +
-      '</div></div>';
-
+    /* comparar dónde estás con dónde quieres estar */
+    if (Revision.last() || futureCount()) {
+      h += '<div class="list">' + row('swap', 'Hoy frente a dentro de 5 años', '', 'go', ' data-s="vs"') + '</div>';
+    }
     return h;
   }
 
+  // Una frase para pensar, distinta cada día: va aquí, en la parte reflexiva de
+  // la app, no en Hoy, que es para hacer.
+  function fraseDelDia() {
+    var F = window.FRASES || [];
+    if (!F.length) return '';
+    var n = Math.round(Dates.parseK(Dates.today()).getTime() / 864e5);
+    return F[((n % F.length) + F.length) % F.length];
+  }
+
   V.vision = function () {
-    var fut = futureCount();
-    var sub = !S.visions.length && !fut ? 'Escribe a dónde quieres llegar.'
-      : 'Tu norte, escrito. ' + fut + ' de ' + S.cats.length + ' áreas pensadas.';
-    var h = V.cabecera({ kicker: 'A dónde voy', titulo: 'Visión', sub: sub, perfil: profileBtn(),
-      lado: '<span class="hd-leaf" aria-hidden="true">' + I('leaf', 74) + '</span>' });
+    var frase = fraseDelDia();
+    var h = V.cabecera({ titulo: 'Visión', sub: frase || 'A dónde quieres llegar.', cita: !!frase, perfil: profileBtn() });
     h += '<div class="scroll"><div class="page">' +
       '<div class="seg" role="tablist">' +
       '<button role="tab" aria-selected="' + (ui.subVision === 'five') + '" data-a="subv" data-s="five">A 5 años</button>' +
@@ -134,92 +135,59 @@
   };
 
   /* ============================================================== PROGRESO */
-  // Una sola tabla con las metas que más piden atención, cortas y largas juntas.
-  function goalTable() {
-    var all = [];
-    S.goalsS.forEach(function (g) { if (!S.hidden[g.id]) all.push({ g: g, k: 'S' }); });
-    S.goalsL.forEach(function (g) { if (!S.hidden[g.id]) all.push({ g: g, k: 'L' }); });
-    var rank = { bad: 0, warn: 1, good: 2 };
-    all.sort(function (a, b) {
-      var d = rank[Goals.state(a.g)] - rank[Goals.state(b.g)];
-      return d !== 0 ? d : (a.g.due < b.g.due ? -1 : 1);
+  // Hábitos marcados frente a los que tocaban, en los días de esta semana que ya pasaron.
+  function semanaHabitos() {
+    var t = Dates.today(), hechos = 0, tocaban = 0;
+    Dates.weekDays(Dates.weekStart(t)).forEach(function (d) {
+      if (d > t) return;
+      var x = Routines.dayTotals(d); hechos += x.done; tocaban += x.total;
     });
-    var hiddenN = Goals.all().filter(function (g) { return S.hidden[g.id]; }).length;
-    var shown = all.slice(0, 6);
-
-    if (!all.length) {
-      return '<div class="empty" style="padding:18px 0"><span class="ee">' + I('target', 30) + '</span>' +
-        '<p>' + (Goals.all().length ? 'Todas tus metas están ocultas de esta vista.' : 'Cuando tengas metas, su avance aparecerá aquí.') + '</p>' +
-        '<button class="btn soft sm" data-a="goGoals" data-s="S">Ir a Metas</button></div>' +
-        (hiddenN ? '<button class="btn ghost xs" data-a="showAll" data-k="all" style="align-self:flex-start">' +
-          I('eye', 14) + 'Mostrar las ocultas</button>' : '');
-    }
-
-    var h = '<div class="plist">';
-    shown.forEach(function (x) {
-      var pct = Goals.pct(x.g), st = Goals.state(x.g), d = Fmt.due(x.g.due, x.g.done), c = Areas.get(x.g.cat);
-      var col = st === 'good' ? 'good' : st === 'bad' ? 'bad' : 'warn';
-      h += '<div class="pcard">' +
-        '<span class="gc-ic" style="background:' + (c ? esc(c.color) + '1f' : 'var(--accent-sf)') + '">' + (c ? esc(c.emoji) : I('target', 21)) + '</span>' +
-        '<div class="pc-main"><div class="pc-top"><span class="grow"><span class="gname">' + esc(x.g.name || 'Sin nombre') + '</span>' +
-        '<span class="pill ' + d.cls + '">' + (d.cls === 'bad' ? I('flame', 13) : '') + esc(d.txt) + '</span></span>' +
-        '<span class="pc-pct num" style="color:var(--' + col + ')">' + pct + '<small>%</small></span>' +
-        '<button class="delbtn" data-a="hideGoal" data-id="' + esc(x.g.id) + '" aria-label="Ocultar del progreso">' + I('eyeOff', 20) + '</button></div>' +
-        '<span class="bar thin"><span style="width:' + pct + '%;background:var(--' + col + ')"></span></span></div></div>';
-    });
-    h += '</div>';
-    if (all.length > 6) {
-      h += '<p class="tiny">Y ' + Fmt.plural(all.length - 6, 'meta más', 'metas más') + '.</p>';
-    }
-    if (hiddenN) {
-      h += '<button class="btn ghost xs" data-a="showAll" data-k="all" style="align-self:flex-start">' +
-        I('eye', 14) + 'Mostrar ' + Fmt.plural(hiddenN, 'meta oculta', 'metas ocultas') + '</button>';
-    }
-    return h;
+    return { hechos: hechos, tocaban: tocaban };
+  }
+  function haceDias(fecha) {
+    var n = Dates.diff(fecha, Dates.today());
+    return n <= 0 ? 'hoy' : n === 1 ? 'ayer' : 'hace ' + n + ' días';
   }
 
   V.progreso = function () {
     var doneS = S.goalsS.filter(function (g) { return g.done; }).length;
-    var pctS = S.goalsS.length ? Math.round(doneS / S.goalsS.length * 100) : 0;
-    var st = Routines.streak(), r = Revision.last();
-    var wStart = Dates.weekStart(Dates.today());
-    var w = Revision.weekStats(wStart), rv = S.reviews[wStart];
-    var c = S.challenge, chTxt = 'sin reto';
+    var st = Routines.streak(), r = Revision.last(), sem = semanaHabitos();
+    var wStart = Dates.weekStart(Dates.today()), rv = S.reviews[wStart];
+    var c = S.challenge, chTxt = 'Sin empezar';
     if (c) {
       var days = +c.days || 30, doneN = Object.keys(c.done || {}).length;
-      chTxt = doneN >= days ? 'completado' : Math.round(doneN / days * 100) + '%';
+      chTxt = doneN >= days ? 'Completado' : doneN + ' de ' + days + ' días';
     }
 
-    var h = V.cabecera({ kicker: '¿Estoy avanzando?', titulo: 'Progreso', perfil: profileBtn(),
-      sub: st ? 'Tu racha: ' + Fmt.plural(st, 'día', 'días') + ' con algún hábito marcado. Un día suelto sin marcar no la rompe.' : 'Marca un hábito hoy y tu racha empieza.',
-      lado: '<div class="hd-badge" role="img" aria-label="Racha: ' + Fmt.plural(st, 'día', 'días') + '">' + I('flame', 30) + st + '</div>' });
+    var h = V.cabecera({ titulo: 'Progreso', perfil: profileBtn(),
+      sub: st ? 'Llevas ' + Fmt.plural(st, 'día', 'días') + ' marcando algún hábito. Un día suelto sin marcar no rompe la racha.'
+        : 'Marca un hábito hoy y empieza tu racha.' });
     h += '<div class="scroll"><div class="page">';
 
-    /* 1 — tres números */
-    h += '<div class="hstats">' +
-      '<div class="hstat"><span class="hn">' + doneS + '<small>/' + S.goalsS.length + '</small></span> <span class="hl">metas cortas logradas</span></div>' +
-      '<div class="hstat"><span class="hn">' + w.full + '<small>/' + (w.elapsed || 7) + '</small></span> <span class="hl">días completos esta semana</span></div>' +
-      '<div class="hstat"><span class="hn">' + (r ? Revision.avg(r) : '—') + (r ? '<small>/10</small>' : '') + '</span> <span class="hl">' + (r ? 'último chequeo' : 'sin chequeo aún') + '</span></div></div>';
+    /* tres cifras, cada una en un solo sitio de la app */
+    h += '<div class="stats">' +
+      '<div class="stat"><b class="num">' + st + '</b><span>' + (st === 1 ? 'día de racha' : 'días de racha') + '</span></div>' +
+      '<div class="stat"><b class="num">' + sem.hechos + '<small>/' + sem.tocaban + '</small></b><span>hábitos esta semana</span></div>' +
+      '<div class="stat"><b class="num">' + doneS + '<small>/' + S.goalsS.length + '</small></b><span>metas cortas conseguidas</span></div></div>';
 
-    /* 2 — ¿cómo van mis metas? */
-    h += '<div class="sect">' +
-      '<div class="sect-head"><span class="sect-title">' + I('target') + 'Tus metas</span>' +
-      '<button class="btn soft xs" data-a="goGoals" data-s="S">Ver todas</button></div>' +
-      goalTable() + '</div>';
-
-    /* 3 — lo que se hace, no lo que se mira */
-    function fila(icono, titulo, sub, pill, cls, accion) {
-      return '<button class="rcard" data-a="' + accion + '"><span class="plan-ic">' + I(icono, 20) + '</span>' +
-        '<span class="rc-txt"><strong>' + titulo + '</strong><span>' + sub + '</span></span>' +
-        '<span class="pill ' + cls + '">' + pill + '</span>' + I('right', 18) + '</button>';
+    /* lo que se revisa cada cierto tiempo */
+    function fila(icono, titulo, sub, valor, cls, accion) {
+      return '<button class="listrow rrow" data-a="' + accion + '">' + I(icono, 19) +
+        '<span class="rc-txt"><strong>' + titulo + '</strong><span class="rc-sub">' + sub + '</span></span>' +
+        '<span class="rc-val ' + cls + '">' + valor + '</span>' + I('right', 16) + '</button>';
     }
     h += '<div class="sect">' +
-      '<div class="sect-head"><span class="sect-title">' + I('rotate') + 'Cada cierto tiempo</span></div>' +
-      '<div class="plist">' +
-      fila('rotate', 'Revisión semanal', 'Dos minutos: qué funcionó y tu foco', rv && rv.focus ? 'Hecha' : 'Pendiente', rv && rv.focus ? 'good' : 'accent', 'goReview') +
-      fila('zap', 'Reto de 30 días', c ? esc(c.name || 'Tu reto') : 'Elige una cosa y sostenla 30 días', esc(chTxt), c ? 'accent' : '', 'sheetChallenge') +
-      fila('trophy', 'Todo lo que has logrado', 'Tu lista de victorias', String(S.wins.length), S.wins.length ? 'good' : '', 'sheetWins') +
+      '<div class="sect-head"><span class="sect-title">Para mirar atrás</span></div>' +
+      '<div class="list">' +
+      fila('rotate', 'Revisión de la semana', 'Qué funcionó, qué ajustas y tu foco', rv && rv.focus ? 'Hecha' : 'Pendiente', rv && rv.focus ? 'good' : 'accent', 'goReview') +
+      fila('compass', 'Chequeo de vida', r ? 'Último, ' + haceDias(r.date) : 'Cómo estás en cada área de tu vida', r ? Revision.avg(r) + '/10' : 'Hacerlo', r ? '' : 'accent', 'sheetRC') +
+      fila('zap', 'Reto de 30 días', c ? esc(c.name || 'Tu reto') : 'Elige una cosa y sostenla un mes', esc(chTxt), '', 'sheetChallenge') +
+      fila('trophy', 'Lo que has logrado', 'Tu lista de victorias', String(S.wins.length), '', 'sheetWins') +
       '</div></div>';
+
+    if (S.goalsS.length + S.goalsL.length) {
+      h += '<button class="btn ghost sm" data-a="goGoals" data-s="S" style="align-self:flex-start">Ver cómo van tus metas' + I('right', 15) + '</button>';
+    }
 
     h += '</div></div>';
     return h;

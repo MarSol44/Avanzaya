@@ -41,7 +41,13 @@
   action('planWeek', function (c) { ui.planDay = Dates.shift(ui.planDay || Dates.today(), +c.v); ui.moveId = null; render(); });
 
   /* --- Hoy: tareas --------------------------------------------------- */
-  action('evdone', function (c) { var r = Tasks.toggle(c.el.getAttribute('data-day'), c.id); if (r.ok) commit(); });
+  action('evdone', function (c) {
+    var day = c.el.getAttribute('data-day'), r = Tasks.toggle(day, c.id);
+    if (!r.ok) return;
+    commit();
+    // una atrasada hecha sale de la lista: que se note, y que se pueda deshacer
+    if (r.done && day < Dates.today()) Pantalla.toast('Hecha.', function () { Tasks.toggle(day, c.id); commit(); });
+  });
   action('evdel', function (c) {
     var day = c.el.getAttribute('data-day'), r = Tasks.remove(day, c.id);
     ui.moveId = null;

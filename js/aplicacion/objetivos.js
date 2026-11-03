@@ -111,17 +111,9 @@ var Objetivos = (function () {
     return { ok: true, n: n };
   }
 
-  /* ------------------------------------------------- visibles en Progreso */
-  function ocultar(id) { S.hidden[id] = true; Store.save(); }
-  function mostrar(kind) {
-    (kind === 'all' ? Goals.all() : lista(kind)).forEach(function (g) { delete S.hidden[g.id]; });
-    Store.save();
-  }
-
   return {
     crear: crear, sugerida: sugerida, alternar: alternar, borrar: borrar, prioridad: prioridad, campo: campo,
     pasoNuevo: pasoNuevo, pasoHecho: pasoHecho, pasoBorrar: pasoBorrar, pasoNombre: pasoNombre,
-    pasoDesc: pasoDesc, pasoFecha: pasoFecha, ascender: ascender, alCalendario: alCalendario,
-    ocultar: ocultar, mostrar: mostrar
+    pasoDesc: pasoDesc, pasoFecha: pasoFecha, ascender: ascender, alCalendario: alCalendario
   };
 })();
