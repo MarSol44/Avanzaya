@@ -1,7 +1,9 @@
 /* ==========================================================================
    Pestañas VISIÓN y PROGRESO.
-   Cada pantalla responde a una sola pregunta y cabe casi de una vez:
-     Visión   → ¿a dónde voy?   (reflexiva: texto grande, poco adorno)
+   Cada pantalla responde a una sola pregunta:
+     Visión   → ¿qué vida quiero construir?  Una sola página, de lo general a
+                lo concreto: la visión escrita, las imágenes y frases que la
+                recuerdan, y cómo quieres que sea cada área.
      Progreso → ¿estoy avanzando?   (la racha, la semana, lo que se revisa)
    Lo que es una tarea (revisar la semana, llevar un reto, apuntar un logro)
    no vive aquí: se abre en su propia hoja cuando hace falta.
@@ -10,7 +12,9 @@
   'use strict';
   var S = Datos.estado(), ui = UIState, esc = Fmt.esc;
 
-  var PLANTILLAS = [
+  // Ideas para quien no sabe qué frase escribir. No se añaden solas: se copian
+  // en el campo para que la persona las haga suyas antes de guardarlas.
+  V.IDEAS_FRASE = [
     'Mi cuerpo es mi casa: lo cuido.',
     'Hago cosas difíciles y me alegro después.',
     'El dinero es libertad, no estatus.',
@@ -18,50 +22,33 @@
     'Primero lo importante, luego lo urgente.',
     'Descansar también es avanzar.'
   ];
-  V.PLANTILLAS = PLANTILLAS;
 
   function profileBtn() {
     return '<button class="iconbtn solid" data-a="tab" data-t="perfil" aria-label="Tu perfil">' +
       (S.profile.photo ? '<img src="' + esc(S.profile.photo) + '" alt="">' : I('user', 19)) + '</button>';
   }
-  function row(icon, title, value, action, extra) {
-    return '<button class="listrow" data-a="' + action + '"' + (extra || '') + '>' +
-      I(icon, 19) + '<span class="grow">' + title + '</span>' +
-      (value ? '<span class="tiny num" style="flex:none">' + value + '</span>' : '') +
-      I('right', 17) + '</button>';
-  }
-
-  /* ========================================================= TABLERO VISIÓN */
+  /* ================================================= IMÁGENES Y FRASES */
+  // Cada pieza se toca para editarla (texto, orden, quitar): sin botones encima.
   function board() {
-    var h = '';
-    h += '<div class="sect">' +
-      '<div class="chips">' +
-      '<label class="btn soft sm">' + I('image', 17) + 'Imagen<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" id="boardImg" style="display:none"></label>' +
-      '<button class="btn soft sm" data-a="addQuote">' + I('quote', 17) + 'Frase</button>' +
-      '<button class="btn ghost sm" data-a="plantillas">' + I('sparkle', 17) + 'Plantillas</button>' +
-      '</div>';
-
+    var h = '<div class="sect">' +
+      '<div class="sect-head"><span class="sect-title">Imágenes y frases</span></div>';
+    var acciones = '<div class="row" style="gap:8px;flex-wrap:wrap">' +
+      '<label class="btn soft sm">' + I('image', 16) + 'Añadir imagen<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" id="boardImg" hidden></label>' +
+      '<button class="btn ghost sm" data-a="addQuote">' + I('quote', 16) + 'Añadir frase</button></div>';
     if (!S.board.length) {
-      h += '<div class="empty"><span class="ee">' + I('image', 30) + '</span>' +
-        '<p>Sube fotos de lo que quieres construir y añade frases que te recuerden por qué.</p></div>';
-    } else {
-      h += '<div class="board">';
-      S.board.forEach(function (t, i) {
-        var isImg = t.kind === 'img' && t.src;
-        h += '<div class="tile' + (isImg ? ' hasimg' : ' quote') + '">' +
-          (isImg ? '<img src="' + esc(t.src) + '" alt="' + esc(t.cap || 'Imagen del tablero') + '">' : '') +
-          '<span class="acts">' +
-          (i > 0 ? '<button data-a="boardMove" data-i="' + i + '" data-d="-1" aria-label="Mover antes">' + I('up', 15) + '</button>' : '') +
-          (i < S.board.length - 1 ? '<button data-a="boardMove" data-i="' + i + '" data-d="1" aria-label="Mover después">' + I('down', 15) + '</button>' : '') +
-          '<button data-a="boardEdit" data-i="' + i + '" aria-label="Editar texto">' + I('pencil', 15) + '</button>' +
-          '<button data-a="boardDel" data-i="' + i + '" aria-label="Eliminar">' + I('trash', 15) + '</button>' +
-          '</span>' +
-          (t.cap ? '<span class="cap">' + esc(t.cap) + '</span>' : (isImg ? '' : '<span class="cap tiny">Sin texto</span>')) +
-          '</div>';
-      });
-      h += '</div>';
+      return h + '<p class="muted">Una foto del lugar donde quieres vivir, de alguien a quien admiras, de cómo quieres sentirte. ' +
+        'Lo que ves cada día se te queda más que una lista.</p>' + acciones + '</div>';
     }
-    return h + '</div>';
+    h += '<div class="board">';
+    S.board.forEach(function (t, i) {
+      var isImg = t.kind === 'img' && t.src;
+      h += '<button class="tile' + (isImg ? ' hasimg' : ' quote') + '" data-a="boardEdit" data-i="' + i + '" aria-label="' +
+        esc(isImg ? 'Imagen' + (t.cap ? ': ' + t.cap : '') : 'Frase: ' + (t.cap || 'vacía')) + '. Tocar para editar">' +
+        (isImg ? '<img src="' + esc(t.src) + '" alt="">' : '') +
+        (t.cap ? '<span class="cap">' + esc(t.cap) + '</span>' : (isImg ? '' : '<span class="cap vacia">Frase vacía</span>')) +
+        '</button>';
+    });
+    return h + '</div>' + acciones + '</div>';
   }
 
   /* ======================================================= VISIÓN A 5 AÑOS */
@@ -71,31 +58,37 @@
     return n;
   }
 
-  function visionPage() {
-    var h = '';
-
-    /* la visión: el texto manda, sin tarjeta alrededor */
+  /* la visión escrita: el texto manda, sin tarjeta alrededor */
+  function visionEscrita() {
     if (!S.visions.length) {
-      h += '<div class="sect"><div class="empty"><span class="ee">' + I('leaf', 30) + '</span>' +
-        '<p>Aún no has escrito a dónde quieres llegar. Sin destino no hay forma de saber si avanzas.</p>' +
-        '<button class="btn accent sm" data-a="visionAdd">Escribirla ahora</button></div></div>';
-    } else {
-      h += '<div class="sect">';
-      S.visions.forEach(function (v, i) {
-        h += '<section class="vision' + (i ? ' otra' : '') + '">' +
-          (i ? '' : '<div class="label">Mi vida dentro de 5 años</div>') +
-          '<textarea class="vision-t" data-f="vision" data-id="' + esc(v.id) + '" placeholder="En 5 años quiero…" aria-label="Tu visión a 5 años">' + esc(v.text) + '</textarea>' +
-          '<div class="vision-f"><span class="tiny num">Escrita el ' + esc(Fmt.fmt(v.date)) + '</span>' +
-          '<button class="delbtn" data-a="visionDel" data-id="' + esc(v.id) + '" aria-label="Eliminar visión">' + I('trash', 17) + '</button></div></section>';
-      });
-      h += '<button class="btn ghost xs" data-a="visionAdd" style="align-self:flex-start">' + I('plus', 14) + 'Escribir otra visión</button></div>';
+      // lo primero que se ve: qué es esto y cómo empezar, sin dejar a nadie ante una hoja en blanco
+      return '<section class="vision-inicio">' +
+        '<p class="vi-q">¿Cómo quieres que sea tu vida dentro de 5 años?</p>' +
+        '<p class="muted">Escríbelo como si ya fuera verdad. No tiene que quedar perfecto: lo irás ajustando. ' +
+        'Te servirá para elegir metas que de verdad te importen.</p>' +
+        '<button class="btn accent" data-a="visionAdd" style="align-self:flex-start">' + I('pencil', 16) + 'Empezar a escribir</button>' +
+        '<div class="vi-ideas"><span class="label">Si no sabes por dónde empezar</span>' +
+        '<ul class="qlist"><li>¿Dónde vives y con quién?</li><li>¿A qué dedicas tus días?</li>' +
+        '<li>¿Cómo cuidas de tu cuerpo y de tu cabeza?</li><li>¿Qué has conseguido que hoy te parece lejano?</li></ul></div>' +
+        '</section>';
     }
+    var h = '<div class="sect">';
+    S.visions.forEach(function (v, i) {
+      h += '<section class="vision' + (i ? ' otra' : '') + '">' +
+        (i ? '' : '<div class="label">Mi vida dentro de 5 años</div>') +
+        '<textarea class="vision-t" data-f="vision" data-id="' + esc(v.id) + '" placeholder="En 5 años vivo… paso mis días… me siento…" aria-label="Tu visión a 5 años">' + esc(v.text) + '</textarea>' +
+        '<div class="vision-f"><span class="tiny num">Escrita el ' + esc(Fmt.fmt(v.date)) + '</span>' +
+        '<button class="delbtn" data-a="visionDel" data-id="' + esc(v.id) + '" aria-label="Eliminar visión">' + I('trash', 17) + '</button></div></section>';
+    });
+    return h + '<button class="btn ghost xs" data-a="visionAdd" style="align-self:flex-start">' + I('plus', 14) + 'Escribir otra versión</button></div>';
+  }
 
-    /* mi yo del futuro: una frase por área, en lista */
-    h += '<div class="sect">' +
+  /* mi yo del futuro: una frase por área, en lista */
+  function porAreas() {
+    var h = '<div class="sect">' +
       '<div class="sect-head"><span class="sect-title">Mi Yo del Futuro</span>' +
       '<span class="tiny num">' + futureCount() + ' de ' + S.cats.length + '</span></div>' +
-      '<p class="muted" style="margin-top:-6px">Una frase por área sobre dónde quieres estar.</p>' +
+      '<p class="muted" style="margin-top:-6px">Lo mismo, área por área: una frase sobre cómo quieres que sea cada una. De aquí salen tus metas.</p>' +
       '<div class="tlist">';
     S.cats.forEach(function (c) {
       var f = S.future[c.id], on = !!(f && f.goal);
@@ -105,32 +98,15 @@
         '<span class="frow-t' + (on ? '' : ' vacio') + '">' + (on ? esc(f.goal) : 'Sin escribir') + '</span></span>' +
         I('right', 16) + '</button>';
     });
-    h += '</div></div>';
-
-    /* comparar dónde estás con dónde quieres estar */
-    if (Revision.last() || futureCount()) {
-      h += '<div class="list">' + row('swap', 'Hoy frente a dentro de 5 años', '', 'go', ' data-s="vs"') + '</div>';
-    }
-    return h;
+    return h + '</div></div>';
   }
 
-  // Una frase para pensar, distinta cada día: va aquí, en la parte reflexiva de
-  // la app, no en Hoy, que es para hacer.
-  function fraseDelDia() {
-    var F = window.FRASES || [];
-    if (!F.length) return '';
-    var n = Math.round(Dates.parseK(Dates.today()).getTime() / 864e5);
-    return F[((n % F.length) + F.length) % F.length];
-  }
-
+  // Una sola página: primero lo escrito (lo que da sentido), luego lo que se ve
+  // (lo que lo recuerda) y al final lo concreto por áreas (de donde salen las metas).
   V.vision = function () {
-    var frase = fraseDelDia();
-    var h = V.cabecera({ titulo: 'Visión', sub: frase || 'A dónde quieres llegar.', cita: !!frase, perfil: profileBtn() });
-    h += '<div class="scroll"><div class="page">' +
-      '<div class="seg" role="tablist">' +
-      '<button role="tab" aria-selected="' + (ui.subVision === 'five') + '" data-a="subv" data-s="five">A 5 años</button>' +
-      '<button role="tab" aria-selected="' + (ui.subVision === 'board') + '" data-a="subv" data-s="board">Tablero</button>' +
-      '</div>' + (ui.subVision === 'board' ? board() : visionPage()) + '</div></div>';
+    // vacía, la pregunta de abajo ya explica la página: no hace falta subtítulo
+    var h = V.cabecera({ titulo: 'Visión', sub: S.visions.length ? 'La vida que quieres construir, en tus palabras y en imágenes.' : '', perfil: profileBtn() });
+    h += '<div class="scroll"><div class="page">' + visionEscrita() + board() + porAreas() + '</div></div>';
     return h;
   };
 

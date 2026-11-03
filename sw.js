@@ -4,7 +4,7 @@
 
    Cuando cambies la app, sube VERSION un número. Eso basta. */
 
-var VERSION = 'brujula-v41';
+var VERSION = 'brujula-v42';
 var SHELL   = VERSION + '-shell';
 var FUENTES = VERSION + '-fuentes';
 
@@ -37,7 +37,6 @@ var PRECACHE = [
   '/js/aplicacion/progreso.js',
   '/js/aplicacion/chequeo.js',
   '/js/aplicacion/bienvenida.js',
-  '/js/presentacion/frases.js',
   '/js/presentacion/iconos.js',
   '/js/presentacion/estado-ui.js',
   '/js/presentacion/formato.js',

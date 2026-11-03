@@ -88,7 +88,7 @@ ul,ol{ padding-left:20px; }
 :focus-visible{
   outline:2.5px solid var(--accent); outline-offset:2px; border-radius:7px;
 }
-.btn:focus-visible, .fab:focus-visible, .tile .acts button:focus-visible{
+.btn:focus-visible, .fab:focus-visible{
   outline-color:var(--ink); outline-offset:3px;
 }
 
@@ -526,26 +526,28 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 .delbtn:hover{ background:var(--bad-sf); color:var(--bad); }
 .delbtn[data-armed="1"]{ background:var(--bad); color:#fff; }
 
-/* -------------------------------------------------- tablero de visión */
-.board{ display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+/* ------------------------------------------- Visión: imágenes y frases */
+/* dos columnas en las que cada pieza ocupa lo que necesita, como un tablero de corcho */
+.board{ columns:2; column-gap:10px; }
 .tile{
-  position:relative; border-radius:var(--r); overflow:hidden; min-height:136px;
-  background:var(--surface); border:1px solid var(--line);
-  display:flex; align-items:flex-end; padding:13px;
+  position:relative; overflow:hidden; border-radius:var(--r); border:1px solid var(--line); padding:16px 14px;
+  width:100%; margin:0 0 10px; break-inside:avoid; display:flex; align-items:flex-end; text-align:left;
+  background:var(--surface); color:inherit; font:inherit; cursor:pointer;
 }
+.tile.hasimg{ aspect-ratio:4/5; border:0; }
 .tile img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-.tile .cap{ position:relative; z-index:2; font-size:13px; font-weight:600; line-height:1.35; color:#fff; text-shadow:0 1px 8px rgba(0,0,0,.65); }
-.tile.hasimg::after{ content:''; position:absolute; inset:0; background:linear-gradient(to top,rgba(0,0,0,.66),rgba(0,0,0,0) 60%); }
-.tile.quote{ align-items:center; justify-content:center; text-align:center; padding:20px 15px; background:var(--surface-2); }
-.tile.quote .cap{ color:var(--ink); text-shadow:none; font-family:var(--disp); font-style:italic; font-weight:500; font-size:15.5px; line-height:1.35; }
-.tile .acts{ position:absolute; top:7px; right:7px; z-index:3; display:flex; gap:4px; opacity:0; transition:opacity var(--t) ease; }
-.tile:hover .acts,.tile:focus-within .acts{ opacity:1; }
-@media (hover:none){ .tile .acts{ opacity:1; } }
-.tile .acts button{
-  width:30px; height:30px; border:0; border-radius:50%;
-  background:rgba(255,255,255,.94); color:#1c1917; display:grid; place-items:center;
-  box-shadow:0 1px 6px rgba(0,0,0,.3);
-}
+.tile.hasimg::after{ content:''; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.6), rgba(0,0,0,0) 55%); }
+.tile .cap{ position:relative; z-index:1; font-size:13px; font-weight:600; line-height:1.35; color:#fff; }
+.tile.quote{ align-items:center; min-height:110px; }
+.tile.quote .cap{ color:var(--ink); font-family:var(--disp); font-style:italic; font-weight:500; font-size:16px; line-height:1.35; }
+.tile .cap.vacia{ color:var(--ink-3); }
+.tile:focus-visible{ outline-offset:2px; }
+.tile-prev{ width:100%; max-height:260px; object-fit:cover; border-radius:var(--r); }
+
+/* ---- Visión vacía: la pregunta, cómo empezar y unas preguntas de ayuda ---- */
+.vision-inicio{ display:flex; flex-direction:column; gap:14px; }
+.vi-q{ font-family:var(--disp); font-weight:500; font-size:1.6rem; line-height:1.25; letter-spacing:-.015em; text-wrap:balance; }
+.vi-ideas{ display:flex; flex-direction:column; gap:10px; padding-top:14px; border-top:1px solid var(--line); }
 
 /* ------------------------------------------------------------- gráficos */
 .radar{ width:100%; max-width:280px; margin:0 auto; display:block; }
@@ -592,7 +594,7 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 
 @media (max-width:390px){
   .scroll,.appbar{ padding-left:15px; padding-right:15px; }
-  .board{ gap:9px; }
+  .board{ column-gap:8px; }
   .barrow .bl{ width:82px; }
 }
 @media (prefers-reduced-motion: reduce){

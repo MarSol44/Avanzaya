@@ -1,6 +1,6 @@
 /* ==========================================================================
-   PRESENTACIÓN — controlador de Visión: tablero, visión a 5 años y «Mi Yo
-   del Futuro». Llama a los casos de uso de Vision y repinta.
+   PRESENTACIÓN — controlador de Visión: la visión escrita, las imágenes y
+   frases, y «Mi Yo del Futuro». Llama a los casos de uso de Vision y repinta.
    ========================================================================== */
 (function () {
   'use strict';
@@ -15,19 +15,35 @@
   action('clearFuture', function (c) { Vision.borrarFuturo(c.el.getAttribute('data-c')); closeSheet(); });
   action('saveFutureOnly', function () { Vision.guardar(); goApp('vision'); });
 
-  /* --- tablero --- */
-  action('addQuote', function () { Vision.frase(''); render(); openSheet({ t: 'tile', i: 0 }); });
-  action('plantillas', function () { openSheet({ t: 'plantillas' }); });
-  action('addPlantilla', function (c) { Vision.frase(V.PLANTILLAS[idx(c)]); closeSheet(); Pantalla.toast('Frase añadida al tablero.'); });
+  /* --- imágenes y frases --- */
+  // La frase nueva no se crea hasta que se guarda: cerrar sin escribir no deja nada.
+  action('addQuote', function () { ui.fraseNueva = ''; openSheet({ t: 'tile', i: -1 }); });
+  action('usarIdea', function (c) {
+    var ta = document.getElementById('fraseNueva');
+    if (!ta) return;
+    ta.value = ui.fraseNueva = V.IDEAS_FRASE[idx(c)] || '';
+    ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+  });
+  action('guardarFrase', function () {
+    var v = String(ui.fraseNueva || '').trim();
+    if (!v) { Pantalla.toast('Escribe la frase primero.'); return; }
+    Vision.frase(v); ui.fraseNueva = '';
+    closeSheet(); Pantalla.toast('Frase añadida.');
+  });
   action('boardEdit', function (c) { openSheet({ t: 'tile', i: idx(c) }); });
   action('boardDel', function (c) {
     armedDelete(c.el, function () {
       Vision.borrarTarjeta(idx(c));
       if (ui.sheet && ui.sheet.t === 'tile') closeSheet(); else render();
-      Pantalla.toast('Tarjeta eliminada.');
+      Pantalla.toast('Quitada.');
     });
   });
-  action('boardMove', function (c) { if (Vision.moverTarjeta(idx(c), +c.el.getAttribute('data-d')).ok) render(); });
+  // Mover desde la hoja: la hoja sigue abierta y acompaña a la pieza a su nuevo sitio.
+  action('boardMove', function (c) {
+    var i = idx(c), d = +c.el.getAttribute('data-d');
+    if (!Vision.moverTarjeta(i, d).ok) return;
+    if (ui.sheet && ui.sheet.t === 'tile') { ui.sheet.i = i + d; UI.refresh(); } else render();
+  });
 
   /* --- visión a 5 años --- */
   action('visionAdd', function () {
@@ -40,13 +56,16 @@
   /* --- campos --- */
   UI.onInput('vision', function (c) { Vision.texto(c.id, c.el.value); grow(c.el); });
   UI.onInput('tilecap', function (c) { Vision.textoTarjeta(idx(c), c.el.value); grow(c.el); render(); });
+  UI.onInputWhen(function (el) { return el.id === 'fraseNueva'; }, function (c) { ui.fraseNueva = c.el.value; grow(c.el); });
   UI.onInput('fgoal', function (c) { Vision.futuro(c.el.getAttribute('data-c'), 'goal', c.el.value); grow(c.el); });
   UI.onInput('fwhy', function (c) { Vision.futuro(c.el.getAttribute('data-c'), 'why', c.el.value); grow(c.el); });
   UI.onChangeWhen(function (el) { return el.id === 'boardImg'; }, function (c) {
     V.readImage(c.el.files && c.el.files[0], 720, function (data) {
       var r = Vision.imagen(data);
       render();
-      if (r.ok) Pantalla.toast('Imagen añadida.');
+      // recién añadida: se pregunta qué significa, que es lo que la hace tuya
+      if (r.ok) openSheet({ t: 'tile', i: 0, nueva: true });
     });
+    c.el.value = '';   // poder elegir la misma imagen otra vez
   });
 })();

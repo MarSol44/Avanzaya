@@ -1,6 +1,6 @@
 /* ==========================================================================
-   Hojas emergentes: detalle de meta (Descripción / Pasos), Mi Yo del Futuro,
-   edición del tablero, respaldo, contraseña, categorías y documentos.
+   Hojas emergentes: detalle de meta (Pasos / Detalles), Mi Yo del Futuro,
+   imágenes y frases de Visión, respaldo, contraseña, categorías y documentos.
    ========================================================================== */
 (function () {
   'use strict';
@@ -178,30 +178,36 @@
       '</div>';
   }
 
-  /* ----------------------------------------------------- tablero: editar tile */
-  function tileSheet(i) {
+  /* --------------------------------------------- imágenes y frases: una pieza */
+  // i = -1: frase nueva (no existe hasta que se guarda, así no quedan vacías).
+  // Para las que ya existen: su texto, moverla antes o después, o quitarla.
+  function tileSheet(i, nueva) {
+    if (i === -1) {
+      return head('quote', 'Nueva frase') +
+        '<div class="sheet-body">' +
+        '<label class="field"><span>Una frase que quieras tener presente</span>' +
+        '<textarea class="ta" id="fraseNueva" maxlength="300" placeholder="Escríbela con tus palabras">' + esc(ui.fraseNueva || '') + '</textarea></label>' +
+        '<div class="field"><span>¿Sin ideas? Toca una y cámbiala hasta que sea tuya</span><div class="chips" style="margin-top:4px">' +
+        V.IDEAS_FRASE.map(function (p, k) { return '<button class="chipbtn" data-a="usarIdea" data-i="' + k + '">' + esc(p) + '</button>'; }).join('') +
+        '</div></div>' +
+        '<button class="btn block" data-a="guardarFrase">Guardar frase</button>' +
+        '<button class="btn ghost block" data-a="closeSheet">Cancelar</button></div>';
+    }
     var t = S.board[i];
-    if (!t) return head('image', 'Tarjeta') + '<div class="sheet-body"><p class="muted">Ya no existe.</p></div>';
-    return head(t.kind === 'img' ? 'image' : 'quote', t.kind === 'img' ? 'Texto de la imagen' : 'Frase') +
+    if (!t) return head('image', 'Imagen o frase') + '<div class="sheet-body"><p class="muted">Ya no existe.</p></div>';
+    var img = t.kind === 'img' && t.src, n = S.board.length;
+    return head(img ? 'image' : 'quote', img ? (nueva ? 'Imagen añadida' : 'Imagen') : 'Frase') +
       '<div class="sheet-body">' +
-      '<label class="field"><span>' + (t.kind === 'img' ? 'Pie de la imagen' : 'Tu frase') + '</span>' +
-      '<textarea class="ta" data-f="tilecap" data-i="' + i + '" placeholder="' +
-      (t.kind === 'img' ? 'Qué representa para ti' : 'Lo que quieres recordar cada día') + '">' + esc(t.cap || '') + '</textarea></label>' +
+      (img ? '<img class="tile-prev" src="' + esc(t.src) + '" alt="">' : '') +
+      '<label class="field"><span>' + (img ? '¿Qué representa para ti? (opcional)' : 'Tu frase') + '</span>' +
+      '<textarea class="ta" data-f="tilecap" data-i="' + i + '" maxlength="300" placeholder="' +
+      (img ? 'Por ejemplo: la casa con jardín donde quiero vivir' : 'Lo que quieres recordar') + '">' + esc(t.cap || '') + '</textarea></label>' +
+      (n > 1 ? '<div class="row" style="gap:8px"><span class="tiny grow">Orden</span>' +
+        '<button class="btn ghost xs" data-a="boardMove" data-i="' + i + '" data-d="-1"' + (i === 0 ? ' disabled' : '') + '>' + I('left', 14) + 'Antes</button>' +
+        '<button class="btn ghost xs" data-a="boardMove" data-i="' + i + '" data-d="1"' + (i === n - 1 ? ' disabled' : '') + '>Después' + I('right', 14) + '</button></div>' : '') +
       '<button class="btn block" data-a="closeSheet">Listo</button>' +
-      '<button class="btn danger block" data-a="boardDel" data-i="' + i + '">' + I('trash', 17) + 'Eliminar tarjeta</button>' +
+      '<button class="btn danger block" data-a="boardDel" data-i="' + i + '">' + I('trash', 17) + (img ? 'Quitar imagen' : 'Quitar frase') + '</button>' +
       '</div>';
-  }
-
-  /* --------------------------------------------------------------- plantillas */
-  function plantillasSheet() {
-    return head('sparkle', 'Frases para empezar') +
-      '<div class="sheet-body">' +
-      '<p class="muted">Toca una para añadirla a tu tablero. Después puedes editarla.</p>' +
-      '<div class="stack sm">' +
-      V.PLANTILLAS.map(function (p, i) {
-        return '<button class="btn soft block" style="justify-content:flex-start;text-align:left;white-space:normal;border-radius:var(--r-sm)" data-a="addPlantilla" data-i="' + i + '">' + esc(p) + '</button>';
-      }).join('') +
-      '</div></div>';
   }
 
   /* ------------------------------------------------------------ nueva categoría */
@@ -459,8 +465,7 @@
     if (!s) return '';
     if (s.t === 'goal') return goalSheet(s.k, s.id);
     if (s.t === 'future') return futureSheet(s.c);
-    if (s.t === 'tile') return tileSheet(s.i);
-    if (s.t === 'plantillas') return plantillasSheet();
+    if (s.t === 'tile') return tileSheet(s.i, s.nueva);
     if (s.t === 'cat') return catSheet();
     if (s.t === 'pass') return passSheet();
     if (s.t === 'backup') return backupSheet();

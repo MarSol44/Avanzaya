@@ -37,10 +37,6 @@
     var el = c.el, e = c.e, id = c.id, k = c.k, v = c.v, sid = c.sid;
     ui.subMetas = sid; render(); return;
   });
-  action('subv', function (c) {
-    var el = c.el, e = c.e, id = c.id, k = c.k, v = c.v, sid = c.sid;
-    ui.subVision = sid; render(); return;
-  });
   action('closeSheet', function (c) {
     var el = c.el, e = c.e, id = c.id, k = c.k, v = c.v, sid = c.sid;
     e.preventDefault(); closeSheet(); return;
