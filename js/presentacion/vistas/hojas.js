@@ -140,9 +140,9 @@
             '<button class="chk sm" role="checkbox" aria-checked="' + !!s.done + '" data-a="stepDone" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" aria-label="Marcar paso">' + I('check', 15) + '</button>' +
             '<span class="sfields">' +
             '<input class="inp-plain" style="font-weight:600" data-f="sname" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" value="' + esc(s.name || '') + '" placeholder="Nombre del paso">' +
-            '<input class="inp-plain" style="font-size:12.5px;color:var(--ink-2)" data-f="sdesc" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" value="' + esc(s.desc || '') + '" placeholder="Descripción (opcional)">' +
+            '<input class="inp-plain" style="font-size:12.5px;color:var(--ink-2)" data-f="sdesc" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" value="' + esc(s.desc || '') + '" placeholder="Añadir una nota">' +
             '<span class="row" style="gap:8px;margin-top:5px">' +
-            '<input class="inp" type="date" style="padding:5px 9px;font-size:12.5px;width:auto" data-f="sdue" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" value="' + esc(s.due || '') + '" aria-label="Fecha del paso">' +
+            '<input class="inp-plain fecha" type="date" data-f="sdue" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" value="' + esc(s.due || '') + '" aria-label="Fecha del paso">' +
             (!isS && near ? '<button class="btn ghost xs" data-a="promote" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '">' + I('upRight', 14) + 'A corto plazo</button>' : '') +
             '</span></span>' +
             '<button class="delbtn" data-a="stepDel" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" aria-label="Eliminar paso" title="Eliminar paso">' + I('trash', 17) + '</button>' +
@@ -150,16 +150,16 @@
         });
         h += '</div>';
       }
-      h += '<div class="row" style="gap:8px"><input class="inp grow" data-add="step" placeholder="Añadir un paso">' +
-        '<button class="fab sm" data-a="stepAdd" data-k="' + k + '" data-id="' + esc(id) + '" aria-label="Añadir paso">' + I('plus') + '</button></div>';
-      h += '<button class="btn soft block" data-a="sync" data-k="' + k + '" data-id="' + esc(id) + '">' + I('refresh', 18) + 'Sincronizar con el calendario</button>';
-      h += '<p class="tiny">Sincronizar coloca cada paso con fecha en su día del calendario, dentro de la app.</p>';
+      h += '<div class="addbar"><input class="addbar-inp" data-add="step" placeholder="Añadir un paso" aria-label="Nuevo paso" enterkeyhint="done">' +
+        '<button class="addbar-go" data-a="stepAdd" data-k="' + k + '" data-id="' + esc(id) + '" aria-label="Añadir paso">' + I('plus', 18) + '</button></div>';
+      h += '<button class="btn ghost sm" data-a="sync" data-k="' + k + '" data-id="' + esc(id) + '" style="align-self:flex-start">' + I('refresh', 16) + 'Poner los pasos en el calendario</button>';
     }
 
     h += '<div class="divider"></div>' +
       '<div class="row" style="gap:8px">' +
-      '<button class="btn block grow" data-a="closeSheet">' + I('check', 17) + 'Guardar</button>' +
-      '<button class="btn danger block" data-a="gdelSheet" data-k="' + k + '" data-id="' + esc(id) + '">' + I('trash', 17) + 'Eliminar</button></div>';
+      // todo se guarda según se escribe: «Listo» cierra; borrar es secundario y pide confirmar
+      '<button class="btn danger" data-a="gdelSheet" data-k="' + k + '" data-id="' + esc(id) + '">' + I('trash', 17) + 'Eliminar</button>' +
+      '<button class="btn grow" data-a="closeSheet">Listo</button></div>';
     h += '</div>';
     return h;
   }
@@ -372,9 +372,9 @@
     var wins = S.wins.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
     var h = head('trophy', 'Todo lo que has logrado') + '<div class="sheet-body">';
     h += '<p class="muted">La memoria guarda mal las victorias y muy bien los fallos. Esta lista corrige ese sesgo.</p>';
-    h += '<div class="row" style="gap:8px;flex-wrap:wrap"><input class="inp grow" data-add="win" placeholder="¿Qué has conseguido?" style="min-width:150px">' +
-      '<input class="inp" type="date" id="winDate" value="' + Dates.today() + '" aria-label="Fecha del logro">' +
-      '<button class="fab sm" data-a="addWin" aria-label="Añadir logro">' + I('plus') + '</button></div>';
+    h += '<div class="addbar"><input class="addbar-inp" data-add="win" placeholder="¿Qué has conseguido?" aria-label="Nuevo logro" enterkeyhint="done">' +
+      '<input class="addbar-when" type="date" id="winDate" value="' + Dates.today() + '" aria-label="Fecha del logro">' +
+      '<button class="addbar-go" data-a="addWin" aria-label="Añadir logro">' + I('plus', 18) + '</button></div>';
     if (wins.length) {
       h += '<div class="steps">';
       wins.forEach(function (w) {
@@ -427,9 +427,9 @@
     var sin = q.when === 'sin', fecha = q.when === 'fecha', repite = q.when === 'repite';
     var h = head('sparkle', 'Apuntar algo') + '<div class="sheet-body">' +
       '<input class="inp qk-title" data-f="qTitle" data-add="quick" maxlength="400" value="' + esc(q.title) + '" placeholder="¿Qué quieres apuntar?" aria-label="Qué apuntar" enterkeyhint="done">' +
-      '<div class="field"><span>¿Para cuándo?</span><div class="seg3" role="group" aria-label="¿Para cuándo?" style="margin-top:4px">' +
+      '<div class="field"><span>¿Para cuándo?</span><div class="seg" role="group" aria-label="¿Para cuándo?" style="margin-top:4px">' +
       CUANDO.map(function (w) {
-        return '<button type="button" data-a="qWhen" data-v="' + w[0] + '" aria-pressed="' + (q.when === w[0]) + '"><span class="ic">' + I(w[1], 18) + '</span>' + w[2] + '</button>';
+        return '<button type="button" data-a="qWhen" data-v="' + w[0] + '" aria-pressed="' + (q.when === w[0]) + '">' + w[2] + '</button>';
       }).join('') + '</div>' +
       // lo menos habitual, aparte: la pantalla sigue siendo Hoy, Mañana o Sin fecha
       '<div class="qk-more">' +

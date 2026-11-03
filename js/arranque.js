@@ -34,6 +34,8 @@
   // Con sesión abierta y la bienvenida a medias, se sigue donde se dejó.
   ui.screen = !sesion ? 'splash' : Bienvenida.pendiente() ? 'bienvenida' : 'app';
   render();
+  // con la tipografía ya cargada, los textos largos se miden otra vez (si no, se quedan cortos)
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { UI.growAll(document); });
   if (Cuentas.veniaSinCuenta()) Pantalla.toast('Ahora la app se usa con cuenta. Regístrate y lo que tenías aquí pasará a ella.');
 
   // Si la app se queda abierta de un día para otro, al volver mira el día nuevo.

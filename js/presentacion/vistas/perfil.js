@@ -50,7 +50,7 @@
     /* --- cuenta --- */
     h += sect('Cuenta',
       '<div class="list"><div class="listpad">' +
-      '<label class="field"><span>Nombre de usuario</span><input class="inp" data-f="acName" value="' + esc(a ? a.name : '') + '" placeholder="Tu nombre"></label>' +
+      '<label class="field"><span>Tu nombre</span><input class="inp" data-f="acName" value="' + esc(a ? a.name : '') + '" placeholder="Tu nombre"></label>' +
       (a && (a.login === 'tel' || a.login === 'usuario')
         ? '<label class="field" style="margin-top:12px"><span>Correo de contacto (opcional)</span><input class="inp" type="email" data-f="acMail" value="' + esc(a.email) + '" placeholder="tu@correo.com"></label>'
         // es con el que se entra y el que confirmó: cambiarlo aquí lo desconectaría de la nube

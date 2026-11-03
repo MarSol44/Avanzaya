@@ -88,7 +88,7 @@ ul,ol{ padding-left:20px; }
 :focus-visible{
   outline:2.5px solid var(--accent); outline-offset:2px; border-radius:7px;
 }
-.btn:focus-visible, .fab:focus-visible{
+.btn:focus-visible{
   outline-color:var(--ink); outline-offset:3px;
 }
 
@@ -283,15 +283,6 @@ button.listrow:hover{ background:var(--accent-sf); }
 .btn[data-busy] .ic{ animation:spin 900ms linear infinite; }
 @keyframes spin{ to{ transform:rotate(360deg) } }
 
-.fab{
-  width:48px; height:48px; border-radius:50%; border:0; flex:none;
-  background:var(--ink); color:var(--sand);
-  display:grid; place-items:center;
-  transition:opacity var(--t) ease;
-}
-.fab:hover{ opacity:.87; }
-.fab.sm{ width:40px; height:40px; }
-
 /* --------------------------------------------------------------- campos */
 .field{ display:flex; flex-direction:column; gap:6px; }
 .field > span{ font-size:12.5px; font-weight:600; color:var(--ink-2); }
@@ -301,7 +292,8 @@ button.listrow:hover{ background:var(--accent-sf); }
   padding:11px 13px; font-size:14.5px; outline:none;
   transition:border-color var(--t) ease, box-shadow var(--t) ease;
 }
-.ta{ resize:vertical; min-height:84px; line-height:1.6; }
+/* los textos largos crecen con lo escrito: sin barra de desplazamiento dentro */
+.ta{ resize:vertical; min-height:84px; line-height:1.6; field-sizing:content; }
 .inp:focus,.sel:focus,.ta:focus{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-sf); }
 .inp::placeholder,.ta::placeholder{ color:var(--ink-3); }
 .sel{
@@ -361,6 +353,31 @@ input[type="date"]{ color-scheme:light; }
 .chk .ic, .listrow .chk .ic{ color:inherit; }
 /* redonda para tareas, pasos y metas; cuadrada para los hábitos */
 .chk.round{ width:24px; height:24px; border-radius:50%; }
+/* marcar algo como hecho se nota: la casilla da un pequeño salto */
+.chk.pop{ animation:pop 260ms cubic-bezier(.3,1.7,.5,1); }
+@keyframes pop{ from{ transform:scale(.72) } to{ transform:scale(1) } }
+
+/* añadir: un solo campo con su botón dentro, igual en toda la app */
+.addbar{
+  display:flex; align-items:center; gap:6px; min-height:50px; padding:5px 5px 5px 14px;
+  background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r);
+  transition:border-color var(--t) ease, box-shadow var(--t) ease;
+}
+.addbar:focus-within{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-sf); }
+.addbar.flat{ flex:1; border:0; background:none; padding:4px 0; min-height:44px; box-shadow:none; }
+.addbar-inp{ flex:1; min-width:0; border:0; background:none; outline:none; padding:9px 0; font:inherit; font-size:15px; color:var(--ink); }
+.addbar-inp::placeholder{ color:var(--ink-3); }
+.addbar-when{
+  flex:none; display:inline-flex; align-items:center; gap:5px; max-width:9.5em; overflow:hidden; white-space:nowrap;
+  border:0; border-radius:9px; padding:8px 10px; background:var(--surface-2); color:var(--ink-2); font:inherit; font-size:12.5px; font-weight:600;
+}
+.addbar-go{
+  flex:none; width:38px; height:38px; border:0; border-radius:10px; display:grid; place-items:center;
+  background:var(--accent); color:var(--on-accent); transition:transform var(--t) ease;
+}
+.addbar-go:active{ transform:scale(.94); }
+.seg.mini{ flex:none; padding:2px; }
+.seg.mini button{ padding:5px 10px; font-size:12px; }
 /* lo que se ve es pequeño; lo que se puede tocar llega a unos 44 px */
 .chk::after, .iconbtn::after, .delbtn::after{ content:''; position:absolute; inset:-8px; }
 .iconbtn::after{ inset:-3px; }
@@ -516,7 +533,7 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 .step{ display:flex; align-items:flex-start; gap:11px; padding:12px 0; border-top:1px solid var(--line); }
 .steps > .step:first-child{ border-top:0; padding-top:0; }
 .step .sfields{ flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
-.step.done .inp-plain{ color:var(--ink-3); text-decoration:line-through; }
+.step.done .sfields > .inp-plain:first-child{ color:var(--ink-3); text-decoration:line-through; }
 
 .delbtn{
   width:32px; height:32px; flex:none; border:0; border-radius:9px; position:relative;
@@ -525,6 +542,9 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 }
 .delbtn:hover{ background:var(--bad-sf); color:var(--bad); }
 .delbtn[data-armed="1"]{ background:var(--bad); color:#fff; }
+.delbtn.on{ color:var(--accent); background:var(--accent-sf); }
+/* fecha de un paso: texto que se toca, no otra caja */
+.inp-plain.fecha{ width:auto; font-size:12.5px; color:var(--ink-2); padding:2px 4px; }
 
 /* ------------------------------------------- Visión: imágenes y frases */
 /* dos columnas en las que cada pieza ocupa lo que necesita, como un tablero de corcho */
@@ -721,9 +741,12 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 .bv-step-top .inp{ width:auto; flex:0 1 170px; min-width:0; }
 .bv-step-top .delbtn{ margin-left:auto; }
 .hab-opts{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; padding:2px 12px 12px 14px; }
+/* los días de un hábito van pegados a él: sin filete y alineados con su nombre */
+.tlist > .hab-opts{ border-top:0; padding:0 10px 12px 54px; }
 .dchips{ display:flex; gap:4px; flex-wrap:wrap; }
-.dchip{ width:32px; height:32px; border-radius:50%; font-size:13px; font-weight:600; color:var(--ink-2); background:color-mix(in srgb,var(--ink) 6%,transparent); }
-.dchip[aria-pressed="true"]{ background:var(--accent); color:var(--on-accent); }
+/* días elegidos: marcados, no gritando (en Editar se ven muchos a la vez) */
+.dchip{ width:30px; height:30px; border-radius:50%; border:1px solid var(--line-2); background:transparent; font-size:12.5px; font-weight:600; color:var(--ink-3); }
+.dchip[aria-pressed="true"]{ background:var(--accent-sf); border-color:transparent; color:var(--accent); }
 .bv-paso{ width:100%; resize:none; font:inherit; font-weight:600; line-height:1.4; }
 /* botones de Google y Facebook */
 .redes{ display:flex; flex-direction:column; gap:8px; }
@@ -775,6 +798,17 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 .trow.is-done .trow-t{ color:var(--ink-3); text-decoration:line-through; }
 .trow-act{ flex:none; display:flex; align-items:center; gap:4px; }
 .tlist .plan-move{ border-radius:0; }
+/* cabecera de grupo dentro de una lista (De día / De noche) */
+.tl-head{ display:flex; align-items:center; gap:7px; padding:12px 14px 6px; font-size:12.5px; font-weight:650; color:var(--ink-2); }
+.tl-head .num{ margin-left:auto; font-weight:500; }
+.tl-head .ic{ color:var(--ink-3); }
+.tlist > .tl-head + *{ border-top:0; }
+.tlist.hab .trow{ min-height:50px; }
+.trow.add .trow-t{ color:var(--ink-2); font-weight:500; }
+.trow.add .trow-ic{ color:var(--accent); }
+.descanso{ display:flex; flex-direction:column; gap:10px; padding:14px; background:var(--surface-2); border-radius:var(--r); }
+#rutinas .sect-head{ align-items:center; }
+#rutinas .fold-head{ flex:1; }
 
 /* ---- barra inferior: el «+» central para apuntar algo ---- */
 .tabbar .tab-fab{
@@ -828,7 +862,7 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 .vision{ display:flex; flex-direction:column; gap:10px; }
 .vision-t{
   width:100%; font-family:var(--disp); font-size:1.5rem; line-height:1.38; letter-spacing:-.01em; color:var(--ink);
-  border:0; padding:0; background:transparent; resize:none; min-height:96px; outline:none;
+  border:0; padding:0; background:transparent; resize:none; min-height:96px; outline:none; overflow:hidden; field-sizing:content;
 }
 .vision.otra .vision-t{ font-size:1.15rem; min-height:60px; }
 .vision-f{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding-top:8px; border-top:1px solid var(--line); }

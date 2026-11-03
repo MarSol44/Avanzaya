@@ -158,6 +158,15 @@
     return true;
   }
 
+  function selectorDe(el) {
+    var sel = '[data-a="' + el.getAttribute('data-a') + '"]';
+    ['data-id', 'data-s', 'data-k', 'data-day'].forEach(function (k) {
+      var v = el.getAttribute(k);
+      if (v != null && /^[A-Za-z0-9_-]*$/.test(v)) sel += '[' + k + '="' + v + '"]';
+    });
+    return sel;
+  }
+
   function armedDelete(el, run) {
     if (el.getAttribute('data-armed') === '1') { run(); return; }
     var antes = el.innerHTML, conTexto = el.classList.contains('btn');
@@ -181,7 +190,14 @@
       v = el.getAttribute('data-v'),
       sid = el.getAttribute('data-s');
 
-    if (runAction(a, { el: el, e: e, id: id, k: k, v: v, sid: sid })) return;
+    // Marcar algo como hecho se nota: la pantalla se repinta, así que se busca la
+    // casilla nueva y da un pequeño salto si quedó marcada.
+    var casilla = el.getAttribute('role') === 'checkbox' ? selectorDe(el) : null;
+    if (runAction(a, { el: el, e: e, id: id, k: k, v: v, sid: sid })) {
+      var n = casilla && document.querySelector(casilla);
+      if (n && n.getAttribute('aria-checked') === 'true') n.classList.add('pop');
+      return;
+    }
   });
 
   function closeSheetSilent() {

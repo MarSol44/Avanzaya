@@ -164,8 +164,13 @@
     render();
   });
   action('dismiss', function (c) { Habitos.descartarAviso(c.id); render(); });
-  action('openAddRoutine', function (c) { ui.addRoutine = c.k; ui.editRoutine = null; render(); focusAdd('r' + c.k); });
-  action('editRoutine', function (c) { ui.editRoutine = ui.editRoutine === c.k ? null : c.k; ui.addRoutine = null; render(); });
+  // Cambiar entre «Día» y «Noche» no borra lo que ya se había escrito.
+  action('openAddRoutine', function (c) {
+    var prev = document.querySelector('[data-add="rday"],[data-add="rnight"]');
+    if (prev) ui.rTexto = prev.value;
+    ui.addRoutine = c.k; ui.editRoutine = null; render(); focusAdd('r' + c.k);
+  });
+  action('editRoutine', function () { ui.editRoutine = ui.editRoutine ? null : 'todas'; ui.addRoutine = null; render(); });
   action('openNote', function () {
     ui.noteOpen = true; render();
     var na = document.querySelector('[data-f="note"]'); if (na) na.focus();
@@ -183,7 +188,7 @@
     var inp = document.querySelector('[data-add="r' + c.k + '"]');
     var r = Habitos.nuevo(c.k, inp && inp.value);
     if (!r.ok) { Pantalla.toast('Escribe el nombre del hábito.'); return; }
-    ui.addRoutine = c.k;
+    ui.addRoutine = c.k; ui.rTexto = '';
     render(); focusAdd('r' + c.k);
     Pantalla.toast('Hábito añadido.');
   });
@@ -194,7 +199,6 @@
     render();
   });
   action('rPausa', function (c) { Habitos.pausar(c.k, c.id); render(); });
-  action('restPanel', function () { ui.restOpen = !ui.restOpen; render(); });
   action('restDia', function (c) { Habitos.descansoSemanal(+c.v); render(); });
   action('restHoy', function () { Habitos.descansarHoy(); render(); });
 
