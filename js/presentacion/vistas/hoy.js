@@ -202,7 +202,7 @@
   // para cambiar día u hora (ahí también se quita).
   function planRow(e, day, opt) {
     opt = opt || {};
-    var open = ui.moveId === e.id, appt = e.kind === 'appt', done = isDone(e);
+    var open = ui.moveId === e.id, done = isDone(e);
     var h = '<div class="trow' + (done ? ' is-done' : '') + '">' +
       '<button class="chk round" role="checkbox" aria-checked="' + done + '" data-a="evdone" data-day="' + day + '" data-id="' + esc(e.id) + '" aria-label="Marcar «' + esc(e.title) + '» como hecha">' + I('check', 14) + '</button>' +
       '<button class="trow-body" data-a="evmove" data-id="' + esc(e.id) + '" aria-expanded="' + open + '" aria-label="Cambiar día u hora de «' + esc(e.title) + '»">' +
@@ -210,7 +210,6 @@
       metaLinea([
         opt.showDate ? '<span class="bad">' + esc(Fmt.fmt(day)) + '</span>' : '',
         e.time ? '<span class="num">' + I('clock', 13) + esc(e.time) + '</span>' : '',
-        appt ? '<span>' + I('calendar', 13) + 'Cita</span>' : '',
         deMeta(e.goalId)
       ]) + '</button></div>';
     if (open) h += movePanel(e, day);
@@ -257,7 +256,7 @@
     var ntDay = /^\d{4}-\d\d-\d\d$/.test(ui.ntDate || '') ? ui.ntDate : base;
     var ntWhen = (ntDay === t ? 'Hoy' : ntDay === Dates.shift(t, 1) ? 'Mañana' : Fmt.fmt(ntDay)) + (ui.ntTime ? ' · ' + ui.ntTime : '');
     h += '<div class="plan-add">' +
-      '<div class="row" style="gap:8px"><input class="inp grow" data-f="ntTitle" data-add="task" value="' + esc(ui.ntTitle || '') + '" placeholder="Añadir tarea o cita" aria-label="Nueva tarea" enterkeyhint="done">' +
+      '<div class="row" style="gap:8px"><input class="inp grow" data-f="ntTitle" data-add="task" value="' + esc(ui.ntTitle || '') + '" placeholder="Añadir una tarea" aria-label="Nueva tarea" enterkeyhint="done">' +
       '<button class="btn soft sm plan-when" data-a="ntMore" aria-expanded="' + !!ui.ntMore + '" aria-label="Día y hora de la nueva tarea: ' + esc(ntWhen) + '">' +
       I('calendar', 15) + '<span>' + esc(ntWhen) + '</span></button>' +
       '<button class="fab sm" data-a="ntAdd" aria-label="Añadir al plan">' + I('plus') + '</button></div>';
@@ -289,7 +288,7 @@
 
     if (S.todo.length) {
       h += grupo('Sin fecha', S.todo.map(function (x) {
-        return '<div class="trow"><span class="trow-ic">' + I(x.kind === 'appt' ? 'calendar' : 'note', 16) + '</span>' +
+        return '<div class="trow"><span class="trow-ic">' + I('note', 16) + '</span>' +
           '<span class="trow-body" style="cursor:default"><span class="trow-t">' + esc(x.title) + '</span>' +
           metaLinea([x.goalId ? deMeta(x.goalId) : '']) + '</span>' +
           '<span class="trow-act"><button class="btn ghost xs" data-a="todoPull" data-id="' + esc(x.id) + '">' + (base === t ? 'A hoy' : 'A este día') + '</button>' +
@@ -355,7 +354,6 @@
       title = titulo(e);
       contexto = metaLinea([
         e.time ? '<span class="num">' + I('clock', 14) + (e.time < nowHM() ? 'Era a las ' : 'A las ') + esc(e.time) + '</span>' : '',
-        e.kind === 'appt' ? '<span>' + I('calendar', 14) + 'Cita</span>' : '',
         deMeta(e.goalId)
       ]);
       hecho = 'data-a="evdone" data-day="' + t + '" data-id="' + esc(e.id) + '"';
