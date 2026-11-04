@@ -119,15 +119,8 @@
   };
 
   /* ============================================================== PROGRESO */
-  // Hábitos marcados frente a los que tocaban, en los días de esta semana que ya pasaron.
-  function semanaHabitos() {
-    var t = Dates.today(), hechos = 0, tocaban = 0;
-    Dates.weekDays(Dates.weekStart(t)).forEach(function (d) {
-      if (d > t) return;
-      var x = Routines.dayTotals(d); hechos += x.done; tocaban += x.total;
-    });
-    return { hechos: hechos, tocaban: tocaban };
-  }
+  // Hábitos de esta semana: lo diario día a día, lo semanal por su cuota (Hábitos v2).
+  function semanaHabitos() { return Routines.semana(Dates.weekStart(Dates.today())); }
   function haceDias(fecha) {
     var n = Dates.diff(fecha, Dates.today());
     return n <= 0 ? 'hoy' : n === 1 ? 'ayer' : 'hace ' + n + ' días';
@@ -209,10 +202,12 @@
     // a primeros de semana, la que hay que cerrar es la que acaba de terminar
     var wStart = V.semanaARevisar(), rv = S.reviews[wStart];
     var revSub = wStart === Dates.weekStart(Dates.today()) ? 'Qué funcionó, qué ajustas y tu foco' : 'La semana pasada: qué funcionó y tu foco';
-    var c = S.challenge, chTxt = 'Sin empezar';
-    if (c) {
-      var days = +c.days || 30, doneN = Object.keys(c.done || {}).length;
-      chTxt = doneN >= days ? 'Completado' : doneN + ' de ' + days + ' días';
+    // el reto en curso (un hábito con reto): cómo va, o invitación a empezar uno
+    var retoAct = V.retos().filter(function (x) { return x.it.reto.estado === 'activo'; })[0], chTxt = 'Empezar', chSub = 'Una cosa, un tiempo concreto';
+    if (retoAct) {
+      var rr = Routines.reto(retoAct.k, retoAct.it, Dates.today());
+      chSub = esc(retoAct.it.name);
+      chTxt = !rr.empezado ? 'Empieza ' + Fmt.cuando(retoAct.it.reto.inicio) : rr.terminado ? 'Terminado' : 'Día ' + rr.dia + ' de ' + rr.dias;
     }
 
     var h = V.cabecera({ titulo: 'Progreso', perfil: profileBtn(),
@@ -246,7 +241,7 @@
       '<div class="list">' +
       fila('rotate', 'Revisión de la semana', revSub, rv && rv.focus ? 'Hecha' : 'Pendiente', rv && rv.focus ? 'good' : 'accent', 'goReview') +
       fila('compass', 'Chequeo de vida', r ? 'Último, ' + haceDias(r.date) : 'Cómo estás en cada área de tu vida', r ? Revision.avg(r) + '/10' : 'Hacerlo', r ? '' : 'accent', 'sheetRC') +
-      fila('zap', 'Reto de 30 días', c ? esc(c.name || 'Tu reto') : 'Elige una cosa y sostenla un mes', esc(chTxt), '', 'sheetChallenge') +
+      fila('zap', 'Retos', chSub, esc(chTxt), retoAct ? '' : 'accent', 'sheetChallenge') +
       fila('trophy', 'Lo que has logrado', ultimo ? 'Lo último: ' + esc(ultimo.texto) : 'Metas conseguidas, hitos y lo que tú apuntes', String(nLogros), '', 'sheetWins') +
       '</div></div>';
 

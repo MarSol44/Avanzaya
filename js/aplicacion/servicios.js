@@ -44,7 +44,7 @@ var TaskQueries, TaskCommands, Goals, Routines, Areas, Revision, Plan;
   TaskQueries = tasks.queries;
   TaskCommands = tasks.commands;
   Goals = BdvGoals.create({ repo: goalRepo, today: Dates.today, diff: Dates.diff });
-  Routines = BdvRoutines.create({ repo: routineRepo, today: Dates.today, shift: Dates.shift, diff: Dates.diff });
+  Routines = BdvRoutines.create({ repo: routineRepo, today: Dates.today, shift: Dates.shift, diff: Dates.diff, weekStart: Dates.weekStart });
   Areas = BdvAreas.create({ repo: { cats: function () { return S.cats; } } });
   Revision = BdvRevision.create({
     repo: { rc: function () { return S.rc; }, notes: function () { return S.notes; }, reviews: function () { return S.reviews; } },

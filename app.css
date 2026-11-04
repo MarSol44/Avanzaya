@@ -754,6 +754,9 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 .bv-step-top .inp{ width:auto; flex:0 1 170px; min-width:0; }
 .bv-step-top .delbtn{ margin-left:auto; }
 .hab-opts{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; padding:2px 12px 12px 14px; }
+.hab-opts .hab-freq{ width:auto; padding:6px 10px; font-size:13px; }
+.hab-opts .hab-n{ width:58px; padding:6px 8px; font-size:13px; }
+.reto-fin{ align-items:center; }
 /* los días de un hábito van pegados a él: sin filete y alineados con su nombre */
 .tlist > .hab-opts{ border-top:0; padding:0 10px 12px 54px; }
 .dchips{ display:flex; gap:4px; flex-wrap:wrap; }

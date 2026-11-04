@@ -33,10 +33,28 @@ type Obj = Record<string, unknown>;
 const obj = (v: unknown): Obj => (v && typeof v === 'object' && !Array.isArray(v)) ? v as Obj : {};
 const largo = (v: unknown) => Array.isArray(v) ? v.length : 0;
 
+// Cómo cuenta un hábito un día, con la misma regla que la app (js/dominio/rutinas.js):
+// 'no' si no existía, estaba en pausa o el reto aún no empezaba; 'opcional' si es
+// flexible (veces por semana o al mes, o sin frecuencia fija) o anterior a su regla
+// actual: suma solo si se marcó; 'toca' en el resto (con sus días concretos).
+function claseDe(k: string) {
+  const dia = new Date(k + 'T12:00:00Z').getUTCDay();
+  return (v: unknown) => {
+    const it = obj(v), fq = obj(it.freq), reto = obj(it.reto);
+    const fecha = (x: unknown) => typeof x === 'string' ? x : '';
+    if (fecha(it.since) && k < fecha(it.since)) return 'no';
+    if (fecha(it.paused) && k >= fecha(it.paused)) return 'no';
+    if (fecha(reto.inicio) && k < fecha(reto.inicio)) return 'no';
+    if (fecha(it.reglaDesde) && k < fecha(it.reglaDesde)) return 'opcional';
+    if (fq.t === 'semana' || fq.t === 'mes' || fq.t === 'libre') return 'opcional';
+    if (Array.isArray(it.days) && it.days.indexOf(dia) < 0) return 'no';
+    return 'toca';
+  };
+}
+
 function computeStats(raw: unknown) {
   const state = obj(raw);
-  const rlog = obj(state.rlog), notas = obj(state.notes), routines = obj(state.routines);
-  const total = largo(routines.day) + largo(routines.night);
+  const rlog = obj(state.rlog), notas = obj(state.notes), routines = obj(state.routines), rest = obj(state.rest);
   const weekStart = obj(state.profile).weekStart === 0 ? 0 : 1;
 
   const todayKey = dkey(new Date());
@@ -44,14 +62,34 @@ function computeStats(raw: unknown) {
   const lastWeekStart = shift(thisWeekStart, -7);
 
   function doneOn(k: string) { const e = obj(rlog[k]); return largo(e.day) + largo(e.night); }
+  const enDescanso = (k: string) => {
+    const dia = new Date(k + 'T12:00:00Z').getUTCDay();
+    return !!obj(rest.dates)[k] || (Array.isArray(rest.week) && rest.week.indexOf(dia) >= 0);
+  };
+  // hechos y totales del día: lo que tocaba, y lo opcional solo si se marcó
+  const totales = (k: string) => {
+    let hechos = 0, total = 0;
+    if (enDescanso(k)) return { hechos, total };
+    const clase = claseDe(k), e = obj(rlog[k]);
+    for (const tipo of ['day', 'night']) {
+      const lista = Array.isArray(routines[tipo]) ? routines[tipo] as unknown[] : [];
+      const marcas = Array.isArray(e[tipo]) ? e[tipo] as unknown[] : [];
+      for (const v of lista) {
+        const c = clase(v), hecho = marcas.indexOf(obj(v).id) >= 0;
+        if (c === 'toca') { total++; if (hecho) hechos++; }
+        else if (c === 'opcional' && hecho) { total++; hechos++; }
+      }
+    }
+    return { hechos, total };
+  };
 
   let full = 0, partial = 0, marks = 0, notes = 0;
   for (let i = 0; i < 7; i++) {
     const k = shift(lastWeekStart, i);
-    const done = doneOn(k);
-    marks += done;
-    if (total && done >= total) full++;
-    else if (done > 0) partial++;
+    marks += doneOn(k);
+    const t = totales(k);
+    if (t.total && t.hechos >= t.total) full++;
+    else if (t.hechos > 0) partial++;
     const nota = notas[k];
     if (typeof nota === 'string' && nota.trim()) notes++;
   }

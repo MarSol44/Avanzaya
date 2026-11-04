@@ -370,37 +370,50 @@
   }
 
   /* ------------------------------------------------------------------ reto */
+  // Retos: hábitos con duración y fecha de inicio. Se marcan en Hoy como cualquier
+  // hábito; aquí se ve cada uno día a día, y se empieza uno nuevo.
+  V.retos = function () {
+    var out = [];
+    ['day', 'night'].forEach(function (k) { (S.routines[k] || []).forEach(function (it) { if (it.reto) out.push({ k: k, it: it }); }); });
+    return out.sort(function (a, b) {
+      var ea = a.it.reto.estado === 'activo' ? 0 : 1, eb = b.it.reto.estado === 'activo' ? 0 : 1;
+      return ea - eb || (a.it.reto.inicio < b.it.reto.inicio ? 1 : -1);
+    });
+  };
   function challengeSheet() {
-    var c = S.challenge;
-    var h = head('zap', 'Reto de 30 días') + '<div class="sheet-body">';
-    if (!c) {
-      h += '<p class="muted">Elige una sola cosa y sostenla 30 días: suficiente para saber si te sirve, corto para no rendirte.</p>' +
-        '<div class="row" style="gap:8px"><input class="inp grow" data-add="challenge" placeholder="Ej. 30 días sin azúcar" aria-label="Tu reto">' +
-        '<input class="inp num" id="chDays" type="number" min="3" max="365" value="30" style="width:72px" aria-label="Días"></div>' +
-        '<button class="btn accent block" data-a="addChallenge">Empezar el reto</button></div>';
-      return h;
-    }
-    var days = +c.days || 30, doneN = Object.keys(c.done || {}).length;
-    var dayIdx = Util.clamp(Dates.diff(c.start, Dates.today()) + 1, 1, days);
-    var status = doneN >= days ? 'good' : (Dates.diff(c.start, Dates.today()) + 1 > days ? 'bad' : 'warn');
-    var label = status === 'good' ? I('trophy', 13) + 'Completado' : status === 'bad' ? I('sleep', 13) + 'Fallido' : I('zap', 13) + 'Activo';
-
-    h += '<div class="spread"><input class="inp-plain grow" style="font-weight:650;font-size:15px" data-f="chName" value="' + esc(c.name) + '" placeholder="¿Qué vas a sostener?" aria-label="Nombre del reto">' +
-      '<span class="pill ' + status + '">' + label + '</span></div>' +
-      '<div class="row" style="gap:11px"><span class="bar grow"><span style="width:' + (doneN / days * 100).toFixed(1) + '%;background:var(--warn)"></span></span>' +
-      '<span class="bv num">' + Math.round(doneN / days * 100) + '%</span></div>' +
-      '<p class="tiny num" style="margin-top:-6px">Día ' + dayIdx + ' de ' + days + ' · ' + Fmt.plural(doneN, 'día marcado', 'días marcados') + '</p>' +
-      '<div class="cal" style="grid-template-columns:repeat(auto-fill,minmax(32px,1fr))">';
-    var t = Dates.today();
-    for (var i = 1; i <= days; i++) {
-      var dk = Dates.shift(c.start, i - 1), on = !!(c.done || {})[dk], future = Dates.diff(t, dk) > 0;
-      h += '<button data-a="chDay" data-day="' + dk + '"' + (future ? ' disabled' : '') +
-        ' class="' + (on ? 's-warn' : '') + (dk === t ? ' today' : '') + '" title="' + esc(Fmt.fmt(dk)) + '">' + i + '</button>';
-    }
-    h += '</div><div class="row" style="gap:8px">' +
-      '<button class="btn ghost xs" data-a="chRestart">' + I('rotate', 14) + 'Reiniciar</button>' +
-      '<button class="btn danger xs" data-a="chDel">' + I('trash', 14) + 'Eliminar</button></div>';
-    return h + '</div>';
+    var t = Dates.today(), retos = V.retos();
+    var h = head('zap', 'Retos') + '<div class="sheet-body">';
+    retos.forEach(function (x) {
+      var it = x.it, r = Routines.reto(x.k, it, t), ids = 'data-k="' + x.k + '" data-id="' + esc(it.id) + '"';
+      var marks = function (d) { return ((S.rlog[d] || {})[x.k] || []).indexOf(it.id) >= 0; };
+      var estado = it.reto.estado === 'terminado' ? ['', 'Terminado'] : it.reto.estado === 'continuar' ? ['good', 'Sigue como hábito'] :
+        !r.empezado ? ['', 'Empieza ' + Fmt.cuando(it.reto.inicio)] : r.terminado ? ['warn', 'Terminado: ¿y ahora?'] : ['accent', 'Día ' + r.dia + ' de ' + r.dias];
+      h += '<div class="card sunk"><div class="stack sm">' +
+        '<div class="spread"><input class="inp-plain grow" style="font-weight:650;font-size:15px" data-f="chName" ' + ids + ' value="' + esc(it.name) + '" aria-label="Nombre del reto">' +
+        '<span class="pill ' + estado[0] + '">' + esc(estado[1]) + '</span></div>' +
+        '<div class="row" style="gap:11px"><span class="bar grow"><span style="width:' + (r.hechos / r.dias * 100).toFixed(1) + '%;background:var(--warn)"></span></span>' +
+        '<span class="bv num">' + r.hechos + '/' + r.dias + '</span></div>' +
+        '<div class="cal" style="grid-template-columns:repeat(auto-fill,minmax(32px,1fr))">';
+      for (var i = 1; i <= r.dias; i++) {
+        var dk = Dates.shift(it.reto.inicio, i - 1), futuro = dk > t;
+        h += '<button data-a="chDay" ' + ids + ' data-day="' + dk + '"' + (futuro ? ' disabled' : '') +
+          ' class="' + (marks(dk) ? 's-warn' : '') + (dk === t ? ' today' : '') + '" aria-label="Día ' + i + ', ' + esc(Fmt.fmt(dk)) + (marks(dk) ? ', hecho' : '') + '">' + i + '</button>';
+      }
+      h += '</div><div class="row" style="gap:8px;flex-wrap:wrap">' +
+        (r.terminado && it.reto.estado === 'activo' ? '<button class="btn soft xs" data-a="retoSeguir" ' + ids + '>Seguir como hábito</button>' : '') +
+        (it.reto.estado !== 'terminado' ? '<button class="btn ghost xs" data-a="chRestart" ' + ids + '>' + I('rotate', 14) + 'Empezar de nuevo hoy</button>' +
+          '<button class="btn ghost xs" data-a="chDel" ' + ids + '>Terminar</button>' : '') +
+        '</div></div></div>';
+    });
+    // uno nuevo: qué, cuántos días y desde cuándo
+    h += '<span class="label">' + (retos.length ? 'Otro reto' : 'Tu primer reto') + '</span>' +
+      '<p class="muted">Una sola cosa, un tiempo concreto: suficiente para saber si te sirve, corto para no rendirte. Se marca en Hoy, como tus hábitos.</p>' +
+      '<input class="inp" data-add="challenge" placeholder="Ej. 30 días sin azúcar" aria-label="Tu reto">' +
+      '<div class="row" style="gap:8px;flex-wrap:wrap">' +
+      '<label class="row tiny" style="gap:6px"><input class="inp num" id="chDays" type="number" min="3" max="365" value="30" style="width:72px" aria-label="Días">días</label>' +
+      '<label class="row tiny" style="gap:6px">desde<input class="inp" id="chInicio" type="date" value="' + t + '" min="' + Dates.shift(t, -60) + '" aria-label="Día de inicio"></label></div>' +
+      '<button class="btn accent block" data-a="addChallenge">Empezar el reto</button></div>';
+    return h;
   }
 
   /* ---------------------------------------------------------------- logros */

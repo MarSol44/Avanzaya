@@ -300,6 +300,19 @@ var Sec = (function () {
       if (dias.length && dias.length < 7) it.days = dias;
       if (dateOf(x.paused)) it.paused = dateOf(x.paused);
       if (dateOf(x.since)) it.since = dateOf(x.since);
+      if (dateOf(x.reglaDesde)) it.reglaDesde = dateOf(x.reglaDesde);
+      // frecuencia flexible (Hábitos v2): n veces por semana o por mes, o sin frecuencia fija
+      var fq = objOf(x.freq);
+      if (fq.t === 'semana' || fq.t === 'mes') it.freq = { t: fq.t, n: n(fq.n, 1, fq.t === 'semana' ? 7 : 31, 3) };
+      else if (fq.t === 'libre') it.freq = { t: 'libre' };
+      if (it.freq) delete it.days;
+      // reto: duración, inicio y estado (y si vino de la migración del reto antiguo)
+      var rt = objOf(x.reto);
+      if (dateOf(rt.inicio)) {
+        it.reto = { dias: n(rt.dias, 3, 365, 30), inicio: dateOf(rt.inicio),
+          estado: ['activo', 'continuar', 'terminado'].indexOf(rt.estado) >= 0 ? rt.estado : 'activo' };
+        if (rt.migrado === true) it.reto.migrado = true;
+      }
       return it;
     }
     var rd = arrOf(rt.day, 60, rItem), rn = arrOf(rt.night, 60, rItem);
@@ -338,6 +351,11 @@ var Sec = (function () {
       x = objOf(x);
       return { id: idOf(x.id), title: s(x.title, 400), kind: x.kind === 'appt' ? 'appt' : 'task', goalId: x.goalId ? idOf(x.goalId) : '', sid: s(x.sid, 40) };
     });
+
+    // registro de migraciones hechas (para no repetirlas): reto → hábito
+    var mg = objOf(objOf(d.migraciones).reto);
+    out.migraciones = mg.habito && idValido(mg.habito)
+      ? { reto: { habito: mg.habito, fecha: dateOf(mg.fecha), copiados: n(mg.copiados, 0, 400, 0), omitidos: n(mg.omitidos, 0, 400, 0) } } : {};
 
     var ch = objOf(d.challenge);
     if (ch && (ch.name || ch.start)) {

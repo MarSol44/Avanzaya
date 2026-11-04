@@ -14,10 +14,13 @@
 
   // Cuando llegan datos de la nube o cambia el estado de la sincronización,
   // se repinta. La pantalla no sabe quién lo provoca: solo escucha el aviso.
-  Bus.on('remote:applied', render);
+  // (lo que llega puede venir de una versión anterior: antes de pintar, se migra)
+  Bus.on('remote:applied', function () { Habitos.migrar(); render(); });
+  Bus.on('account:switched', function () { Habitos.migrar(); });
   Bus.on('sync:changed', render);
 
   var sesion = Cuentas.arrancar();
+  Habitos.migrar();
   Pantalla.applyTheme();
   paintChrome();
   try {

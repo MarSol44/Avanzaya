@@ -8,12 +8,11 @@ function ok(c, t) { console.log((c ? 'ok   ' : 'FALLO') + ' ' + t); if (!c) fall
 // 1. El correo semanal: datos con cualquier forma no lo tumban, y no lleva texto del usuario.
 let src = fs.readFileSync(path.join(raiz, 'supabase/functions/send-weekly-email/index.ts'), 'utf8');
 const desde = src.indexOf('function dkey'), hasta = src.indexOf('Deno.serve');
+// (se quitan las anotaciones de tipo para poder ejecutarlo como JavaScript)
 let ts = src.slice(desde, hasta)
   .replace(/type Obj = Record<string, unknown>;/, '')
-  .replace(/\(v: unknown\): Obj =>/g, '(v) =>').replace(/as Obj/g, '')
-  .replace(/\(v: unknown\)/g, '(v)').replace(/\(raw: unknown\)/g, '(raw)')
-  .replace(/\(d: Date\)/, '(d)').replace(/\(k: string, n: number\)/, '(k, n)').replace(/\(k: string, weekStart: number\)/, '(k, weekStart)')
-  .replace(/\(k: string\)/g, '(k)').replace(/\(s: ReturnType<typeof computeStats>\)/, '(s)');
+  .replace(/\): Obj =>/g, ') =>').replace(/ as (Obj|unknown\[\])/g, '')
+  .replace(/(\w+): (string|number|unknown|Date|Obj|ReturnType<typeof computeStats>)(?=[,)])/g, '$1');
 const ctx = {}; vm.createContext(ctx); vm.runInContext(ts + ';this.computeStats=computeStats;this.emailHtml=emailHtml;', ctx);
 const raros = [null, 42, 'texto', [], { rlog: null }, { rlog: { '2026-10-26': null } }, { rlog: { '2026-10-26': { day: 'abc' } } },
   { notes: { '2026-10-26': 5 } }, { routines: 'x', profile: null }, { rlog: [1, 2] }];
@@ -22,6 +21,19 @@ for (const r of raros) { try { ctx.computeStats(r); } catch (e) { todos = false;
 ok(todos, 'el resumen semanal aguanta estados con cualquier forma');
 const html = ctx.emailHtml(ctx.computeStats({ account: { name: '<b>visita-mi-web.com</b>' } }));
 ok(!/visita-mi-web|<b>/.test(html), 'el correo no incluye texto escrito por la cuenta');
+
+// Hábitos v2 en el correo: un hábito diario hecho cada día y uno semanal marcado
+// a veces → semana completa (lo flexible no deja días a medias)
+const dk = d => new Date(d).toISOString().slice(0, 10);
+const ultimos = Array.from({ length: 21 }, (_, i) => dk(Date.now() - i * 864e5));
+const rlogTodo = Object.fromEntries(ultimos.map((k, i) => [k, { day: i % 3 ? ['d'] : ['d', 'w'], night: [] }]));
+let st = ctx.computeStats({ routines: { day: [{ id: 'd', name: 'D' }, { id: 'w', name: 'W', freq: { t: 'semana', n: 3 } }], night: [] }, rlog: rlogTodo });
+ok(st.full === 7 && st.partial === 0, 'correo: lo semanal no deja días a medias (7 completos)');
+const rlogSoloW = Object.fromEntries(ultimos.map(k => [k, { day: ['w'], night: [] }]));
+st = ctx.computeStats({ routines: { day: [{ id: 'd', name: 'D' }, { id: 'w', name: 'W', freq: { t: 'semana', n: 3 } }], night: [] }, rlog: rlogSoloW });
+ok(st.full === 0 && st.partial === 7, 'correo: sin el diario, los días quedan a medias');
+st = ctx.computeStats({ routines: { day: [{ id: 'd', name: 'D', paused: '2000-01-01' }], night: [] }, rlog: {} });
+ok(st.full === 0 && st.partial === 0, 'correo: un hábito en pausa no cuenta');
 
 // 2. Un «#type=recovery» sin sesión detrás no deja la sincronización parada.
 (async () => {

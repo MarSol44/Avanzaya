@@ -81,10 +81,27 @@
 
   /* ------------------------------------------------------------- rutinas */
   // Editando un hábito: en qué días toca, y ponerlo en pausa.
+  // Editando un hábito: con qué frecuencia (y qué días, o cuántas veces), y su reto.
   function habitOpts(kind, it) {
     var attrs = 'data-k="' + kind + '" data-id="' + esc(it.id) + '"';
-    return '<div class="hab-opts">' +
-      V.diasSemana('Días de «' + it.name + '»', 'data-a="rDia" ' + attrs, function (d) { return !it.days || it.days.indexOf(d) >= 0; }) + '</div>';
+    var t = it.freq ? it.freq.t : it.days ? 'dias' : 'diaria';
+    var h = '<div class="hab-opts">' +
+      '<select class="inp hab-freq" data-f="rfreq" ' + attrs + ' aria-label="Frecuencia de «' + esc(it.name) + '»">' +
+      [['diaria', 'Cada día'], ['dias', 'Días concretos'], ['semana', 'Veces por semana'], ['mes', 'Veces al mes'], ['libre', 'Sin frecuencia fija']].map(function (o) {
+        return '<option value="' + o[0] + '"' + (o[0] === t ? ' selected' : '') + '>' + o[1] + '</option>';
+      }).join('') + '</select>';
+    if (t === 'dias') h += V.diasSemana('Días de «' + it.name + '»', 'data-a="rDia" ' + attrs, function (d) { return it.days.indexOf(d) >= 0; });
+    if (t === 'semana' || t === 'mes') {
+      h += '<label class="row tiny" style="gap:6px">' +
+        '<input class="inp hab-n num" type="number" min="1" max="' + (t === 'semana' ? 7 : 31) + '" data-f="rfreqN" ' + attrs + ' value="' + it.freq.n + '" aria-label="Veces">' +
+        (t === 'semana' ? 'veces por semana' : 'veces al mes') + '</label>';
+    }
+    if (it.reto) {
+      var r = Routines.reto(kind, it, Dates.today());
+      h += '<span class="tiny">' + I('zap', 12) + ' Reto de ' + r.dias + ' días desde el ' + esc(Fmt.fmt(it.reto.inicio)) +
+        (it.reto.estado === 'continuar' ? ' · superado, sigue como hábito' : it.reto.estado === 'terminado' ? ' · terminado' : '') + '</span>';
+    }
+    return h + '</div>';
   }
 
   // Días de descanso: no toca ningún hábito y la racha no se resiente.
@@ -115,22 +132,42 @@
     night: ['Repasar el día', 'Dejar el móvil fuera', 'Preparar lo de mañana']
   };
 
-  // Las filas de una rutina. Editando: todas, con nombre, días y pausa.
+  // Lo que se dice bajo el nombre: la cuota de un hábito flexible o el día del reto.
+  function detalleHabito(kind, it, t) {
+    var r = Routines.reto(kind, it, t);
+    if (r && r.estado === 'activo' && r.empezado && !r.terminado) return 'Reto · día ' + r.dia + ' de ' + r.dias;
+    var q = Routines.cuota(kind, it, t);
+    if (q && q.meta) return q.hechos + ' de ' + q.meta + (q.t === 'semana' ? ' esta semana' : ' este mes') + (q.cumplida ? ' · hecho' : '');
+    if (it.freq && it.freq.t === 'libre') return 'Sin frecuencia fija';
+    return '';
+  }
+  // Un reto que acaba de terminar pregunta qué hacer: seguir como hábito o terminarlo.
+  function retoTerminado(kind, it, t) {
+    var r = Routines.reto(kind, it, t);
+    if (!r || !r.terminado || r.estado !== 'activo') return '';
+    var ids = 'data-k="' + kind + '" data-id="' + esc(it.id) + '"';
+    return '<div class="plan-move reto-fin"><span class="tiny grow">Reto terminado: ' + r.hechos + ' de ' + r.dias + ' días. ¿Lo sigues como hábito?</span>' +
+      '<button class="btn soft xs" data-a="retoSeguir" ' + ids + '>Seguir</button>' +
+      '<button class="btn ghost xs" data-a="retoTerminar" ' + ids + '>Terminar</button></div>';
+  }
+
+  // Las filas de una rutina. Editando: todas, con nombre, frecuencia y pausa.
   function filasHabitos(kind, t, editing) {
     var marks = (S.rlog[t] || {})[kind] || [];
-    var lista = editing ? (S.routines[kind] || []) : Routines.dueOn(kind, t);
+    var lista = editing ? (S.routines[kind] || []) : Routines.visibleOn(kind, t);
     return lista.map(function (it) {
-      var on = marks.indexOf(it.id) >= 0, toca = Routines.isDue(it, t);
+      var on = marks.indexOf(it.id) >= 0, clase = Routines.clase(it, t), det = editing ? '' : detalleHabito(kind, it, t);
       var h = '<div class="trow' + (on && !editing ? ' is-done' : '') + '">' +
-        (editing && !toca ? '<span class="trow-ic" title="Hoy no toca">' + I('sleep', 15) + '</span>'
-          : '<button class="chk" role="checkbox" aria-checked="' + on + '" data-a="rtoggle" data-day="' + t + '" data-k="' + kind + '" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + '">' + I('check', 15) + '</button>') +
+        (editing && clase === 'no' ? '<span class="trow-ic" title="Hoy no toca">' + I('sleep', 15) + '</span>'
+          : '<button class="chk" role="checkbox" aria-checked="' + on + '" data-a="rtoggle" data-day="' + t + '" data-k="' + kind + '" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + (det ? ', ' + esc(det) : '') + '">' + I('check', 15) + '</button>') +
         (editing
           ? '<input class="inp-plain grow" data-f="rname" data-k="' + kind + '" data-id="' + esc(it.id) + '" value="' + esc(it.name) + '" aria-label="Nombre del hábito">' +
             '<button class="delbtn' + (it.paused ? ' on' : '') + '" data-a="rPausa" data-k="' + kind + '" data-id="' + esc(it.id) + '" aria-pressed="' + !!it.paused + '" aria-label="' + (it.paused ? 'Reanudar' : 'Pausar') + ' «' + esc(it.name) + '»" title="' + (it.paused ? 'Reanudar' : 'Pausar') + '">' + I(it.paused ? 'play' : 'pause', 16) + '</button>' +
             '<button class="delbtn" data-a="rdel" data-k="' + kind + '" data-id="' + esc(it.id) + '" aria-label="Eliminar ' + esc(it.name) + '">' + I('trash', 17) + '</button>'
-          : '<span class="trow-t grow">' + esc(it.name) + '</span>') +
+          : '<span class="trow-body" style="cursor:default"><span class="trow-t">' + esc(it.name) + '</span>' + (det ? '<span class="trow-m"><span>' + esc(det) + '</span></span>' : '') + '</span>') +
         '</div>';
       if (editing) h += habitOpts(kind, it);
+      else h += retoTerminado(kind, it, t);
       return h;
     }).join('');
   }
@@ -183,33 +220,36 @@
     }
 
     var noche = hora >= 18 || hora < 6 || ui.nightOpen || editing;
-    var nightDue = Routines.dueOn('night', t), dayDue = Routines.dueOn('day', t);
-    var marcas = function (kind, due) {
-      var m = (S.rlog[t] || {})[kind] || [];
-      return due.filter(function (it) { return m.indexOf(it.id) >= 0; }).length;
+    // lo que se ve hoy: lo que toca y lo flexible que aún no cumplió su cuota
+    var nightVis = Routines.visibleOn('night', t), dayVis = Routines.visibleOn('day', t);
+    // «x de y»: lo que toca, y lo flexible solo si ya se marcó (no deja nada a medias)
+    var marcas = function (kind, vis) {
+      var m = (S.rlog[t] || {})[kind] || [], hechos = 0, total = 0;
+      vis.forEach(function (it) { var on = m.indexOf(it.id) >= 0; if (Routines.clase(it, t) === 'toca' || on) { total++; if (on) hechos++; } });
+      return hechos + ' de ' + total;
     };
-    // un grupo sin nada que toque hoy no se pinta (salvo editando): «De día · 0 de 0» no dice nada
-    var hayDia = nDia && (editing || dayDue.length), hayNoche = nNoche && (editing || nightDue.length);
+    // un grupo sin nada que hacer hoy no se pinta (salvo editando): «De día · 0 de 0» no dice nada
+    var hayDia = nDia && (editing || dayVis.length), hayNoche = nNoche && (editing || nightVis.length);
     var dos = hayDia && hayNoche;
     h += '<div class="tlist hab">';
     if (hayDia) {
-      if (dos) h += '<div class="tl-head">' + I('sunrise', 14) + 'De día<span class="num">' + marcas('day', dayDue) + ' de ' + dayDue.length + '</span></div>';
+      if (dos) h += '<div class="tl-head">' + I('sunrise', 14) + 'De día<span class="num">' + marcas('day', dayVis) + '</span></div>';
       h += filasHabitos('day', t, editing);
     }
     if (hayNoche) {
       if (noche) {
-        h += '<div class="tl-head">' + I('moon', 14) + 'De noche<span class="num">' + marcas('night', nightDue) + ' de ' + nightDue.length + '</span></div>' +
+        h += '<div class="tl-head">' + I('moon', 14) + 'De noche<span class="num">' + marcas('night', nightVis) + '</span></div>' +
           filasHabitos('night', t, editing);
       } else {
         h += '<button class="trow trow-btn" data-a="toggleNight"><span class="trow-ic">' + I('moon', 16) + '</span>' +
-          '<span class="trow-t grow">De noche</span><span class="tiny num">' + marcas('night', nightDue) + ' de ' + nightDue.length + '</span>' + I('right', 16) + '</button>';
+          '<span class="trow-t grow">De noche</span><span class="tiny num">' + marcas('night', nightVis) + '</span>' + I('right', 16) + '</button>';
       }
     }
     h += filaAnadir(hora) + '</div>';
     if (!editing && nDia + nNoche < 3 && ideas.length) h += chipsIdeas();
 
-    // los que no salen hoy: en pausa, o porque hoy no es su día (se dice cuál de las dos)
-    var ocultos = nDia + nNoche - dayDue.length - nightDue.length;
+    // los que no salen hoy: en pausa, o porque hoy no es su día o ya cumplieron su cuota
+    var ocultos = nDia + nNoche - dayVis.length - nightVis.length;
     var pausados = S.routines.day.concat(S.routines.night).filter(function (it) { return it.paused && t >= it.paused; }).length;
     var noToca = ocultos - pausados;
     if (!editing && ocultos > 0) {
@@ -237,7 +277,7 @@
       var marks = (S.rlog[k] || {})[kind] || [];
       (S.routines[kind] || []).forEach(function (it) {
         var on = marks.indexOf(it.id) >= 0;
-        if (!on && !Routines.dueOn(kind, k).some(function (x) { return x.id === it.id; })) return;   // ese día no tocaba
+        if (!on && Routines.clase(it, k) === 'no') return;   // ese día no tocaba (ni existía, ni era flexible)
         filas += '<div class="trow' + (on ? ' is-done' : '') + '">' +
           '<button class="chk" role="checkbox" aria-checked="' + on + '" data-a="rtoggle" data-day="' + k + '" data-k="' + kind + '" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + '">' + I('check', 15) + '</button>' +
           '<span class="trow-t grow">' + esc(it.name) + '</span></div>';
@@ -246,21 +286,6 @@
     if (!filas) return Routines.isRest(k) ? '<div class="sect"><p class="notice">Ese día fue de descanso.</p></div>' : '';
     return '<div class="sect" id="rutinas"><div class="sect-head"><span class="sect-title">Rutinas de ese día</span>' +
       '<span class="tiny num">' + tot.done + ' de ' + tot.total + '</span></div><div class="tlist hab">' + filas + '</div></div>';
-  }
-
-  // El reto en curso, para marcarlo cada día donde se marca lo demás: si solo
-  // viviera en Progreso, se olvidaría.
-  function retoHoy(t) {
-    var c = S.challenge;
-    if (!c || !c.start) return '';
-    var days = +c.days || 30, n = Dates.diff(c.start, t) + 1, doneN = Object.keys(c.done || {}).length;
-    if (n < 1 || n > days || doneN >= days) return '';
-    var on = !!(c.done || {})[t];
-    return '<div class="sect"><div class="tlist reto-hoy">' +
-      '<div class="tl-head">' + I('zap', 14) + 'Reto<span class="num">Día ' + n + ' de ' + days + '</span></div>' +
-      '<div class="trow' + (on ? ' is-done' : '') + '">' +
-      '<button class="chk" role="checkbox" aria-checked="' + on + '" data-a="chDay" data-day="' + t + '" aria-label="' + esc(c.name || 'Reto') + ', hoy">' + I('check', 15) + '</button>' +
-      '<span class="trow-t grow">' + esc(c.name || 'Tu reto') + '</span></div></div></div>';
   }
 
   /* ------------------------------------------------- tareas de hoy y plan */
@@ -594,7 +619,8 @@
 
     // un día que ya pasó muestra sus hábitos y su nota; hoy o un día futuro, los de hoy
     var pasado = d < t, diaNota = pasado ? d : t;
-    h += pasado ? rutinasDeDia(d) : rutinas(t, hora) + retoHoy(t);
+    // (el reto es un hábito más: sale en Rutinas con «Reto · día N de D»)
+    h += pasado ? rutinasDeDia(d) : rutinas(t, hora);
 
     /* la nota del día */
     var note = S.notes[diaNota] || '';

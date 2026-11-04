@@ -75,7 +75,8 @@ var Store = (function () {
       events: {},                    // { fecha: [{ id, title, goalId, sid, time:'HH:MM'|'', done, kind:'task'|'appt' }] }
       todo: [],                      // pendientes sin día: [{ id, title, kind, goalId, sid }]
 
-      challenge: null,               // { name, days, start, done:{} }
+      challenge: null,               // { name, days, start, done:{} } — reto antiguo: se migra a un hábito con reto y se conserva
+      migraciones: {},               // { reto: { habito, fecha, copiados, omitidos } }
       reviews: {},                   // { lunesDeLaSemana: { won, adjust, focus } }
       dismissed: {},                 // avisos que la persona ya quitó
       lastBackup: '',                // último día que copió su respaldo

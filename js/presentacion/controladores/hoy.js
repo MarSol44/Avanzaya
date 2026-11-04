@@ -241,6 +241,19 @@
     render();
   });
   action('rPausa', function (c) { Habitos.pausar(c.k, c.id); render(); });
+  // frecuencia: diaria, días concretos, n veces por semana o al mes, o sin frecuencia fija
+  UI.onChange('rfreq', function (c) { Habitos.frecuencia(c.k, c.id, c.el.value); render(); });
+  UI.onChange('rfreqN', function (c) {
+    var it = Util.byId(Datos.estado().routines[c.k] || [], c.id);
+    if (it && it.freq) Habitos.frecuencia(c.k, c.id, it.freq.t, c.el.value);
+    render();
+  });
+  // un reto que termina: seguir como hábito o terminarlo (en pausa, con su historial)
+  action('retoSeguir', function (c) { Habitos.retoDecision(c.k, c.id, 'continuar'); render(); Pantalla.toast('Sigue como hábito. Bien hecho.'); });
+  action('retoTerminar', function (c) {
+    Habitos.retoDecision(c.k, c.id, 'terminado'); render();
+    Pantalla.toast('Reto terminado. Su historial se queda; lo reanudas en «Editar».');
+  });
   action('restDia', function (c) { Habitos.descansoSemanal(+c.v); render(); });
   action('restHoy', function () {
     Habitos.descansarHoy(); render();
