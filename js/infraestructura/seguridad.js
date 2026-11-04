@@ -143,6 +143,11 @@ var Sec = (function () {
 
   function s(v, max) { return typeof v === 'string' ? v.slice(0, max || L.name) : ''; }
   function n(v, lo, hi, def) { var x = +v; return isFinite(x) ? Math.max(lo, Math.min(hi, x)) : def; }
+  function idValido(v) { return typeof v === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v); }
+  // Hasta tres identificadores de área, sin repetir.
+  function areasOf(v) {
+    return Array.isArray(v) ? v.filter(function (x, i) { return idValido(x) && v.indexOf(x) === i; }).slice(0, 3) : [];
+  }
   function idOf(v) {
     var x = typeof v === 'string' ? v.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) : '';
     return x || uid();
@@ -165,15 +170,19 @@ var Sec = (function () {
 
   function stepOf(x) {
     x = objOf(x);
-    return { id: idOf(x.id), name: s(x.name, L.name), desc: s(x.desc, 1000), due: dateOf(x.due), done: !!x.done, promoted: !!x.promoted };
+    return { id: idOf(x.id), name: s(x.name, L.name), desc: s(x.desc, 1000), due: dateOf(x.due), done: !!x.done, promoted: !!x.promoted,
+      hito: x.hito === true || undefined, doneAt: x.done && dateOf(x.doneAt) || undefined };
   }
   function goalOf(x) {
     x = objOf(x);
     return {
-      id: idOf(x.id), name: s(x.name, L.name), done: !!x.done, cat: s(x.cat, 40),
+      id: idOf(x.id), name: s(x.name, L.name), done: !!x.done, doneAt: x.done && dateOf(x.doneAt) || undefined, cat: s(x.cat, 40),
       motivation: s(x.motivation, 4000), reward: s(x.reward, L.name), due: dateOf(x.due),
       priority: ['Alta', 'Media', 'Baja'].indexOf(x.priority) >= 0 ? x.priority : 'Media',
-      steps: arrOf(x.steps, 200, stepOf)
+      steps: arrOf(x.steps, 200, stepOf),
+      // meta corta que salió de un paso de largo plazo: { id: meta larga, sid: paso }
+      // (solo si los dos identificadores son válidos: idOf se inventaría uno nuevo)
+      origen: idValido(objOf(x.origen).id) && idValido(objOf(x.origen).sid) ? { id: x.origen.id, sid: x.origen.sid } : undefined
     };
   }
   function passOf(x) {
@@ -194,6 +203,8 @@ var Sec = (function () {
     out.welcome = {
       done: d.welcome ? !!wc.done : !wcNueva, pospuesta: !!wc.pospuesta, paso: n(wc.paso, 0, 4, 0),
       area: /^[A-Za-z0-9_-]{1,40}$/.test(String(wc.area || '')) ? String(wc.area) : '',
+      // hasta tres áreas elegidas al empezar (la primera es el punto de partida)
+      areas: areasOf(wc.areas),
       cambio: s(wc.cambio, 400), meta: s(wc.meta, 120), vision: s(wc.vision, 400),
       freno: /^[a-z]{1,20}$/.test(String(wc.freno || '')) ? String(wc.freno) : '',
       borrador: wc.borrador ? {
@@ -228,7 +239,9 @@ var Sec = (function () {
     out.profile = {
       photo: imgOf(pr.photo), tz: s(pr.tz, 80),
       lang: ['es', 'en', 'pt'].indexOf(pr.lang) >= 0 ? pr.lang : 'es',
-      weekStart: +pr.weekStart === 0 ? 0 : 1
+      weekStart: +pr.weekStart === 0 ? 0 : 1,
+      // las áreas que la persona marcó como importantes (hasta tres)
+      areasClave: areasOf(pr.areasClave)
     };
     var pf = objOf(d.prefs);
     out.prefs = {
@@ -287,6 +300,19 @@ var Sec = (function () {
       if (dias.length && dias.length < 7) it.days = dias;
       if (dateOf(x.paused)) it.paused = dateOf(x.paused);
       if (dateOf(x.since)) it.since = dateOf(x.since);
+      if (dateOf(x.reglaDesde)) it.reglaDesde = dateOf(x.reglaDesde);
+      // frecuencia flexible (Hábitos v2): n veces por semana o por mes, o sin frecuencia fija
+      var fq = objOf(x.freq);
+      if (fq.t === 'semana' || fq.t === 'mes') it.freq = { t: fq.t, n: n(fq.n, 1, fq.t === 'semana' ? 7 : 31, 3) };
+      else if (fq.t === 'libre') it.freq = { t: 'libre' };
+      if (it.freq) delete it.days;
+      // reto: duración, inicio y estado (y si vino de la migración del reto antiguo)
+      var rt = objOf(x.reto);
+      if (dateOf(rt.inicio)) {
+        it.reto = { dias: n(rt.dias, 3, 365, 30), inicio: dateOf(rt.inicio),
+          estado: ['activo', 'continuar', 'terminado'].indexOf(rt.estado) >= 0 ? rt.estado : 'activo' };
+        if (rt.migrado === true) it.reto.migrado = true;
+      }
       return it;
     }
     var rd = arrOf(rt.day, 60, rItem), rn = arrOf(rt.night, 60, rItem);
@@ -316,7 +342,7 @@ var Sec = (function () {
         return {
           id: idOf(x.id), title: s(x.title, 400), goalId: x.goalId ? idOf(x.goalId) : '', sid: s(x.sid, 40),
           time: /^([01]\d|2[0-3]):[0-5]\d$/.test(x.time) ? x.time : '',
-          done: !!x.done, kind: x.kind === 'appt' ? 'appt' : 'task'
+          done: !!x.done, kind: x.kind === 'appt' ? 'appt' : 'task', doneAt: x.done && dateOf(x.doneAt) || undefined
         };
       });
     });
@@ -325,6 +351,11 @@ var Sec = (function () {
       x = objOf(x);
       return { id: idOf(x.id), title: s(x.title, 400), kind: x.kind === 'appt' ? 'appt' : 'task', goalId: x.goalId ? idOf(x.goalId) : '', sid: s(x.sid, 40) };
     });
+
+    // registro de migraciones hechas (para no repetirlas): reto → hábito
+    var mg = objOf(objOf(d.migraciones).reto);
+    out.migraciones = mg.habito && idValido(mg.habito)
+      ? { reto: { habito: mg.habito, fecha: dateOf(mg.fecha), copiados: n(mg.copiados, 0, 400, 0), omitidos: n(mg.omitidos, 0, 400, 0) } } : {};
 
     var ch = objOf(d.challenge);
     if (ch && (ch.name || ch.start)) {

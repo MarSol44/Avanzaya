@@ -49,10 +49,10 @@ var Store = (function () {
       sessionAt: 0,                  // cuándo se inició (caduca a los 14 días)
       auth: { fails: 0, until: 0 },  // freno a la fuerza bruta
       guest: false,
-      profile: { photo: '', lang: 'es', tz: '', weekStart: 1 },
+      profile: { photo: '', lang: 'es', tz: '', weekStart: 1, areasClave: [] },
       prefs: { theme: 'auto', notifs: true },
       onboarded: false,
-      welcome: { done: false, pospuesta: false, paso: 0, area: '', cambio: '', meta: '', vision: '', freno: '', borrador: null, realista: '' },   // bienvenida y primer plan
+      welcome: { done: false, pospuesta: false, paso: 0, area: '', areas: [], cambio: '', meta: '', vision: '', freno: '', borrador: null, realista: '' },   // bienvenida y primer plan
 
       cats: BdvAreas.base(),
 
@@ -75,7 +75,8 @@ var Store = (function () {
       events: {},                    // { fecha: [{ id, title, goalId, sid, time:'HH:MM'|'', done, kind:'task'|'appt' }] }
       todo: [],                      // pendientes sin día: [{ id, title, kind, goalId, sid }]
 
-      challenge: null,               // { name, days, start, done:{} }
+      challenge: null,               // { name, days, start, done:{} } — reto antiguo: se migra a un hábito con reto y se conserva
+      migraciones: {},               // { reto: { habito, fecha, copiados, omitidos } }
       reviews: {},                   // { lunesDeLaSemana: { won, adjust, focus } }
       dismissed: {},                 // avisos que la persona ya quitó
       lastBackup: '',                // último día que copió su respaldo

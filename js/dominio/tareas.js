@@ -40,6 +40,10 @@
 
   function create(deps) {
     var repo = deps.repo, shift = deps.shift, uid = deps.uid;
+    // (opcional) hoy, para apuntar cuándo se completó algo: doneAt. Lo de antes no
+    // tiene fecha y no se le inventa.
+    var today = deps.today || function () { return ''; };
+    function marcarHecho(x, hecho) { x.done = hecho; if (hecho && today()) x.doneAt = today(); else delete x.doneAt; }
 
     /* --------------------------------------------------------- consultas */
     function find(day, id) { return byId(repo.day(day), id); }
@@ -153,15 +157,15 @@
       var e = find(day, id);
       if (!e) return { ok: false, reason: 'missing' };
       var nv = !isDone(e), st = stepLink(e);
-      e.done = nv;
-      if (st) st.done = nv;        // el paso de la meta se marca a la vez
+      marcarHecho(e, nv);
+      if (st) marcarHecho(st, nv);        // el paso de la meta se marca a la vez
       return { ok: true, done: nv };
     }
 
     function toggleStep(kind, gid, sid) {
       var g = byId(repo.goals(kind), gid), s = g && byId(g.steps || [], sid);
       if (!s) return { ok: false, reason: 'missing' };
-      s.done = !s.done;
+      marcarHecho(s, !s.done);
       return { ok: true, done: s.done };
     }
 
@@ -192,6 +196,9 @@
         if (st) st.due = to;
       } else {
         repo.setTodo([{ id: e.id, title: e.title, kind: e.kind, goalId: e.goalId || '', sid: e.sid || '' }].concat(repo.todo()));
+        // un paso sin día deja de tener fecha también en su meta
+        var st2 = stepLink(e);
+        if (st2) st2.due = '';
       }
       return { ok: true, to: to };
     }

@@ -40,11 +40,11 @@ var TaskQueries, TaskCommands, Goals, Routines, Areas, Revision, Plan;
   };
 
   /* ------------------------------------------------ servicios de dominio */
-  var tasks = BdvTasks.create({ repo: taskRepo, shift: Dates.shift, uid: Util.uid });
+  var tasks = BdvTasks.create({ repo: taskRepo, shift: Dates.shift, uid: Util.uid, today: Dates.today });
   TaskQueries = tasks.queries;
   TaskCommands = tasks.commands;
   Goals = BdvGoals.create({ repo: goalRepo, today: Dates.today, diff: Dates.diff });
-  Routines = BdvRoutines.create({ repo: routineRepo, today: Dates.today, shift: Dates.shift, diff: Dates.diff });
+  Routines = BdvRoutines.create({ repo: routineRepo, today: Dates.today, shift: Dates.shift, diff: Dates.diff, weekStart: Dates.weekStart });
   Areas = BdvAreas.create({ repo: { cats: function () { return S.cats; } } });
   Revision = BdvRevision.create({
     repo: { rc: function () { return S.rc; }, notes: function () { return S.notes; }, reviews: function () { return S.reviews; } },

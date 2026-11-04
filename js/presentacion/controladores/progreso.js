@@ -21,7 +21,7 @@
     ui.reviewWeek = next; refresh();
   });
 
-  /* --- reto --- */
+  /* --- retos: hábitos con duración e inicio (Hábitos v2) --- */
   action('sheetChallenge', function () { openSheet({ t: 'challenge' }); });
   // un reto sin nombre no se puede sostener: primero, qué es
   action('addChallenge', function () {
@@ -30,11 +30,18 @@
       UI.focusAdd('challenge');
       return;
     }
-    Progreso.reto(val('[data-add="challenge"]'), val('#chDays')); refresh();
+    var r = Habitos.nuevoReto(val('[data-add="challenge"]'), val('#chDays'), val('#chInicio'));
+    if (!r.ok) { Pantalla.toast(r.reason === 'fecha' ? 'Elige un inicio entre hace dos meses y dentro de un año.' : 'Escribe qué vas a sostener estos días.'); return; }
+    refresh();
+    Pantalla.toast('Reto empezado: lo marcas en Hoy, con tus hábitos.');
   });
-  action('chDay', function (c) { Progreso.retoDia(c.el.getAttribute('data-day')); refresh(); });
-  action('chRestart', function () { Progreso.retoReiniciar(); refresh(); });
-  action('chDel', function () { Progreso.retoBorrar(); refresh(); });
+  // un día del reto se marca igual que el hábito ese día (no hay días futuros)
+  action('chDay', function (c) { Habitos.marcar(c.el.getAttribute('data-day'), c.k, c.id); refresh(); });
+  action('chRestart', function (c) { Habitos.retoReiniciar(c.k, c.id); refresh(); });
+  action('chDel', function (c) {
+    Habitos.retoDecision(c.k, c.id, 'terminado'); refresh();
+    Pantalla.toast('Reto terminado. Su historial se queda.');
+  });
 
   /* --- logros --- */
   action('sheetWins', function () { openSheet({ t: 'wins' }); });
@@ -46,7 +53,7 @@
   action('winDel', function (c) { armedDelete(c.el, function () { Progreso.logroBorrar(c.id); refresh(); }); });
 
   /* --- campos --- */
-  UI.onInput('chName', function (c) { Progreso.retoNombre(c.el.value); });
+  UI.onInput('chName', function (c) { Habitos.nombre(c.k, c.id, c.el.value); });
   UI.onInput('winText', function (c) { Progreso.logroTexto(c.id, c.el.value); });
   UI.onInput('revWon', function (c) { Progreso.revision(c.el.getAttribute('data-w'), 'won', c.el.value); grow(c.el); });
   UI.onInput('revAdjust', function (c) { Progreso.revision(c.el.getAttribute('data-w'), 'adjust', c.el.value); grow(c.el); });

@@ -23,7 +23,13 @@
     if (t) t.textContent = ok ? b.getAttribute('data-ok') : 'Saltar esta pregunta';
   }
 
-  action('bvArea', function (c) { Bienvenida.elegirArea(c.v); marcar('[data-a="bvArea"]', Bienvenida.datos().area); boton(); });
+  // hasta tres áreas: se repinta para ver el orden (la primera es el punto de partida)
+  action('bvArea', function (c) {
+    if (Bienvenida.elegirArea(c.v).lleno) { Pantalla.toast('Hasta tres. Quita una si quieres elegir otra.'); return; }
+    render();
+  });
+  // «No lo tengo claro»: tras el chequeo se elige por qué área empezar y se sigue aquí
+  action('bvDesdeChequeo', function (c) { Bienvenida.desdeChequeo(c.el.getAttribute('data-c')); abrir(); });
   action('bvFreno', function (c) { Bienvenida.freno(c.v); marcar('[data-a="bvFreno"]', Bienvenida.datos().freno); boton(); });
   UI.onInput('bvCambio', function (c) { Bienvenida.cambio(c.el.value); UI.grow(c.el); boton(); });
   UI.onInput('bvMeta', function (c) { Bienvenida.meta(c.el.value); boton(); });
@@ -70,6 +76,7 @@
   });
 
   // Desde Hoy: seguir donde se dejó, o no volver a ofrecerla.
-  action('bvSeguir', function () { Bienvenida.seguir(); abrir(); });
+  // (también desde el resultado del chequeo: «Prefiero elegir otra área» vuelve a las áreas)
+  action('bvSeguir', function () { Bienvenida.seguir(); if (ui.screen === 'rcsum') Bienvenida.irA(0); abrir(); });
   action('bvDescartar', function () { Bienvenida.descartar(); render(); Pantalla.toast('Hecho. Puedes crear metas cuando quieras desde Metas.'); });
 })();

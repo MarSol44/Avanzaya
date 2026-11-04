@@ -1,108 +1,77 @@
 /* ==========================================================================
-   Pestaña METAS — calendario con rutinas y notas, y las metas de corto
-   y largo plazo con su buscador, filtros y lista.
+   Pestaña METAS — las metas de corto y largo plazo (con su buscador, filtros
+   y lista) y sus fechas: pasos programados, hitos y fechas límite.
    ========================================================================== */
 (function () {
   'use strict';
   var S = Datos.estado(), ui = UIState, esc = Fmt.esc;
-
-  var DOW = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-  var DOW_SUN = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 
   function profileBtn() {
     return '<button class="iconbtn solid" data-a="tab" data-t="perfil" aria-label="Perfil">' +
       (S.profile.photo ? '<img src="' + esc(S.profile.photo) + '" alt="">' : I('user', 19)) + '</button>';
   }
 
-  /* ------------------------------------------------------------- calendario */
-  function calendar() {
-    var ym = ui.calMonth, y = +ym.slice(0, 4), m = +ym.slice(5, 7);
-    var first = new Date(y, m - 1, 1), t = Dates.today();
-    var ws = S.profile.weekStart === 0 ? 0 : 1;
-    var offset = (first.getDay() - ws + 7) % 7;
-    var total = new Date(y, m, 0).getDate();
-    var label = first.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-
-    var h = '<div class="sect">' +
-      '<div class="sect-head">' +
-      '<span class="sect-title" style="font-size:1.05rem">' + esc(Fmt.cap(label)) + '</span>' +
-      '<span class="row" style="gap:0">' +
-      '<button class="iconbtn" data-a="cal" data-d="-1" aria-label="Mes anterior">' + I('left') + '</button>' +
-      '<button class="iconbtn" data-a="calToday" aria-label="Ir a hoy">' + I('pin', 18) + '</button>' +
-      '<button class="iconbtn" data-a="cal" data-d="1" aria-label="Mes siguiente">' + I('right') + '</button></span></div>';
-
-    h += '<div class="cal">';
-    (ws === 0 ? DOW_SUN : DOW).forEach(function (d) { h += '<span class="dow">' + d + '</span>'; });
-    for (var i = 0; i < offset; i++) h += '<span class="pad"></span>';
-    for (var d2 = 1; d2 <= total; d2++) {
-      var k = y + '-' + String(m).padStart(2, '0') + '-' + String(d2).padStart(2, '0');
-      var st = Routines.dayStatus(k), ev = (S.events[k] || []).length;
-      var cls = [st, k === t ? 'today' : '', k === ui.selDay ? 'sel' : ''].filter(Boolean).join(' ');
-      h += '<button data-a="pickDay" data-day="' + k + '" class="' + cls + '" aria-label="' + esc(Fmt.fmt(k)) + '">' + d2 +
-        (ev ? '<span class="ev"></span>' : '') + '</button>';
-    }
-    h += '</div>';
-
-    h += '<div class="callegend">' +
-      '<span><i style="background:var(--good)"></i>Día completo</span>' +
-      '<span><i style="background:var(--warn)"></i>A medias</span>' +
-      '<span><i style="background:color-mix(in srgb,var(--ink) 14%,transparent)"></i>Sin marcar</span>' +
-      '<span><i style="background:var(--accent)"></i>Con tareas</span></div>';
-    return h + '</div>';
-  }
-
-  // Un solo panel para el día que se toca en el calendario: tareas, rutinas
-  // y nota. Si el día elegido es hoy, se remite a la pestaña Hoy en vez de
-  // repetir aquí lo mismo.
-  function dayPanel() {
-    var k = ui.selDay, evs = S.events[k] || [], tot = Routines.dayTotals(k);
-    var isToday = k === Dates.today();
-    var note = S.notes[k] || '', futuro = k > Dates.today();
-
-    var h = '<div class="sect">' +
-      '<div class="sect-head"><span class="sect-title" style="font-size:1.05rem">' +
-      esc(Fmt.cap(Fmt.fmtLong(k))) + '</span>' +
-      '<span class="pill num ' + (tot.total && tot.done >= tot.total ? 'good' : tot.done ? 'warn' : '') + '">' +
-      tot.done + ' de ' + tot.total + '</span></div>';
-
-    if (isToday) {
-      h += '<button class="btn soft block" data-a="tab" data-t="hoy" style="justify-content:flex-start">' +
-        I('sunrise', 18) + 'Marcar la rutina de hoy</button>';
-    } else {
-      h += '<div class="list">';
-      ['day', 'night'].forEach(function (kind) {
-        var log = S.rlog[k] || { day: [], night: [] }, marks = log[kind] || [];
-        (S.routines[kind] || []).forEach(function (it) {
-          var on = marks.indexOf(it.id) >= 0;
-          if (!on && !Routines.dueOn(kind, k).some(function (x) { return x.id === it.id; })) return;   // ese día no tocaba
-          h += '<div class="listrow" style="padding:10px 14px">' +
-            (futuro ? '' : '<button class="chk" role="checkbox" aria-checked="' + on + '" data-a="rtoggle" data-day="' + k + '" data-k="' + kind + '" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + '">' + I('check', 15) + '</button>') +
-            '<span class="grow"' + (on ? ' style="color:var(--ink-2);text-decoration:line-through"' : '') + '>' + esc(it.name) + '</span>' +
-            I(kind === 'day' ? 'sunrise' : 'moon', 16) + '</div>';
+  /* ---------------------------------------------------------------- fechas */
+  // Las fechas de las metas, y solo eso: pasos programados, hitos y fechas
+  // límite, de lo atrasado a lo que viene. El día a día (tareas, hábitos, nota)
+  // vive en Hoy; aquí no se repite. Cada paso se completa o se reprograma aquí
+  // mismo (cambiar la fecha es lo mismo que hacerlo dentro de la meta).
+  function fechas() {
+    var t = Dates.today(), porDia = {}, sinFecha = [];
+    function poner(dia, item) { (porDia[dia] = porDia[dia] || []).push(item); }
+    [['S', S.goalsS], ['L', S.goalsL]].forEach(function (x) {
+      x[1].forEach(function (g) {
+        if (g.done) return;
+        var pend = 0;
+        (g.steps || []).forEach(function (s) {
+          if (s.done || (x[0] === 'L' && s.promoted)) return;   // un paso convertido va con su meta corta
+          if (s.due) poner(s.due, { k: x[0], g: g, s: s }); else pend++;
         });
+        if (g.due) poner(g.due, { k: x[0], g: g, s: null });
+        if (pend) sinFecha.push({ k: x[0], g: g, n: pend });
       });
-      h += '</div>';
-      if (futuro) h += '<p class="tiny">Este día aún no ha llegado: los hábitos se marcan cuando toque.</p>';
-    }
+    });
 
-    if (evs.length) {
-      h += '<div class="list">';
-      evs.forEach(function (e) {
-        h += '<div class="listrow" style="padding:10px 10px 10px 14px">' +
-          '<span class="catdot" style="background:var(--accent)"></span>' +
-          '<span class="grow" style="font-size:13.5px">' + esc(e.title) + '</span>' +
-          '<button class="delbtn" data-a="evdel" data-day="' + k + '" data-id="' + esc(e.id) + '" aria-label="Quitar tarea">' + I('trash', 17) + '</button></div>';
+    var dias = Object.keys(porDia).sort();
+    var h = '<div class="sect"><p class="muted" style="margin-top:-4px">Cuándo toca cada paso y cada fecha importante de tus metas. Lo de cada día está en Hoy.</p></div>';
+    if (!dias.length) {
+      h += '<div class="empty"><span class="ee">' + I('calendar', 30) + '</span><p>Aún no hay pasos con fecha. Programa los pasos de tus metas y aparecerán aquí, y en Hoy el día que toquen.</p></div>';
+    }
+    dias.forEach(function (dia) {
+      var atras = dia < t;
+      // con el año si no es el de ahora (las de largo plazo suelen caer en otro)
+      var titulo = atras ? 'Atrasado · ' + Fmt.cuando(dia) : dia === t ? 'Hoy' :
+        Fmt.fmtLong(dia) + (dia.slice(0, 4) !== t.slice(0, 4) ? ' de ' + dia.slice(0, 4) : '');
+      h += '<div class="sect" style="gap:8px"><div class="tl-head' + (atras ? ' bad' : '') + '">' + I(atras ? 'clock' : 'calendar', 14) + esc(Fmt.cap(titulo)) + '</div><div class="tlist">';
+      porDia[dia].forEach(function (x) {
+        var c = Areas.get(x.g.cat), ic = c ? esc(c.emoji) : I('target', 15);
+        if (!x.s) {
+          h += '<button class="trow trow-btn" data-a="openGoal" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '">' +
+            '<span class="trow-ic">' + I('flag', 16) + '</span><span class="trow-body"><span class="trow-t">Fecha límite de «' + esc(x.g.name || 'Meta sin nombre') + '»</span>' +
+            '<span class="trow-m"><span>' + ic + ' ' + (x.k === 'S' ? 'Corto plazo' : 'Largo plazo') + '</span></span></span>' + I('right', 16) + '</button>';
+          return;
+        }
+        h += '<div class="trow"><button class="chk round" role="checkbox" aria-checked="false" data-a="gsDone" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '" aria-label="Marcar «' + esc(x.s.name || 'Paso') + '» como hecho">' + I('check', 14) + '</button>' +
+          '<button class="trow-body" data-a="openGoal" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" aria-label="Abrir la meta «' + esc(x.g.name || 'Meta') + '»">' +
+          '<span class="trow-t">' + esc(x.s.name || 'Paso') + '</span><span class="trow-m">' +
+          (x.s.hito ? '<span class="hito">' + I('flag', 12) + 'Hito</span>' : '') + '<span>' + ic + ' ' + esc(x.g.name || 'Meta') + '</span></span></button>' +
+          '<input class="inp-plain fecha" type="date" data-f="sdue" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '" value="' + esc(x.s.due) + '" aria-label="Reprogramar «' + esc(x.s.name || 'Paso') + '»"></div>';
       });
-      h += '</div>';
-    }
+      h += '</div></div>';
+    });
 
-    if (note || ui.noteOpen) {
-      h += '<textarea class="ta" data-f="note" data-day="' + k + '" placeholder="Nota de este día">' + esc(note) + '</textarea>';
-    } else {
-      h += '<button class="btn ghost sm" data-a="openNote" style="align-self:flex-start">' +
-        I('pencil', 15) + (isToday ? 'Escribir la nota de hoy' : 'Escribir una nota de este día') + '</button>';
+    if (sinFecha.length) {
+      h += '<div class="sect" style="gap:8px"><div class="tl-head">' + I('note', 14) + 'Pasos sin fecha</div><div class="tlist">' +
+        sinFecha.map(function (x) {
+          var c = Areas.get(x.g.cat);
+          return '<button class="trow trow-btn" data-a="programarMeta" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '">' +
+            '<span class="trow-ic">' + (c ? esc(c.emoji) : I('target', 16)) + '</span>' +
+            '<span class="trow-body"><span class="trow-t">' + esc(x.g.name || 'Meta sin nombre') + '</span>' +
+            '<span class="trow-m"><span>' + Fmt.plural(x.n, 'paso sin fecha', 'pasos sin fecha') + '</span></span></span>' +
+            '<span class="tiny">Programar</span>' + I('right', 16) + '</button>';
+        }).join('') + '</div></div>';
     }
-    return h + '</div>';
+    return h;
   }
 
   /* ------------------------------------------------------------ fila de meta */
@@ -203,11 +172,10 @@
     h += '<div class="scroll"><div class="page">';
     h += '<div class="seg" role="tablist">' +
       '<button role="tab" aria-selected="' + (ui.subMetas === 'goals') + '" data-a="sub" data-s="goals">Mis metas</button>' +
-      '<button role="tab" aria-selected="' + (ui.subMetas === 'cal') + '" data-a="sub" data-s="cal">Calendario</button></div>';
+      '<button role="tab" aria-selected="' + (ui.subMetas === 'cal') + '" data-a="sub" data-s="cal">Fechas</button></div>';
 
     if (ui.subMetas === 'cal') {
-      h += calendar();
-      h += dayPanel();
+      h += fechas();
     } else if (all.length > 6 || ui.goalQ || ui.goalFilter) {
       // buscar y filtrar solo cuando hay bastantes metas como para necesitarlo
       h += '<div class="sect" style="gap:11px">' +
@@ -225,7 +193,7 @@
     }
     if (ui.subMetas !== 'cal') {
       h += goalSection('S', 'Corto plazo', 'Lo que quieres conseguir en menos de un año.', 'zap');
-      h += goalSection('L', 'Largo plazo', 'Más de un año. Sus pasos con fecha cercana pasan solos a corto plazo.', 'mountain');
+      h += goalSection('L', 'Largo plazo', 'Más de un año. Sus pasos con fecha salen en Hoy ese día.', 'mountain');
     }
 
     h += '</div></div>';

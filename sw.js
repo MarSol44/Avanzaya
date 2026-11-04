@@ -4,7 +4,7 @@
 
    Cuando cambies la app, sube VERSION un número. Eso basta. */
 
-var VERSION = 'brujula-v46';
+var VERSION = 'brujula-v48';
 var SHELL   = VERSION + '-shell';
 var FUENTES = VERSION + '-fuentes';
 
@@ -19,6 +19,7 @@ var PRECACHE = [
   '/js/dominio/tareas.js',
   '/js/dominio/metas.js',
   '/js/dominio/rutinas.js',
+  '/js/dominio/migraciones.js',
   '/js/dominio/areas.js',
   '/js/dominio/revision.js',
   '/js/dominio/identidad.js',

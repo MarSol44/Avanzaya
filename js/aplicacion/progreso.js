@@ -1,25 +1,11 @@
 /* ==========================================================================
-   APLICACIÓN — casos de uso de Progreso: el reto, los logros y la revisión
-   de la semana.
+   APLICACIÓN — casos de uso de Progreso: los logros y la revisión de la semana.
+   (Los retos son hábitos desde Hábitos v2: viven en Habitos. El reto antiguo,
+   state.challenge, ya no se escribe: se conserva tal cual tras migrarlo.)
    ========================================================================== */
 var Progreso = (function () {
   'use strict';
   var S = Store.S;
-
-  /* -------------------------------------------------------------- reto */
-  function reto(nombre, dias) {
-    S.challenge = { name: String(nombre || '').trim() || 'Reto de 30 días', days: Util.clamp(+dias || 30, 3, 365), start: Dates.today(), done: {} };
-    Store.save();
-  }
-  function retoDia(dia) {
-    if (!S.challenge) return;
-    if (!S.challenge.done) S.challenge.done = {};
-    if (S.challenge.done[dia]) delete S.challenge.done[dia]; else S.challenge.done[dia] = true;
-    Store.save();
-  }
-  function retoReiniciar() { if (!S.challenge) return; S.challenge.start = Dates.today(); S.challenge.done = {}; Store.save(); }
-  function retoBorrar() { S.challenge = null; Store.save(); }
-  function retoNombre(v) { if (S.challenge) S.challenge.name = v; Store.save(); }
 
   /* ------------------------------------------------------------- logros */
   function logro(texto, fecha) {
@@ -42,7 +28,6 @@ var Progreso = (function () {
   }
 
   return {
-    reto: reto, retoDia: retoDia, retoReiniciar: retoReiniciar, retoBorrar: retoBorrar, retoNombre: retoNombre,
     logro: logro, logroBorrar: logroBorrar, logroTexto: logroTexto, revision: revision
   };
 })();

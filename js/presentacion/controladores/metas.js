@@ -10,7 +10,7 @@
   function both() { renderSheet(); render(); }
   function avisarAscenso(r) { if (r && r.nombre) Pantalla.toast('«' + r.nombre + '» ya es una meta de corto plazo.'); }
 
-  /* --- calendario (solo estado de la interfaz) --- */
+  /* --- el mes de hábitos (en Progreso; solo estado de la interfaz) --- */
   action('cal', function (c) {
     var y = +ui.calMonth.slice(0, 4), m = +ui.calMonth.slice(5, 7) + (+c.el.getAttribute('data-d'));
     var nd = new Date(y, m - 1, 1);
@@ -18,7 +18,17 @@
     render();
   });
   action('calToday', function () { ui.selDay = Dates.today(); ui.calMonth = ui.selDay.slice(0, 7); render(); });
-  action('pickDay', function (c) { ui.selDay = c.el.getAttribute('data-day'); render(); });
+  // un día del mes se abre en Hoy: ahí se ven (y se marcan) sus hábitos, tareas y nota
+  action('pickDay', function (c) {
+    var dia = c.el.getAttribute('data-day');
+    ui.selDay = dia; ui.planDay = dia > Dates.today() ? Dates.today() : dia; ui.tab = 'hoy'; ui.moveId = null;
+    render(); window.scrollTo(0, 0);
+  });
+  // «Programar» desde las fechas de Metas: la meta abierta por sus pasos, ya en modo programar
+  action('programarMeta', function (c) {
+    ui.sheetTab = 'steps'; ui.programar = true;
+    openSheet({ t: 'goal', k: c.k, id: c.id });
+  });
 
   /* --- metas --- */
   action('newGoal', function (c) {
@@ -32,6 +42,7 @@
   action('openGoal', function (c) {
     var g = Goals.find(c.k, c.id);
     ui.sheetTab = g && String(g.name || '').trim() ? 'steps' : 'desc';
+    ui.programar = false;
     openSheet({ t: 'goal', k: c.k, id: c.id });
   });
   action('sheetTab', function (c) { ui.sheetTab = c.sid; renderSheet(); });
@@ -63,11 +74,13 @@
     });
   });
   action('promote', function (c) { avisarAscenso(Objetivos.ascender(c.id, c.sid)); both(); });
-  action('sync', function (c) {
-    var r = Objetivos.alCalendario(c.k, c.id);
-    if (!r.ok) return;
-    render();
-    Pantalla.toast(r.n ? r.n + (r.n === 1 ? ' tarea colocada en el calendario.' : ' tareas colocadas en el calendario.') : 'Nada nuevo que colocar: pon fechas a los pasos.');
+  action('stepHito', function (c) { Objetivos.pasoHito(c.k, c.id, c.sid); both(); });
+  // «Programar pasos»: muestra en cada paso pendiente Hoy / Mañana / Sin fecha.
+  // Solo cambia la fecha del propio paso: no crea tareas ni metas nuevas.
+  action('programar', function () { ui.programar = !ui.programar; renderSheet(); });
+  action('stepDia', function (c) {
+    Objetivos.pasoFecha(c.k, c.id, c.sid, c.v); both();
+    Pantalla.toast(!c.v ? 'Paso sin fecha.' : c.v === Dates.today() ? 'En tu plan de hoy.' : 'Programado para ' + Fmt.cuando(c.v) + '.');
   });
 
   /* --- campos --- */
