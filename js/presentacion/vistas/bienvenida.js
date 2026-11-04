@@ -37,13 +37,20 @@
       '<p class="hero-quote">' + texto + '</p>' + (sub ? '<p class="muted">' + sub + '</p>' : '') + '</div>';
   }
 
+  // Dos caminos en la misma pantalla: elegir hasta tres áreas (la primera es el
+  // punto de partida) o, si no se tiene claro, el chequeo de vida, que lo muestra.
   function paso0(w) {
-    return pregunta('¿Qué sientes que necesitas cambiar en tu vida?', 'No hace falta tenerlo claro. Elige lo que más pese ahora.') +
-      '<div class="bv-areas" role="group" aria-label="Áreas de tu vida">' +
+    var primera = Bienvenida.area();
+    return pregunta('¿Qué quieres trabajar?', 'Elige hasta tres áreas. Empezaremos por la primera; las otras no se pierden.') +
+      '<div class="bv-areas" role="group" aria-label="Áreas de tu vida (hasta tres)">' +
       Areas.all().map(function (c) {
-        return '<button type="button" class="bv-area" data-a="bvArea" data-v="' + esc(c.id) + '" aria-pressed="' + (w.area === c.id) + '">' +
-          '<span class="e">' + esc(c.emoji) + '</span>' + esc(corto(c)) + '</button>';
+        var i = w.areas.indexOf(c.id);
+        return '<button type="button" class="bv-area" data-a="bvArea" data-v="' + esc(c.id) + '" aria-pressed="' + (i >= 0) + '">' +
+          '<span class="e">' + esc(c.emoji) + '</span>' + esc(corto(c)) +
+          (i >= 0 ? '<span class="bv-n num" aria-hidden="true">' + (i + 1) + '</span>' : '') + '</button>';
       }).join('') + '</div>' +
+      (primera ? '<p class="tiny" style="text-align:center">Empiezas por <strong>' + esc(primera.emoji + ' ' + corto(primera)) + '</strong>.</p>' : '') +
+      '<button type="button" class="btn ghost block" data-a="bvChequeo">' + I('compass', 17) + 'No lo tengo claro: ayúdame a verlo (3 min)</button>' +
       '<label class="field"><span>Si quieres, cuéntalo con tus palabras</span>' +
       '<textarea class="ta" data-f="bvCambio" maxlength="400" placeholder="Ej. Siento que voy con prisa todo el día y no avanzo en lo que me importa.">' + esc(w.cambio || '') + '</textarea></label>';
   }
@@ -127,8 +134,20 @@
       var fv = String(w.vision).trim();
       h += fila('sparkle', 'Tu yo del futuro', esc(a.emoji) + ' ' + esc(fv) + (/[.!?…]$/.test(fv) ? '' : '.') + ' Está en Visión, en Mi Yo del Futuro.', 'vision');
     }
-    h += '</div>' +
-      '<div class="card sunk"><div class="stack sm">' +
+    h += '</div>';
+    // las otras áreas elegidas: una meta en cada una, cuando se quiera (un toque)
+    var otras = Bienvenida.areas().slice(1);
+    if (otras.length) {
+      h += '<div class="card sunk"><div class="stack sm">' +
+        '<div class="label">Tus otras áreas</div>' +
+        '<p style="font-size:14px;line-height:1.55">Empieza por esta meta. Cuando quieras, pon una en ' +
+        otras.map(function (c) { return esc(corto(c)); }).join(' y ') + ': no hace falta hoy.</p>' +
+        '<div class="row" style="gap:8px;flex-wrap:wrap">' + otras.map(function (c) {
+          return '<button class="btn ghost sm" data-a="metaDeArea" data-c="' + esc(c.id) + '">' + I('plus', 15) + esc(c.emoji + ' ' + corto(c)) + '</button>';
+        }).join('') + '</div></div></div>';
+    }
+    // el chequeo, solo si no se hizo ya (por ejemplo, por el camino «No lo tengo claro»)
+    if (!Datos.estado().rc.length) h += '<div class="card sunk"><div class="stack sm">' +
       '<div class="label">Cuando quieras, más a fondo</div>' +
       '<p style="font-size:14px;line-height:1.55">El chequeo de vida mide cómo estás en cada área (unos 3 minutos). No hace falta hacerlo hoy.</p>' +
       '<button class="btn soft sm" data-a="bvChequeo" style="align-self:flex-start">Hacer el chequeo de vida</button></div></div>';

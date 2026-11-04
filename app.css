@@ -535,6 +535,12 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 .steps > .step:first-child{ border-top:0; padding-top:0; }
 .step .sfields{ flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
 .step.done .sfields > .inp-plain:first-child{ color:var(--ink-3); text-decoration:line-through; }
+.tl-head.bad{ color:var(--bad); }
+.clave{ display:inline-flex; margin-left:6px; color:var(--accent); vertical-align:-1px; }
+.clave .ic{ fill:currentColor; }
+.hito{ display:inline-flex; align-items:center; gap:3px; color:var(--warn); font-weight:600; }
+.hito-btn{ color:var(--ink-3); }
+.hito-btn[aria-pressed="true"]{ color:var(--warn); border-color:color-mix(in srgb,var(--warn) 40%,transparent); }
 .sname{ display:block; resize:none; overflow:hidden; field-sizing:content; line-height:1.35; }
 
 .delbtn{
@@ -545,6 +551,9 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 .delbtn:hover{ background:var(--bad-sf); color:var(--bad); }
 .delbtn[data-armed="1"]{ background:var(--bad); color:#fff; }
 .delbtn.on{ color:var(--accent); background:var(--accent-sf); }
+/* la estrella de un área importante no borra nada: sin el rojo de «eliminar» */
+.delbtn[data-a="areaClave"]:hover{ color:var(--accent); background:var(--accent-sf); }
+.delbtn[data-a="areaClave"][aria-pressed="true"] .ic{ fill:currentColor; }
 /* fecha de un paso: texto que se toca, no otra caja */
 .inp-plain.fecha{ width:auto; font-size:12.5px; color:var(--ink-2); padding:2px 4px; }
 
@@ -732,6 +741,8 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 }
 .bv-area{ display:flex; align-items:center; gap:9px; padding:12px; min-height:52px; line-height:1.25; }
 .bv-area .e{ font-size:1.3em; flex:none; }
+.bv-area{ position:relative; }
+.bv-n{ position:absolute; top:5px; right:8px; font-size:11px; font-weight:700; color:var(--accent); }
 .bv-freno{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; }
 .bv-freno .bv-ok{ color:var(--accent); pointer-events:none; opacity:0; display:flex; }
 .bv-area:hover, .bv-freno:hover{ border-color:var(--ink-3); }

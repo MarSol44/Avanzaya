@@ -292,12 +292,17 @@
         '<p style="font-size:14px;line-height:1.55">Hoy tus dos áreas más bajas son <strong>' +
         weak.map(function (w) { return esc(w.c.name.split(' (')[0]); }).join('</strong> y <strong>') +
         '</strong>. No hace falta arreglarlo todo: empieza por una.</p>' +
-        // del diagnóstico a la acción: una meta en esa área (o la que ya hay)
+        // del diagnóstico a la acción. Si se llegó desde la bienvenida («No lo tengo
+        // claro»), se elige por qué área empezar y se sigue allí; si no, una meta en
+        // esa área (o la que ya hay)
         '<div class="row" style="gap:8px;flex-wrap:wrap">' + weak.map(function (w) {
           var n = w.c.name.split(' (')[0], g = S.goalsS.filter(function (x) { return x.cat === w.c.id && !x.done; })[0];
+          if (!Bienvenida.datos().done) return '<button class="btn accent sm" data-a="bvDesdeChequeo" data-c="' + esc(w.c.id) + '">' + esc(w.c.emoji) + ' Empezar por ' + esc(n) + '</button>';
           return g ? '<button class="btn ghost sm" data-a="openGoal" data-k="S" data-id="' + esc(g.id) + '">' + esc(w.c.emoji) + ' Ver tu meta de ' + esc(n) + '</button>'
             : '<button class="btn ghost sm" data-a="metaDeArea" data-c="' + esc(w.c.id) + '">' + I('plus', 15) + 'Una meta en ' + esc(n) + '</button>';
-        }).join('') + '</div></div></div>';
+        }).join('') + '</div>' +
+        (!Bienvenida.datos().done ? '<button class="btn ghost sm" data-a="bvSeguir" style="align-self:flex-start">Prefiero elegir otra área</button>' : '') +
+        '</div></div>';
     }
 
     if (S.rc.length > 1 && !fromHistory) {

@@ -40,7 +40,7 @@ var TaskQueries, TaskCommands, Goals, Routines, Areas, Revision, Plan;
   };
 
   /* ------------------------------------------------ servicios de dominio */
-  var tasks = BdvTasks.create({ repo: taskRepo, shift: Dates.shift, uid: Util.uid });
+  var tasks = BdvTasks.create({ repo: taskRepo, shift: Dates.shift, uid: Util.uid, today: Dates.today });
   TaskQueries = tasks.queries;
   TaskCommands = tasks.commands;
   Goals = BdvGoals.create({ repo: goalRepo, today: Dates.today, diff: Dates.diff });

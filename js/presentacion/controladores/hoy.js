@@ -51,13 +51,14 @@
   action('evdel', function (c) {
     var day = c.el.getAttribute('data-day'), r = Tasks.remove(day, c.id);
     ui.moveId = null;
-    // si era un paso de una meta, se quita también de la meta: si no, volvería
-    // a salir en el plan en su día (con «Deshacer» se recuperan los dos)
+    // si era un paso de una meta, sale del plan pero sigue en su meta (sin fecha):
+    // la meta no pierde nada y se puede volver a programar (con «Deshacer», como estaba)
     var e = r.event, x = e && e.goalId && e.sid && e.sid !== '__due' && TaskQueries.goalById(e.goalId);
-    var paso = x ? Objetivos.pasoBorrar(x.k, x.g.id, e.sid) : null;
+    var st = x && Util.byId(x.g.steps || [], e.sid), antes = st ? st.due : '';
+    if (st) Objetivos.pasoFecha(x.k, x.g.id, e.sid, '');
     commit();
-    Pantalla.toast(paso ? 'Paso quitado de «' + (x.g.name || 'la meta') + '».' : 'Tarea quitada.', function () {
-      if (paso) Objetivos.pasoRestaurar(paso);
+    Pantalla.toast(st ? 'Fuera de tu plan. El paso sigue en «' + (x.g.name || 'su meta') + '», sin fecha.' : 'Tarea quitada.', function () {
+      if (st) Objetivos.pasoFecha(x.k, x.g.id, e.sid, antes);
       Tasks.restore(day, r.event); commit();
     });
   });
@@ -78,7 +79,7 @@
   action('gsDone', function (c) { if (Tasks.toggleStep(c.k, c.id, c.sid).ok) commit(); });
   // poner día al siguiente paso de una meta corta (desde «Siguiente paso de tus metas»)
   action('pasoDia', function (c) {
-    Objetivos.pasoFecha('S', c.id, c.sid, c.v);
+    Objetivos.pasoFecha(c.k === 'L' ? 'L' : 'S', c.id, c.sid, c.v);
     commit();
     Pantalla.toast(c.v === Dates.today() ? 'En tu plan de hoy.' : 'En tu plan de ' + Fmt.cuando(c.v) + '.');
   });

@@ -67,6 +67,10 @@
     if (!r.ok) { Pantalla.toast('Ponle un nombre al área.'); return; }
     closeSheet(); Pantalla.toast('Área creada.');
   });
+  action('areaClave', function (c) {
+    if (Ajustes.areaClave(c.id).lleno) { Pantalla.toast('Ya tienes tres importantes: quita una antes de marcar otra.'); return; }
+    render();
+  });
   action('catDel', function (c) {
     armedDelete(c.el, function () { Ajustes.areaBorrar(c.id); render(); });
   });

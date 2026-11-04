@@ -62,7 +62,7 @@
       '2. Chequeo de vida — ocho pantallas cortas para medir cómo estás en cada área. Repítelo cada pocos meses; el historial te muestra si subes o bajas.\n\n' +
       '3. Mi Yo del Futuro — una frase por área sobre dónde quieres estar en 5 años. De ahí sale tu Visión.\n\n' +
       '4. Metas — corto plazo (menos de 1 año) y largo plazo. Dentro de cada una defines los pasos; el porcentaje sale solo de los pasos marcados.\n\n' +
-      '5. Pasos a metas — cuando un paso de una meta de largo plazo tiene fecha a menos de un año, puedes convertirlo en meta de corto plazo con un botón.\n\n' +
+      '5. Pasos a metas — un paso con fecha sale en Hoy ese día. Si un paso de largo plazo cae en menos de un año, puedes convertirlo en meta de corto plazo con un botón: quedan unidos y completar uno completa el otro.\n\n' +
       '6. Sincronizar — reparte los pasos de una meta por el calendario para que aparezcan el día que toca. El calendario vive dentro de la app: no se conecta con Google Calendar.\n\n' +
       '7. Rutinas — marca la rutina de día y la de noche; el calendario se pinta de verde, ámbar o rojo según lo que cumplas, y de ahí sale tu racha.\n\n' +
       'Consejo: haz una copia de seguridad de vez en cuando desde Perfil.'],
@@ -128,7 +128,7 @@
     } else {
       var steps = g.steps || (g.steps = []);
       h += '<p class="tiny">El porcentaje de la meta sale de los pasos que marques aquí.' +
-        (isS ? '' : ' Un paso con fecha a menos de un año puede pasar a ser una meta de corto plazo.') + '</p>';
+        (isS ? '' : ' Con fecha, un paso sale en Hoy ese día. Si es grande, puedes convertirlo en meta de corto plazo: seguirá unido a esta.') + '</p>';
 
       if (!steps.length) {
         h += '<div class="empty" style="padding:18px 0"><span class="ee">' + I('ladder', 30) + '</span><p>Sin pasos todavía. Divide la meta en trozos que quepan en una tarde.</p></div>';
@@ -142,9 +142,22 @@
             // el nombre se lee entero: crece en líneas en vez de cortarse
             '<textarea class="inp-plain sname" rows="1" style="font-weight:600" data-f="sname" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" placeholder="Nombre del paso" aria-label="Nombre del paso">' + esc(s.name || '') + '</textarea>' +
             '<input class="inp-plain" style="font-size:12.5px;color:var(--ink-2)" data-f="sdesc" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" value="' + esc(s.desc || '') + '" placeholder="Añadir una nota" aria-label="Nota del paso">' +
-            '<span class="row" style="gap:8px;margin-top:5px">' +
+            '<span class="row" style="gap:6px;margin-top:5px;flex-wrap:wrap">' +
             '<input class="inp-plain fecha" type="date" data-f="sdue" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" value="' + esc(s.due || '') + '" aria-label="Fecha del paso">' +
-            (!isS && near ? '<button class="btn ghost xs" data-a="promote" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '">' + I('upRight', 14) + 'A corto plazo</button>' : '') +
+            // programando: hoy, mañana o sin fecha a un toque (solo cambia la fecha del paso)
+            (ui.programar && !s.done && !s.promoted ? '<span class="seg mini" role="group" aria-label="Cuándo hacer «' + esc(s.name || 'este paso') + '»">' +
+              [[Dates.today(), 'Hoy'], [Dates.shift(Dates.today(), 1), 'Mañana'], ['', 'Sin fecha']].map(function (o) {
+                return '<button type="button" data-a="stepDia" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" data-v="' + o[0] + '" aria-pressed="' + ((s.due || '') === o[0]) + '">' + o[1] + '</button>';
+              }).join('') + '</span>' : '') +
+            // un hito es un paso que marca un punto importante: se distingue con bandera
+            '<button type="button" class="btn ghost xs hito-btn" data-a="stepHito" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" aria-pressed="' + !!s.hito + '">' + I('flag', 13) + (s.hito ? 'Hito' : 'Marcar como hito') + '</button>' +
+            // ya convertido: se dice y se puede abrir esa meta (van a la par)
+            (!isS && s.promoted ? (function () {
+              var m = S.goalsS.filter(function (x) { return x.origen && x.origen.sid === s.id; })[0];
+              return m ? '<button class="btn ghost xs" data-a="openGoal" data-k="S" data-id="' + esc(m.id) + '">' + I('upRight', 14) + 'Es una meta de corto plazo</button>'
+                : '<span class="tiny">Pasó a corto plazo</span>';
+            })() : '') +
+            (!isS && near && !s.promoted ? '<button class="btn ghost xs" data-a="promote" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '">' + I('upRight', 14) + 'A corto plazo</button>' : '') +
             '</span></span>' +
             '<button class="delbtn" data-a="stepDel" data-k="' + k + '" data-id="' + esc(id) + '" data-s="' + esc(s.id) + '" aria-label="Eliminar paso" title="Eliminar paso">' + I('trash', 17) + '</button>' +
             '</div>';
@@ -153,7 +166,11 @@
       }
       h += '<div class="addbar"><input class="addbar-inp" data-add="step" placeholder="Añadir un paso" aria-label="Nuevo paso" enterkeyhint="done">' +
         '<button class="addbar-go" data-a="stepAdd" data-k="' + k + '" data-id="' + esc(id) + '" aria-label="Añadir paso">' + I('plus', 18) + '</button></div>';
-      h += '<button class="btn ghost sm" data-a="sync" data-k="' + k + '" data-id="' + esc(id) + '" style="align-self:flex-start">' + I('refresh', 16) + 'Poner los pasos en el calendario</button>';
+      // decidir cuándo se hace cada paso: un paso con fecha sale ese día en Hoy
+      if (steps.some(function (s) { return !s.done; })) {
+        h += '<button class="btn ghost sm" data-a="programar" aria-pressed="' + !!ui.programar + '" style="align-self:flex-start">' +
+          I('calendar', 16) + (ui.programar ? 'Listo' : 'Programar pasos') + '</button>';
+      }
     }
 
     h += '<div class="divider"></div>' +
@@ -389,8 +406,21 @@
   /* ---------------------------------------------------------------- logros */
   function winsSheet() {
     var wins = S.wins.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
-    var h = head('trophy', 'Todo lo que has logrado') + '<div class="sheet-body">';
+    var h = head('trophy', 'Lo que has logrado') + '<div class="sheet-body">';
     h += '<p class="muted">La memoria guarda mal las victorias y muy bien los fallos. Esta lista corrige ese sesgo.</p>';
+    // de tus metas: lo que los datos permiten afirmar (la fecha, solo si se guardó)
+    var deMetas = V.logros();
+    if (deMetas.length) {
+      h += '<span class="label">De tus metas</span><div class="steps">';
+      deMetas.forEach(function (x) {
+        h += '<div class="step" style="align-items:center">' +
+          '<span style="color:var(--warn)">' + I(x.tipo === 'meta' ? 'trophy' : 'flag', 17) + '</span>' +
+          '<span class="sfields"><span style="font-weight:600">' + esc(x.texto) + '</span>' +
+          '<span class="tiny">' + (x.tipo === 'meta' ? 'Meta conseguida' : 'Hito de «' + esc(x.meta || 'tu meta') + '»') + '</span></span>' +
+          (x.fecha ? '<span class="tiny num">' + esc(Fmt.fmt(x.fecha)) + '</span>' : '') + '</div>';
+      });
+      h += '</div><span class="label">Lo que tú apuntas</span>';
+    }
     h += '<div class="addbar"><input class="addbar-inp" data-add="win" placeholder="¿Qué has conseguido?" aria-label="Nuevo logro" enterkeyhint="done">' +
       '<input class="addbar-when" type="date" id="winDate" value="' + Dates.today() + '" aria-label="Fecha del logro">' +
       '<button class="addbar-go" data-a="addWin" aria-label="Añadir logro">' + I('plus', 18) + '</button></div>';
@@ -399,7 +429,7 @@
       wins.forEach(function (w) {
         h += '<div class="step" style="align-items:center">' +
           '<span style="color:var(--warn)">' + I('trophy', 17) + '</span>' +
-          '<span class="sfields"><input class="inp-plain" data-f="winText" data-id="' + esc(w.id) + '" value="' + esc(w.text) + '"></span>' +
+          '<span class="sfields"><input class="inp-plain" data-f="winText" data-id="' + esc(w.id) + '" value="' + esc(w.text) + '" aria-label="Logro"></span>' +
           '<span class="tiny num">' + esc(Fmt.fmt(w.date)) + '</span>' +
           '<button class="delbtn" data-a="winDel" data-id="' + esc(w.id) + '" aria-label="Eliminar logro">' + I('trash', 17) + '</button></div>';
       });

@@ -32,7 +32,17 @@ var Ajustes = (function () {
     S.cats = S.cats.filter(function (c) { return c.id !== id; });
     Goals.all().forEach(function (g) { if (g.cat === id) g.cat = ''; });
     delete S.future[id];
+    S.profile.areasClave = (S.profile.areasClave || []).filter(function (x) { return x !== id; });
     Store.save();
+  }
+  // Las áreas importantes (hasta tres): se eligen al empezar y se cambian aquí.
+  function areaClave(id) {
+    var l = S.profile.areasClave || (S.profile.areasClave = []), p = l.indexOf(id);
+    if (p >= 0) l.splice(p, 1);
+    else if (l.length >= 3) return { ok: false, lleno: true };
+    else if (Areas.get(id)) l.push(id);
+    Store.save();
+    return { ok: true };
   }
   function areaNombre(id, v) { var c = Areas.get(id); if (c) c.name = String(v || '').slice(0, 120); Store.save(); }
   function areaEmoji(id, v) { var c = Areas.get(id); if (c) c.emoji = String(v || '').slice(0, 8); Store.save(); }
@@ -58,7 +68,7 @@ var Ajustes = (function () {
   return {
     semana: semana, foto: foto, quitarFoto: quitarFoto, tema: tema, alternarAvisos: alternarAvisos,
     campoPerfil: campoPerfil, comentario: comentario,
-    areaNueva: areaNueva, areaBorrar: areaBorrar, areaNombre: areaNombre, areaEmoji: areaEmoji,
+    areaNueva: areaNueva, areaBorrar: areaBorrar, areaClave: areaClave, areaNombre: areaNombre, areaEmoji: areaEmoji,
     respaldoTexto: respaldoTexto, respaldoCopiado: respaldoCopiado, restaurar: restaurar, borrarTodo: borrarTodo
   };
 })();

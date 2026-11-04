@@ -110,10 +110,13 @@
 
     /* --- áreas de vida --- */
     h += sect('Áreas de vida',
-      '<p class="muted">Se usan en el chequeo de vida, en las metas y en el progreso. El emoji lo eliges tú.</p>' +
+      '<p class="muted">Se usan en el chequeo de vida, en las metas y en el progreso. El emoji lo eliges tú. ' +
+      'Marca con la estrella hasta tres que ahora te importen más: van primero en Visión.</p>' +
       '<div class="list">' +
       S.cats.map(function (c) {
+        var clave = (S.profile.areasClave || []).indexOf(c.id) >= 0;
         return '<div class="listrow" style="padding:8px 10px 8px 12px">' +
+          '<button class="delbtn' + (clave ? ' on' : '') + '" data-a="areaClave" data-id="' + esc(c.id) + '" aria-pressed="' + clave + '" aria-label="' + esc(c.name) + (clave ? ': importante' : ': marcar como importante') + '">' + I('star', 17) + '</button>' +
           '<input class="inp-plain" style="width:42px;flex:none;text-align:center;font-size:19px" data-f="catEmoji" data-id="' + esc(c.id) + '" value="' + esc(c.emoji) + '" maxlength="4" aria-label="Emoji del área">' +
           '<span class="grow"><input class="inp-plain" data-f="catName" data-id="' + esc(c.id) + '" value="' + esc(c.name) + '"></span>' +
           '<span class="catdot" style="background:' + esc(c.color) + ';width:13px;height:13px"></span>' +

@@ -4,7 +4,7 @@
 
    Cuando cambies la app, sube VERSION un número. Eso basta. */
 
-var VERSION = 'brujula-v46';
+var VERSION = 'brujula-v47';
 var SHELL   = VERSION + '-shell';
 var FUENTES = VERSION + '-fuentes';
 

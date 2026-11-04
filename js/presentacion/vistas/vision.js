@@ -90,13 +90,19 @@
       '<span class="tiny num">' + futureCount() + ' de ' + S.cats.length + '</span></div>' +
       '<p class="muted" style="margin-top:-6px">Lo mismo, área por área: una frase sobre cómo quieres que sea cada una. De aquí salen tus metas.</p>' +
       '<div class="tlist">';
-    S.cats.forEach(function (c) {
-      var f = S.future[c.id], on = !!(f && f.goal);
+    // las áreas importantes (elegidas al empezar o en Perfil) van primero, con estrella
+    var clave = S.profile.areasClave || [];
+    S.cats.slice().sort(function (a, b) {
+      var x = clave.indexOf(a.id), y = clave.indexOf(b.id);
+      return (x < 0 ? 9 : x) - (y < 0 ? 9 : y);
+    }).forEach(function (c) {
+      var f = S.future[c.id], on = !!(f && f.goal), esClave = clave.indexOf(c.id) >= 0;
       // cuántas metas en marcha empujan hacia esta área (se ven al abrirla)
       var nm = S.goalsS.concat(S.goalsL).filter(function (g) { return g.cat === c.id && !g.done; }).length;
-      h += '<button class="frow" data-a="openFuture" data-c="' + esc(c.id) + '" aria-label="' + esc(c.name) + (on ? ': ' + esc(f.goal) : ', sin escribir') + (nm ? ', ' + Fmt.plural(nm, 'meta', 'metas') : '') + '">' +
+      h += '<button class="frow" data-a="openFuture" data-c="' + esc(c.id) + '" aria-label="' + esc(c.name) + (esClave ? ' (importante)' : '') + (on ? ': ' + esc(f.goal) : ', sin escribir') + (nm ? ', ' + Fmt.plural(nm, 'meta', 'metas') : '') + '">' +
         '<span class="gc-ic">' + esc(c.emoji) + '</span>' +
-        '<span class="grow"><span class="frow-n">' + esc(c.name.split(' (')[0]) + (nm ? ' · ' + Fmt.plural(nm, 'meta', 'metas') : '') + '</span>' +
+        '<span class="grow"><span class="frow-n">' + esc(c.name.split(' (')[0]) + (nm ? ' · ' + Fmt.plural(nm, 'meta', 'metas') : '') +
+        (esClave ? '<span class="clave" aria-hidden="true">' + I('star', 12) + '</span>' : '') + '</span>' +
         '<span class="frow-t' + (on ? '' : ' vacio') + '">' + (on ? esc(f.goal) : 'Sin escribir') + '</span></span>' +
         I('right', 16) + '</button>';
     });
@@ -127,6 +133,77 @@
     return n <= 0 ? 'hoy' : n === 1 ? 'ayer' : 'hace ' + n + ' días';
   }
 
+  /* el avance real de las metas en marcha: las que más importan, con su siguiente paso */
+  function metasEnMarcha() {
+    var PRIO = { Alta: 0, Media: 1, Baja: 2 };
+    var abiertas = S.goalsS.map(function (g) { return { g: g, k: 'S' }; }).concat(S.goalsL.map(function (g) { return { g: g, k: 'L' }; }))
+      .filter(function (x) { return !x.g.done; })
+      .sort(function (a, b) {
+        return (a.k === b.k ? 0 : a.k === 'S' ? -1 : 1) || ((PRIO[a.g.priority] === undefined ? 1 : PRIO[a.g.priority]) - (PRIO[b.g.priority] === undefined ? 1 : PRIO[b.g.priority])) ||
+          ((a.g.due || '9999') < (b.g.due || '9999') ? -1 : 1);
+      });
+    if (!abiertas.length) return '';
+    var h = '<div class="sect"><div class="sect-head"><span class="sect-title">Tus metas</span>' +
+      '<button class="btn ghost xs" data-a="goGoals">Ver todas</button></div><div class="tlist">';
+    abiertas.slice(0, 3).forEach(function (x) {
+      var g = x.g, c = Areas.get(g.cat), steps = (g.steps || []).filter(function (s) { return !(x.k === 'L' && s.promoted); });
+      var hechos = steps.filter(function (s) { return s.done; }).length, sig = steps.filter(function (s) { return !s.done; })[0];
+      h += '<button class="trow trow-btn" data-a="openGoal" data-k="' + x.k + '" data-id="' + esc(g.id) + '">' +
+        '<span class="trow-ic">' + (c ? esc(c.emoji) : I('target', 16)) + '</span>' +
+        '<span class="trow-body"><span class="trow-t">' + esc(g.name || 'Meta sin nombre') + '</span>' +
+        (steps.length ? '<span class="gc-bar"><span class="bar thin"><span style="width:' + Math.round(hechos / steps.length * 100) + '%"></span></span>' +
+          '<span class="gc-steps num">' + hechos + ' de ' + steps.length + '</span></span>' : '') +
+        '<span class="trow-m"><span>' + (sig ? 'Siguiente: ' + esc(sig.name || 'paso') : steps.length ? 'Todos los pasos hechos' : 'Sin pasos todavía') + '</span></span>' +
+        '</span>' + I('right', 16) + '</button>';
+    });
+    return h + '</div></div>';
+  }
+
+  /* el mes de hábitos: cada día, completo, a medias o sin marcar. Tocar un día lo abre en Hoy */
+  var DOW = ['L', 'M', 'X', 'J', 'V', 'S', 'D'], DOW_SUN = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+  function mesHabitos() {
+    if (!S.routines.day.length && !S.routines.night.length) return '';
+    var ym = ui.calMonth, y = +ym.slice(0, 4), m = +ym.slice(5, 7);
+    var first = new Date(y, m - 1, 1), t = Dates.today();
+    var ws = S.profile.weekStart === 0 ? 0 : 1;
+    var offset = (first.getDay() - ws + 7) % 7, total = new Date(y, m, 0).getDate();
+    var label = first.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    var h = '<div class="sect"><div class="sect-head">' +
+      '<span class="sect-title">Tus hábitos · ' + esc(label) + '</span>' +
+      '<span class="row" style="gap:0">' +
+      '<button class="iconbtn" data-a="cal" data-d="-1" aria-label="Mes anterior">' + I('left') + '</button>' +
+      '<button class="iconbtn" data-a="calToday" aria-label="Este mes">' + I('pin', 18) + '</button>' +
+      '<button class="iconbtn" data-a="cal" data-d="1" aria-label="Mes siguiente">' + I('right') + '</button></span></div>';
+    h += '<div class="cal">';
+    (ws === 0 ? DOW_SUN : DOW).forEach(function (d) { h += '<span class="dow">' + d + '</span>'; });
+    for (var i = 0; i < offset; i++) h += '<span class="pad"></span>';
+    for (var d2 = 1; d2 <= total; d2++) {
+      var k = y + '-' + String(m).padStart(2, '0') + '-' + String(d2).padStart(2, '0');
+      var cls = [Routines.dayStatus(k), k === t ? 'today' : ''].filter(Boolean).join(' ');
+      h += '<button data-a="pickDay" data-day="' + k + '" class="' + cls + '" aria-label="' + esc(Fmt.cap(Fmt.fmtLong(k))) + '"' + (k > t ? ' disabled' : '') + '>' + d2 + '</button>';
+    }
+    h += '</div><div class="callegend">' +
+      '<span><i style="background:var(--good)"></i>Todos</span>' +
+      '<span><i style="background:var(--warn)"></i>Algunos</span>' +
+      '<span><i style="background:color-mix(in srgb,var(--ink) 14%,transparent)"></i>Ninguno</span></div>' +
+      '<p class="tiny">Toca un día para verlo en Hoy y marcar lo que se quedó sin marcar.</p>';
+    return h + '</div>';
+  }
+
+  /* logros: solo lo que los datos permiten afirmar. Metas conseguidas e hitos
+     alcanzados (con su fecha si se guardó; lo de antes no la tiene y no se inventa)
+     y lo que la persona apunta a mano */
+  V.logros = function () {
+    var out = [];
+    [['S', S.goalsS], ['L', S.goalsL]].forEach(function (x) {
+      x[1].forEach(function (g) {
+        if (g.done) out.push({ tipo: 'meta', texto: g.name || 'Meta sin nombre', fecha: g.doneAt || '' });
+        (g.steps || []).forEach(function (s) { if (s.hito && s.done) out.push({ tipo: 'hito', texto: s.name || 'Hito', meta: g.name, fecha: s.doneAt || '' }); });
+      });
+    });
+    return out.sort(function (a, b) { return a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0; });
+  };
+
   V.progreso = function () {
     var st = Routines.streak(), r = Revision.last(), sem = semanaHabitos();
     // a primeros de semana, la que hay que cerrar es la que acaba de terminar
@@ -152,7 +229,13 @@
       '<div class="stat"><b class="num">' + sem.hechos + '<small>/' + sem.tocaban + '</small></b><span>hábitos esta semana</span></div>' +
       '<div class="stat"><b class="num">' + hechas + '</b><span>' + (hechas === 1 ? 'tarea o paso hecho' : 'tareas y pasos hechos') + ' esta semana</span></div></div>';
 
-    /* lo que se revisa cada cierto tiempo */
+    /* lo primero, el avance real: metas y hábitos */
+    h += metasEnMarcha() + mesHabitos();
+
+    /* lo que se revisa cada cierto tiempo; los logros, como algo secundario */
+    var logros = V.logros(), nLogros = logros.length + S.wins.length;
+    var ultimo = logros[0] && logros[0].fecha ? logros[0] : null;
+    S.wins.forEach(function (w) { if (!ultimo || (w.date || '') > ultimo.fecha) ultimo = { texto: w.text, fecha: w.date || '' }; });
     function fila(icono, titulo, sub, valor, cls, accion) {
       return '<button class="listrow rrow" data-a="' + accion + '">' + I(icono, 19) +
         '<span class="rc-txt"><strong>' + titulo + '</strong><span class="rc-sub">' + sub + '</span></span>' +
@@ -164,12 +247,8 @@
       fila('rotate', 'Revisión de la semana', revSub, rv && rv.focus ? 'Hecha' : 'Pendiente', rv && rv.focus ? 'good' : 'accent', 'goReview') +
       fila('compass', 'Chequeo de vida', r ? 'Último, ' + haceDias(r.date) : 'Cómo estás en cada área de tu vida', r ? Revision.avg(r) + '/10' : 'Hacerlo', r ? '' : 'accent', 'sheetRC') +
       fila('zap', 'Reto de 30 días', c ? esc(c.name || 'Tu reto') : 'Elige una cosa y sostenla un mes', esc(chTxt), '', 'sheetChallenge') +
-      fila('trophy', 'Lo que has logrado', 'Tu lista de victorias', String(S.wins.length), '', 'sheetWins') +
+      fila('trophy', 'Lo que has logrado', ultimo ? 'Lo último: ' + esc(ultimo.texto) : 'Metas conseguidas, hitos y lo que tú apuntes', String(nLogros), '', 'sheetWins') +
       '</div></div>';
-
-    if (S.goalsS.length + S.goalsL.length) {
-      h += '<button class="btn ghost sm" data-a="goGoals" data-s="S" style="align-self:flex-start">Ver cómo van tus metas' + I('right', 15) + '</button>';
-    }
 
     h += '</div></div>';
     return h;

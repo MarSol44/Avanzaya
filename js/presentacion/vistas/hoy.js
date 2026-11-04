@@ -229,6 +229,25 @@
     return h + '</div>';
   }
 
+  // Mirando un día que ya pasó: sus hábitos, para marcar lo que se quedó sin marcar
+  // (solo los que tocaban ese día o se marcaron; nada de añadir ni editar).
+  function rutinasDeDia(k) {
+    var tot = Routines.dayTotals(k), filas = '';
+    ['day', 'night'].forEach(function (kind) {
+      var marks = (S.rlog[k] || {})[kind] || [];
+      (S.routines[kind] || []).forEach(function (it) {
+        var on = marks.indexOf(it.id) >= 0;
+        if (!on && !Routines.dueOn(kind, k).some(function (x) { return x.id === it.id; })) return;   // ese día no tocaba
+        filas += '<div class="trow' + (on ? ' is-done' : '') + '">' +
+          '<button class="chk" role="checkbox" aria-checked="' + on + '" data-a="rtoggle" data-day="' + k + '" data-k="' + kind + '" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + '">' + I('check', 15) + '</button>' +
+          '<span class="trow-t grow">' + esc(it.name) + '</span></div>';
+      });
+    });
+    if (!filas) return Routines.isRest(k) ? '<div class="sect"><p class="notice">Ese día fue de descanso.</p></div>' : '';
+    return '<div class="sect" id="rutinas"><div class="sect-head"><span class="sect-title">Rutinas de ese día</span>' +
+      '<span class="tiny num">' + tot.done + ' de ' + tot.total + '</span></div><div class="tlist hab">' + filas + '</div></div>';
+  }
+
   // El reto en curso, para marcarlo cada día donde se marca lo demás: si solo
   // viviera en Progreso, se olvidaría.
   function retoHoy(t) {
@@ -300,7 +319,7 @@
       metaLinea([
         opt.showDate ? '<span class="bad">' + esc(Fmt.cap(Fmt.cuando(day))) + '</span>' : '',
         e.time ? '<span class="num">' + I('clock', 13) + esc(e.time) + '</span>' : '',
-        deMeta(e.goalId)
+        hitoTag(Tasks.stepLink(e)), deMeta(e.goalId)
       ]) + '</button></div>';
     if (open) h += movePanel(e, day);
     return h;
@@ -321,8 +340,10 @@
       '<button class="chk round" role="checkbox" aria-checked="' + done + '" data-a="gsDone" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '" aria-label="Marcar «' + esc(title) + '» como hecha">' + I('check', 14) + '</button>' +
       '<button class="trow-body" data-a="gsEdit" data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '" aria-label="Cambiar día u hora de «' + esc(title) + '»">' +
       '<span class="trow-t">' + esc(title) + '</span>' +
-      metaLinea([atrasado ? '<span class="bad">' + esc(Fmt.cap(Fmt.cuando(atrasado))) + '</span>' : '', deMeta(x.g.id)]) + '</button></div>';
+      metaLinea([atrasado ? '<span class="bad">' + esc(Fmt.cap(Fmt.cuando(atrasado))) + '</span>' : '', hitoTag(x.s), deMeta(x.g.id)]) + '</button></div>';
   }
+  // Un hito (paso que marca un punto importante de su meta) se distingue con bandera.
+  function hitoTag(s) { return s && s.hito ? '<span class="hito">' + I('flag', 12) + 'Hito</span>' : ''; }
 
   function grupo(titulo, filas, accion, cls) {
     if (!filas) return '';
@@ -424,27 +445,32 @@
       }).join('') + '</div></div>';
   }
 
-  /* Metas de corto plazo cuyo siguiente paso no tiene día: sin día, un paso
-     nunca llega al plan. Se ofrece ponérselo con un toque (hoy o mañana). */
+  /* Metas cuyo siguiente paso no tiene día: sin día, un paso nunca llega al plan.
+     Se ofrece ponérselo con un toque (hoy o mañana); sigue siendo un paso de su meta. */
   function pasosSinDia(t) {
     // de noche, con cosas pendientes, primero se cierra el día: planear puede esperar a mañana
     var hora = new Date().getHours();
     if ((hora >= 20 || hora < 4) && Tasks.overdue(t).length + Tasks.overdueSteps(t).length + Tasks.pending(t)) return '';
     var out = [], PRIO = { Alta: 0, Media: 1, Baja: 2 };
-    // las de prioridad alta primero: son las que la persona eligió para este mes
-    S.goalsS.slice().sort(function (a, b) { return (PRIO[a.priority] === undefined ? 1 : PRIO[a.priority]) - (PRIO[b.priority] === undefined ? 1 : PRIO[b.priority]); }).forEach(function (g) {
-      if (g.done) return;
-      var pend = (g.steps || []).filter(function (s) { return !s.done; });
-      // si ya hay un paso con día (o atrasado, que sale arriba), la meta ya está en el plan
-      if (!pend.length || pend.some(function (s) { return s.due; })) return;
-      if (!Tasks.linked(g.id, pend[0].id)) out.push({ g: g, s: pend[0] });
-    });
+    // primero las cortas, y entre ellas las de prioridad alta (las elegidas para este
+    // mes); después las de largo plazo
+    function prio(g) { return PRIO[g.priority] === undefined ? 1 : PRIO[g.priority]; }
+    S.goalsS.map(function (g) { return { g: g, k: 'S' }; }).sort(function (a, b) { return prio(a.g) - prio(b.g); })
+      .concat(S.goalsL.map(function (g) { return { g: g, k: 'L' }; })).forEach(function (x) {
+        var g = x.g;
+        if (g.done) return;
+        // los pasos ya convertidos en meta corta van por su cuenta
+        var pend = (g.steps || []).filter(function (s) { return !s.done && !s.promoted; });
+        // si ya hay un paso con día (o atrasado, que sale arriba), la meta ya está en el plan
+        if (!pend.length || pend.some(function (s) { return s.due; })) return;
+        if (!Tasks.linked(g.id, pend[0].id)) out.push({ g: g, s: pend[0], k: x.k });
+      });
     if (!out.length) return '';
     var man = Dates.shift(t, 1);
     return '<div class="sect"><div class="sect-head"><span class="sect-title">Siguiente paso de tus metas</span></div>' +
       '<p class="tiny" style="margin-top:-6px">Aún no tienen día, así que no llegan a tu plan. ¿Cuándo los haces?</p>' +
       '<div class="tlist">' + out.slice(0, 3).map(function (x) {
-        var c = Areas.get(x.g.cat), ids = 'data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '"';
+        var c = Areas.get(x.g.cat), ids = 'data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '"';
         return '<div class="trow"><span class="trow-ic">' + (c ? esc(c.emoji) : I('target', 16)) + '</span>' +
           '<span class="trow-body" style="cursor:default"><span class="trow-t">' + esc(x.s.name || 'Paso') + '</span>' +
           metaLinea(['<span>' + esc(x.g.name || 'Meta') + '</span>']) + '</span>' +
@@ -500,7 +526,7 @@
       title = titulo(e);
       contexto = metaLinea([
         e.time ? '<span class="num">' + I('clock', 14) + (e.time < nowHM() ? 'Era a las ' : 'A las ') + esc(e.time) + '</span>' : '',
-        deMeta(e.goalId)
+        hitoTag(Tasks.stepLink(e)), deMeta(e.goalId)
       ]);
       hecho = 'data-a="evdone" data-day="' + t + '" data-id="' + esc(e.id) + '"';
       mover = 'data-a="evmove" data-id="' + esc(e.id) + '" aria-expanded="' + (ui.moveId === e.id) + '"';
@@ -509,7 +535,7 @@
       var x = n.step;
       nextStepId = x.s.id;
       title = x.s.name || 'Paso';
-      contexto = metaLinea([deMeta(x.g.id)]);
+      contexto = metaLinea([hitoTag(x.s), deMeta(x.g.id)]);
       var ids = 'data-k="' + x.k + '" data-id="' + esc(x.g.id) + '" data-s="' + esc(x.s.id) + '"';
       hecho = 'data-a="gsDone" ' + ids; mover = 'data-a="gsEdit" ' + ids;
     }
@@ -566,22 +592,24 @@
     h += weekStrip(t, d) + planSection(t, d);
     if (d === t) h += nudgeCard(true) + pasosSinDia(t);
 
-    h += rutinas(t, hora) + retoHoy(t);
+    // un día que ya pasó muestra sus hábitos y su nota; hoy o un día futuro, los de hoy
+    var pasado = d < t, diaNota = pasado ? d : t;
+    h += pasado ? rutinasDeDia(d) : rutinas(t, hora) + retoHoy(t);
 
     /* la nota del día */
-    var note = S.notes[t] || '';
+    var note = S.notes[diaNota] || '';
     // plegable como Rutinas; se recuerda cómo la dejó la persona
     if (ui.noteClosed === undefined) ui.noteClosed = !!Preferencias.get('nota.cerrada', false);
     var nOpen = !ui.noteClosed;
     h += '<div class="sect" id="nota"><button class="fold-head" data-a="toggleNote" aria-expanded="' + nOpen + '">' +
-      '<span class="sect-title">Nota del día</span>' +
+      '<span class="sect-title">' + (pasado ? 'Nota de ese día' : 'Nota del día') + '</span>' +
       '<span class="row" style="gap:8px">' + (note ? '<span class="tiny">Escrita</span>' : '') +
       I(nOpen ? 'down' : 'right', 18) + '</span></button>';
     if (nOpen) {
       if (note || ui.noteOpen) {
-        h += '<textarea class="ta" data-f="note" data-day="' + t + '" aria-label="Nota del día" placeholder="¿Qué te acercó hoy a donde quieres llegar, y qué te alejó?">' + esc(note) + '</textarea>';
+        h += '<textarea class="ta" data-f="note" data-day="' + diaNota + '" aria-label="' + (pasado ? 'Nota de ese día' : 'Nota del día') + '" placeholder="¿Qué te acercó ' + (pasado ? 'ese día' : 'hoy') + ' a donde quieres llegar, y qué te alejó?">' + esc(note) + '</textarea>';
       } else {
-        h += '<button class="inp nota-btn" data-a="openNote">¿Qué te acercó hoy a donde quieres llegar?</button>';
+        h += '<button class="inp nota-btn" data-a="openNote">¿Qué te acercó ' + (pasado ? 'ese día' : 'hoy') + ' a donde quieres llegar?</button>';
       }
     }
     h += '</div>';

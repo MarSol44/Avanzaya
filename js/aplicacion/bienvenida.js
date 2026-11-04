@@ -12,9 +12,12 @@ var Bienvenida = (function () {
   var PLAN = 3, HECHO = 4;   // 0 mejorar · 1 futuro · 2 freno · 3 plan · 4 lo que se guardó
 
   function datos() {
-    if (!S.welcome) S.welcome = { done: false, pospuesta: false, paso: 0, area: '', cambio: '', meta: '', vision: '', freno: '', borrador: null, realista: '' };
+    if (!S.welcome) S.welcome = { done: false, pospuesta: false, paso: 0, area: '', areas: [], cambio: '', meta: '', vision: '', freno: '', borrador: null, realista: '' };
+    // datos de antes (una sola área): esa es la lista
+    if (!Array.isArray(S.welcome.areas)) S.welcome.areas = S.welcome.area ? [S.welcome.area] : [];
     return S.welcome;
   }
+  function areas() { return datos().areas.map(function (id) { return Areas.get(id); }).filter(Boolean); }
   function area() { return Areas.get(datos().area); }
   function sinMetas() { return !S.goalsS.length && !S.goalsL.length; }
 
@@ -30,9 +33,26 @@ var Bienvenida = (function () {
   // Si cambian las respuestas, el plan se vuelve a proponer con ellas.
   function olvidarBorrador() { var w = datos(); w.borrador = null; w.realista = ''; }
 
+  // Hasta tres áreas; tocar otra vez una la quita. La primera elegida es el punto
+  // de partida (la del primer plan); las otras se ofrecen al terminar.
   function elegirArea(id) {
+    var w = datos(), p = w.areas.indexOf(id);
+    if (p >= 0) w.areas.splice(p, 1);
+    else if (!Areas.get(id)) return { ok: false };
+    else if (w.areas.length >= 3) return { ok: false, lleno: true };
+    else w.areas.push(id);
+    var antes = w.area;
+    w.area = w.areas[0] || '';
+    if (w.area !== antes) olvidarBorrador();
+    Store.save();
+    return { ok: true };
+  }
+  // Desde el chequeo («No lo tengo claro»): se empieza por el área que se elija ahí.
+  function desdeChequeo(id) {
+    if (!Areas.get(id)) return;
     var w = datos();
-    w.area = w.area === id ? '' : (Areas.get(id) ? id : '');   // tocar otra vez la quita
+    w.areas = [id].concat(w.areas.filter(function (x) { return x !== id; })).slice(0, 3);
+    w.area = id; w.paso = 1; w.pospuesta = false;
     olvidarBorrador();
     Store.save();
   }
@@ -44,7 +64,7 @@ var Bienvenida = (function () {
   // ¿La pregunta actual tiene respuesta? Si no, se puede saltar igualmente.
   function respondida() {
     var w = datos(), n = paso();
-    if (n === 0) return !!(w.area || String(w.cambio || '').trim());
+    if (n === 0) return !!(w.areas.length || String(w.cambio || '').trim());
     if (n === 1) return !!(String(w.meta || '').trim() || String(w.vision || '').trim());
     if (n === 2) return !!w.freno;
     return true;
@@ -113,6 +133,8 @@ var Bienvenida = (function () {
       }
     }
 
+    // las áreas elegidas quedan como «importantes» (se cambian en Perfil › Áreas de vida)
+    if (w.areas.length) S.profile.areasClave = w.areas.slice(0, 3);
     w.done = true; w.pospuesta = false; w.meta = titulo; w.paso = HECHO; w.borrador = null;
     S.onboarded = true;
     Store.saveNow();
@@ -126,7 +148,7 @@ var Bienvenida = (function () {
   function descartar() { var w = datos(); w.done = true; w.pospuesta = false; S.onboarded = true; Store.saveNow(); }
 
   return {
-    PLAN: PLAN, HECHO: HECHO, FRENOS: B.FRENOS, datos: datos, area: area,
+    PLAN: PLAN, HECHO: HECHO, FRENOS: B.FRENOS, datos: datos, area: area, areas: areas, desdeChequeo: desdeChequeo,
     pendiente: pendiente, retomable: retomable, quedan: quedan,
     paso: paso, irA: irA, elegirArea: elegirArea, cambio: cambio, meta: meta, vision: vision, freno: freno,
     respondida: respondida, propuesta: propuesta, aceptar: aceptar, LIM: B.LIM,
