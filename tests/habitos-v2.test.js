@@ -135,6 +135,10 @@ const dos = BdvMigraciones.retoAHabito(una.state, '2026-12-06', uid);
 ok(!dos.cambiado && dos.info.motivo === 'ya migrado' && una.state.routines.day.length === 1, '7. migrar dos veces no duplica nada');
 const sinMarca = JSON.parse(JSON.stringify(una.state)); delete sinMarca.migraciones;
 ok(!BdvMigraciones.retoAHabito(sinMarca, '2026-12-06', uid).cambiado, '7. aunque se pierda el registro, el hábito migrado lo impide');
+// 7b. ida y vuelta de versión: la anterior quita las marcas (las desconoce) y deja un hábito normal
+const limpio = JSON.parse(JSON.stringify(una.state)); delete limpio.migraciones;
+limpio.routines.day.forEach(x => { delete x.reto; });
+ok(!BdvMigraciones.retoAHabito(limpio, '2026-12-07', uid).cambiado, '7. tras volver de una versión anterior, no se migra otra vez');
 // 8. con hábitos previos
 r = migra(base({ name: 'W', days: 10, start: '2026-12-01', done: {} }, { routines: { day: [{ id: 'a', name: 'Agua' }], night: [{ id: 'b', name: 'Leer' }] } }), '2026-12-05');
 ok(r.state.routines.day.length === 2 && r.state.routines.day[0].name === 'Agua' && r.state.routines.night.length === 1, '8. los hábitos que había siguen igual; el reto va al final');

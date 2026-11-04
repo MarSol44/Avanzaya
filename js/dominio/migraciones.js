@@ -42,6 +42,12 @@ var BdvMigraciones = (function () {
     var inicio = FECHA.test(c.start || '') ? c.start : (marcados[0] || hoy);
     var dias = +c.days >= 3 && +c.days <= 365 ? Math.round(+c.days) : 30;
     var nombre = String(c.name || '').trim().slice(0, 120) || 'Reto';
+    // Si una versión anterior abrió estos datos, habrá quitado las marcas de la
+    // migración (no las conoce) y el hábito habrá quedado como uno normal: con el
+    // mismo nombre y creado el día que empezó el reto, se reconoce y no se repite.
+    var gemelo = (rutinas.day || []).concat(rutinas.night || [])
+      .filter(function (it) { return it && it.name === nombre && it.since === inicio; })[0];
+    if (gemelo) return { cambiado: false, state: state, info: { motivo: 'ya migrado', habito: gemelo.id } };
     var fin = sumarDias(inicio, dias - 1);
     if (!String(c.name || '').trim() && !FECHA.test(c.start || '') && !marcados.length) {
       return { cambiado: false, state: state, info: { motivo: 'reto vacío' } };
