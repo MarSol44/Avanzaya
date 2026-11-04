@@ -31,9 +31,10 @@
 
     // Cerrar la semana va primero: solo tiene su momento el fin de semana y los
     // dos primeros días de la siguiente; el chequeo puede esperar.
-    var wStart = Dates.weekStart(t), wRev = V.semanaARevisar();
+    // De noche no: a esas horas toca cerrar el día, no pedir una reflexión; vuelve por la mañana.
+    var wStart = Dates.weekStart(t), wRev = V.semanaARevisar(), h = new Date().getHours();
     var rv = S.reviews[wRev];
-    if ((wRev !== wStart || Dates.diff(t, Dates.shift(wStart, 6)) <= 1) && (!rv || !rv.focus) && !off('revision', 3)) {
+    if (h >= 6 && h < 21 && (wRev !== wStart || Dates.diff(t, Dates.shift(wStart, 6)) <= 1) && (!rv || !rv.focus) && !off('revision', 3)) {
       return { id: 'revision', icon: 'rotate', title: wRev === wStart ? 'Cierra tu semana' : 'Cierra la semana pasada',
         body: 'Dos minutos: qué funcionó, qué ajustas y tu foco para la semana que viene.',
         cta: 'Revisar la semana', act: 'goReview' };
@@ -94,6 +95,18 @@
       '<p class="tiny">Esos días no toca ningún hábito y tu racha sigue igual.</p>' +
       V.diasSemana('Descanso cada semana', 'data-a="restDia"', function (d) { return r.week.indexOf(d) >= 0; }) +
       '<button class="btn ghost xs" data-a="restHoy" style="align-self:flex-start">' + (hoy ? 'Quitar el descanso de hoy' : 'Descansar solo hoy') + '</button></div>';
+  }
+
+  // En un día flojo, las palabras de la propia persona: el «por qué» que escribió
+  // en Mi Yo del Futuro («lo que te vas a decir el día que te dé pereza») o una de
+  // sus frases de Visión. Cambia cada día; si no escribió nada, no sale nada.
+  function recuerdo(t) {
+    var frases = [];
+    S.cats.forEach(function (c) { var f = S.future[c.id]; if (f && String(f.why || '').trim()) frases.push(String(f.why).trim()); });
+    S.board.forEach(function (x) { if (x.kind === 'quote' && String(x.cap || '').trim()) frases.push(String(x.cap).trim()); });
+    if (!frases.length) return '';
+    var fr = frases[Math.abs(Dates.diff(S.start || t, t)) % frases.length];
+    return '<div class="recuerdo"><p>«' + esc(fr) + '»</p><span class="tiny">Tus palabras, de Visión</span></div>';
   }
 
   // Ideas para empezar: nadie empieza con hábitos que no ha elegido.
@@ -166,7 +179,7 @@
         chipsIdeas() + '<div class="tlist">' + filaAnadir(hora) + '</div></div>';
     }
     if (Routines.isRest(t) && !editing) {
-      return h + '<p class="notice">Hoy es día de descanso: no toca ningún hábito y tu racha sigue igual.</p></div>';
+      return h + '<p class="notice">Hoy es día de descanso: no toca ningún hábito y tu racha sigue igual.</p>' + recuerdo(t) + '</div>';
     }
 
     var noche = hora >= 18 || hora < 6 || ui.nightOpen || editing;
@@ -195,14 +208,22 @@
     h += filaAnadir(hora) + '</div>';
     if (!editing && nDia + nNoche < 3 && ideas.length) h += chipsIdeas();
 
+    // los que no salen hoy: en pausa, o porque hoy no es su día (se dice cuál de las dos)
     var ocultos = nDia + nNoche - dayDue.length - nightDue.length;
-    if (!editing && ocultos > 0) h += '<p class="tiny">' + (ocultos === 1 ? 'Otro no toca hoy' : 'Otros ' + ocultos + ' no tocan hoy') + '. Lo cambias en «Editar».</p>';
+    var pausados = S.routines.day.concat(S.routines.night).filter(function (it) { return it.paused && t >= it.paused; }).length;
+    var noToca = ocultos - pausados;
+    if (!editing && ocultos > 0) {
+      var partes = [];
+      if (pausados) partes.push(pausados === 1 ? 'uno en pausa' : pausados + ' en pausa');
+      if (noToca > 0) partes.push(noToca === 1 ? 'otro no toca hoy' : 'otros ' + noToca + ' no tocan hoy');
+      h += '<p class="tiny">' + Fmt.cap(partes.join(' y ')) + '. Lo cambias en «Editar».</p>';
+    }
     // De noche y sin nada marcado: el descanso se ofrece aquí, no escondido en «Editar».
     // No el mismo día en que se crearon los hábitos: entonces aún no hay nada que descansar.
     var veterano = S.routines.day.concat(S.routines.night).some(function (it) { return !it.since || it.since < t; });
     if (!editing && veterano && (hora >= 20 || hora < 6) && tot.total && !tot.done) {
       h += '<div class="descanso-oferta"><p class="tiny">¿Día difícil? Puedes tomarlo de descanso: tu racha sigue igual.</p>' +
-        '<button class="btn ghost xs" data-a="restHoy">' + I('moon', 14) + 'Descansar hoy</button></div>';
+        '<button class="btn ghost xs" data-a="restHoy">' + I('moon', 14) + 'Descansar hoy</button></div>' + recuerdo(t);
     }
     if (editing) h += descanso(t);
     return h + '</div>';
@@ -357,7 +378,8 @@
 
     // De noche, traer lo atrasado a hoy ya no sirve: se ofrece pasarlo (con lo que
     // quede de hoy) a mañana, al final de la lista.
-    var hora = new Date().getHours(), noche = isToday && (hora >= 20 || hora < 4);
+    // (el primer día no: quien acaba de hacer su plan no necesita que le sugieran aplazarlo)
+    var hora = new Date().getHours(), noche = isToday && (hora >= 20 || hora < 4) && !!S.start && S.start < t;
     var quedanHoy = noche ? (S.events[t] || []).filter(function (e) { return !isDone(e) && !e.time; }).length +
       goalsToday(t).filter(function (x) { return x.s && !x.s.done; }).length : 0;
     if (filasLate) h += grupo('Atrasadas', filasLate, noche ? '' : '<button class="btn ghost xs" data-a="overdueAll">Pasar a hoy</button>', 'bad');
@@ -408,8 +430,9 @@
     // de noche, con cosas pendientes, primero se cierra el día: planear puede esperar a mañana
     var hora = new Date().getHours();
     if ((hora >= 20 || hora < 4) && Tasks.overdue(t).length + Tasks.overdueSteps(t).length + Tasks.pending(t)) return '';
-    var out = [];
-    S.goalsS.forEach(function (g) {
+    var out = [], PRIO = { Alta: 0, Media: 1, Baja: 2 };
+    // las de prioridad alta primero: son las que la persona eligió para este mes
+    S.goalsS.slice().sort(function (a, b) { return (PRIO[a.priority] === undefined ? 1 : PRIO[a.priority]) - (PRIO[b.priority] === undefined ? 1 : PRIO[b.priority]); }).forEach(function (g) {
       if (g.done) return;
       var pend = (g.steps || []).filter(function (s) { return !s.done; });
       // si ya hay un paso con día (o atrasado, que sale arriba), la meta ya está en el plan
@@ -521,7 +544,10 @@
         '<span class="tiny num">' + (hechas >= total ? 'Todo hecho' : hechas + ' de ' + total + ' hechas') + '</span></div>'
       : '';
 
-    var h = V.cabecera({ kicker: Fmt.cap(Fmt.fmtLong(t)), titulo: saludo + (name ? ', ' + name : ''), perfil: profileBtn(), extra: progreso });
+    // el foco que se eligió al cerrar la semana pasada acompaña toda esta semana
+    var rvPasada = S.reviews[Dates.shift(Dates.weekStart(t), -7)], foco = rvPasada && String(rvPasada.focus || '').trim();
+    var h = V.cabecera({ kicker: Fmt.cap(Fmt.fmtLong(t)), titulo: saludo + (name ? ', ' + name : ''), perfil: profileBtn(),
+      sub: foco ? 'Foco de la semana: ' + foco : '', extra: progreso });
     h += '<div class="scroll"><div class="page">';
 
     // Si dejó la bienvenida para luego, se le ofrece seguir donde iba.

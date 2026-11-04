@@ -13,9 +13,11 @@ var BdvBienvenida = (function () {
   // Lo que suele frenar, con pasos que lo esquivan. La meta se ve al lado de
   // cada paso, así que el texto del paso no la repite.
   var FRENOS = [
+    // Sirve igual a quien no tiene ninguna idea que a quien tiene demasiadas:
+    // elegir una, probarla pronto y decidir con lo aprendido. Pasos con tiempo, no de pensar.
     { id: 'empezar', label: 'No sé por dónde empezar',
-      consejo: 'Cuando no sabes por dónde empezar, lo que ayuda es aclarar el destino y dar un primer paso concreto.',
-      pasos: ['Escribir en una frase cómo sabré que lo he conseguido', 'Buscar un ejemplo o un recurso que me ayude a empezar', 'Elegir la primera acción concreta y ponerle día'] },
+      consejo: 'Cuando no sabes por dónde empezar, no hace falta acertar: elige una opción pequeña, pruébala pronto y decide con lo que aprendas.',
+      pasos: ['Apuntar en 10 minutos todas las opciones y quedarme con una', 'Dedicar 30 minutos a la opción elegida: lo mínimo para probarla', 'Revisar qué aprendí y elegir el siguiente paso'] },
     { id: 'tiempo', label: 'No tengo tiempo',
       consejo: 'Sin tiempo, la clave es que cada paso quepa en 10 minutos y tenga su hueco en el calendario.',
       pasos: ['Reservar 10 minutos al día en mi calendario', 'Hacer una primera sesión de 10 minutos', 'Repetirla tres veces esta semana'] },

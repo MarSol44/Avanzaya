@@ -212,14 +212,20 @@
 
   /* --- rutinas --- */
   action('rtoggle', function (c) { Habitos.marcar(c.el.getAttribute('data-day'), c.k, c.id); render(); });
-  action('rSugerir', function (c) { Habitos.nuevo(c.k, c.v); render(); Pantalla.toast('Hábito añadido.'); });
+  // Al llegar al cuarto hábito se dice una vez, sin bloquear, que tantos a la vez
+  // cuesta sostenerlos (y cómo aparcar alguno); el resto de veces, solo «añadido».
+  function avisoHabito() {
+    var S = Datos.estado(), n = S.routines.day.length + S.routines.night.length;
+    Pantalla.toast(n === 4 ? 'Hábito añadido. Llevas cuatro: con más de tres a la vez suele costar sostenerlos. Si alguno puede esperar, ponlo en pausa en «Editar».' : 'Hábito añadido.');
+  }
+  action('rSugerir', function (c) { Habitos.nuevo(c.k, c.v); render(); avisoHabito(); });
   action('radd', function (c) {
     var inp = document.querySelector('[data-add="r' + c.k + '"]');
     var r = Habitos.nuevo(c.k, inp && inp.value);
     if (!r.ok) { Pantalla.toast('Escribe el nombre del hábito.'); return; }
     ui.addRoutine = c.k; ui.rTexto = '';
     render(); focusAdd('r' + c.k);
-    Pantalla.toast('Hábito añadido.');
+    avisoHabito();
   });
   action('rdel', function (c) {
     armedDelete(c.el, function () {

@@ -154,6 +154,14 @@
       '<div class="sect-head"><span class="sect-title">' + title + '</span>' +
       '<button class="btn ghost xs" data-a="newGoal" data-k="' + kind + '" aria-label="Añadir meta a ' + title + '">' + I('plus', 15) + 'Nueva</button></div>' +
       '<p class="muted" style="margin-top:-6px">' + sub + (all.length && doneN ? ' ' + doneN + ' de ' + all.length + ' conseguidas.' : '') + '</p>';
+    // muchas metas cortas a la vez: no se prohíbe, se ayuda a elegir (las «Alta» van arriba y a Hoy)
+    var abiertas = all.filter(function (g) { return !g.done; });
+    if (kind === 'S' && abiertas.length > 3) {
+      var altas = abiertas.filter(function (g) { return g.priority === 'Alta'; }).length;
+      h += '<p class="notice">Tienes ' + abiertas.length + ' metas en marcha. Con tantas a la vez es difícil que alguna avance: ' +
+        (altas && altas <= 3 ? 'tus ' + (altas === 1 ? 'prioridad alta va primero' : altas + ' de prioridad alta van primero') + ' aquí y en Hoy.'
+          : 'elige las dos o tres de este mes y ponles prioridad alta; irán primero aquí y en Hoy.') + '</p>';
+    }
 
     if (!list.length) {
       h += '<div class="empty"><span class="ee">' + I(icon, 30) + '</span><p>' +

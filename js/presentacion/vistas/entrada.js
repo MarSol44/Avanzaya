@@ -95,7 +95,9 @@
       '<h1>Iniciar sesión</h1></div></div>' +
       '<div class="scroll nonav"><form class="stack" id="loginForm" novalidate>' +
       '<label class="field"><span>Correo electrónico</span>' +
-      '<input class="inp" type="email" id="liMail" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="tu@correo.com" value="' + esc(ui.loginEmail || '') + '"></label>' +
+      // el correo de la última cuenta ya escrito (también si la sesión caducó sola)
+      '<input class="inp" type="email" id="liMail" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="tu@correo.com" value="' +
+      esc(ui.loginEmail || (S.account && S.account.login === 'email' ? S.account.email || '' : '')) + '"></label>' +
       '<label class="field"><span>Contraseña</span><span class="pwwrap">' +
       '<input class="inp" type="' + t + '" id="liPass" autocomplete="current-password" placeholder="Tu contraseña">' +
       '<button type="button" class="pweye" data-a="togglepw" aria-label="Ver u ocultar contraseña">' + I(ui.showPw ? 'eyeOff' : 'eye', 19) + '</button>' +
@@ -289,7 +291,13 @@
       h += '<div class="card sunk"><div class="stack sm"><div class="label">Lo que más pide atención</div>' +
         '<p style="font-size:14px;line-height:1.55">Hoy tus dos áreas más bajas son <strong>' +
         weak.map(function (w) { return esc(w.c.name.split(' (')[0]); }).join('</strong> y <strong>') +
-        '</strong>. No hace falta arreglarlo todo: empieza por una.</p></div></div>';
+        '</strong>. No hace falta arreglarlo todo: empieza por una.</p>' +
+        // del diagnóstico a la acción: una meta en esa área (o la que ya hay)
+        '<div class="row" style="gap:8px;flex-wrap:wrap">' + weak.map(function (w) {
+          var n = w.c.name.split(' (')[0], g = S.goalsS.filter(function (x) { return x.cat === w.c.id && !x.done; })[0];
+          return g ? '<button class="btn ghost sm" data-a="openGoal" data-k="S" data-id="' + esc(g.id) + '">' + esc(w.c.emoji) + ' Ver tu meta de ' + esc(n) + '</button>'
+            : '<button class="btn ghost sm" data-a="metaDeArea" data-c="' + esc(w.c.id) + '">' + I('plus', 15) + 'Una meta en ' + esc(n) + '</button>';
+        }).join('') + '</div></div></div>';
     }
 
     if (S.rc.length > 1 && !fromHistory) {

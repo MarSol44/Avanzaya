@@ -809,6 +809,8 @@ input[type="range"]::-moz-range-thumb{ width:22px; height:22px; border-radius:50
 .trow.add .trow-t{ color:var(--ink-2); font-weight:500; }
 .trow.add .trow-ic{ color:var(--accent); }
 .descanso{ display:flex; flex-direction:column; gap:10px; padding:14px; background:var(--surface-2); border-radius:var(--r); }
+.recuerdo{ display:flex; flex-direction:column; gap:4px; padding:2px 0 0 14px; border-left:2px solid var(--accent); }
+.recuerdo p{ margin:0; font-family:var(--disp); font-style:italic; font-size:15.5px; line-height:1.45; color:var(--ink); text-wrap:pretty; }
 .descanso-oferta, .oferta{ display:flex; align-items:center; gap:10px; }
 .descanso-oferta .tiny, .oferta .tiny{ flex:1; }
 .descanso-oferta .btn, .oferta .btn{ flex:none; }
