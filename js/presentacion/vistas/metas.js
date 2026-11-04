@@ -39,7 +39,9 @@
     }
     dias.forEach(function (dia) {
       var atras = dia < t;
-      var titulo = atras ? 'Atrasado · ' + Fmt.cuando(dia) : dia === t ? 'Hoy' : Fmt.fmtLong(dia);
+      // con el año si no es el de ahora (las de largo plazo suelen caer en otro)
+      var titulo = atras ? 'Atrasado · ' + Fmt.cuando(dia) : dia === t ? 'Hoy' :
+        Fmt.fmtLong(dia) + (dia.slice(0, 4) !== t.slice(0, 4) ? ' de ' + dia.slice(0, 4) : '');
       h += '<div class="sect" style="gap:8px"><div class="tl-head' + (atras ? ' bad' : '') + '">' + I(atras ? 'clock' : 'calendar', 14) + esc(Fmt.cap(titulo)) + '</div><div class="tlist">';
       porDia[dia].forEach(function (x) {
         var c = Areas.get(x.g.cat), ic = c ? esc(c.emoji) : I('target', 15);

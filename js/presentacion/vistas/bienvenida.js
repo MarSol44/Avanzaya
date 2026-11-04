@@ -7,7 +7,7 @@
 (function () {
   'use strict';
   var esc = Fmt.esc;
-  var PASOS = ['Qué quieres mejorar', 'Qué quieres conseguir', 'Qué te frena'];
+  var PASOS = ['Qué quieres trabajar', 'Qué quieres conseguir', 'Qué te frena'];
   var REALISTA = [['si', 'Lo veo realista'], ['justo', 'Algo justo'], ['no', 'Es demasiado']];
   // Ejemplos para «¿qué quieres conseguir?», según el área elegida.
   var EJEMPLOS = {
@@ -50,7 +50,7 @@
           (i >= 0 ? '<span class="bv-n num" aria-hidden="true">' + (i + 1) + '</span>' : '') + '</button>';
       }).join('') + '</div>' +
       (primera ? '<p class="tiny" style="text-align:center">Empiezas por <strong>' + esc(primera.emoji + ' ' + corto(primera)) + '</strong>.</p>' : '') +
-      '<button type="button" class="btn ghost block" data-a="bvChequeo">' + I('compass', 17) + 'No lo tengo claro: ayúdame a verlo (3 min)</button>' +
+      '<button type="button" class="btn ghost block" data-a="bvChequeo" style="white-space:normal;height:auto;min-height:44px">' + I('compass', 17) + 'No lo tengo claro: ayúdame a verlo (3 min)</button>' +
       '<label class="field"><span>Si quieres, cuéntalo con tus palabras</span>' +
       '<textarea class="ta" data-f="bvCambio" maxlength="400" placeholder="Ej. Siento que voy con prisa todo el día y no avanzo en lo que me importa.">' + esc(w.cambio || '') + '</textarea></label>';
   }

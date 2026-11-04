@@ -118,7 +118,7 @@
         return '<div class="listrow" style="padding:8px 10px 8px 12px">' +
           '<button class="delbtn' + (clave ? ' on' : '') + '" data-a="areaClave" data-id="' + esc(c.id) + '" aria-pressed="' + clave + '" aria-label="' + esc(c.name) + (clave ? ': importante' : ': marcar como importante') + '">' + I('star', 17) + '</button>' +
           '<input class="inp-plain" style="width:42px;flex:none;text-align:center;font-size:19px" data-f="catEmoji" data-id="' + esc(c.id) + '" value="' + esc(c.emoji) + '" maxlength="4" aria-label="Emoji del área">' +
-          '<span class="grow"><input class="inp-plain" data-f="catName" data-id="' + esc(c.id) + '" value="' + esc(c.name) + '"></span>' +
+          '<span class="grow"><input class="inp-plain" data-f="catName" data-id="' + esc(c.id) + '" value="' + esc(c.name) + '" aria-label="Nombre del área"></span>' +
           '<span class="catdot" style="background:' + esc(c.color) + ';width:13px;height:13px"></span>' +
           (S.cats.length > 1 ? '<button class="delbtn" data-a="catDel" data-id="' + esc(c.id) + '" aria-label="Eliminar área">' + I('trash', 17) + '</button>' : '') +
           '</div>';
